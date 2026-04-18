@@ -305,7 +305,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         motionPreset="slideInBottom"
         isCentered={false}
       >
-        <ModalOverlay bg="rgba(14, 12, 10, 0.3)" backdropFilter="blur(8px)" />
+        <ModalOverlay bg="rgba(14, 12, 10, 0.3)" />
         <ModalContent
           mx={3}
           mt="auto"
@@ -559,29 +559,29 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
         <Box 
           bg="surface.900" 
-          borderRadius="28px" 
-          p={5} 
+          borderRadius="24px" 
+          p={4} 
           color="white" 
           boxShadow="0 10px 30px rgba(0,0,0,0.1)"
           mt={2}
         >
-          <VStack align="stretch" spacing={4}>
+          <VStack align="stretch" spacing={3}>
             <HStack justify="space-between" opacity={0.8}>
               <Text fontWeight="700" fontSize="sm">Items Count</Text>
               <Text fontWeight="800" fontSize="sm">{draft.summary.itemsCount}</Text>
             </HStack>
             <HStack justify="space-between">
-              <Text fontWeight="700" fontSize="lg">Total Amount</Text>
-              <Text fontSize="2xl" fontWeight="900" letterSpacing="-0.02em">
+              <Text fontWeight="700" fontSize="md">Total Amount</Text>
+              <Text fontSize="xl" fontWeight="900" letterSpacing="-0.02em">
                 EUR {draft.summary.totalAmount.toFixed(2)}
               </Text>
             </HStack>
             
-            <HStack spacing={3} pt={2}>
+            <HStack spacing={3} pt={1}>
               <Button
                 flex="1"
-                h="56px"
-                borderRadius="20px"
+                h="52px"
+                borderRadius="18px"
                 bg="rgba(255,255,255,0.12)"
                 color="white"
                 border="1px solid rgba(255,255,255,0.2)"
@@ -589,22 +589,22 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("cash")}
                 isLoading={actionLoading}
-                fontSize="md"
+                fontSize="sm"
                 fontWeight="800"
               >
                 Cash
               </Button>
               <Button
                 flex="1"
-                h="56px"
-                borderRadius="20px"
+                h="52px"
+                borderRadius="18px"
                 bg="brand.500"
                 color="white"
                 _hover={{ bg: "brand.600" }}
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("card")}
                 isLoading={actionLoading}
-                fontSize="md"
+                fontSize="sm"
                 fontWeight="800"
                 boxShadow="0 8px 20px rgba(74, 132, 244, 0.4)"
               >
@@ -624,7 +624,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           position="absolute"
           inset={0}
           bg="rgba(14, 12, 10, 0.4)"
-          backdropFilter="blur(8px)"
           onClick={() => setIsDraftCartOpen(false)}
         />
         <Box
