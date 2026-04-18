@@ -22,7 +22,7 @@ const items: NavItem[] = [
   { id: "orders", label: "Orders", icon: LuReceiptText },
   { id: "stock", label: "My Stock", icon: LuPackage2 },
   { id: "shift", label: "Shift", icon: LuClock3 },
-  { id: "options", label: "Options", icon: LuSettings2 },
+  { id: "options", label: "Settings", icon: LuSettings2 },
 ];
 
 type BottomNavProps = {

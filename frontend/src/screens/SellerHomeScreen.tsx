@@ -126,6 +126,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         ? "Shift Paused"
         : "Shift Not Started";
 
+  const activeTabTitle: Record<SellerTab, string> = {
+    checkout: "Checkout",
+    orders: "Orders",
+    stock: "My Stock",
+    shift: "Shift",
+    options: "Settings",
+  };
+
   const getStockDraft = (productId: string) =>
     stockEdits[productId] ?? {
       quantity: "1",
@@ -1348,7 +1356,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 color="surface.900"
                 lineHeight="1"
               >
-                {storeName}
+                {activeTabTitle[activeTab]}
               </Text>
               <HStack spacing={1.5} mt={1}>
                 <Box w="6px" h="6px" borderRadius="full" bg="green.500" />
@@ -1384,42 +1392,44 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </HStack>
           </HStack>
 
-          <InputGroup size="md">
-            <InputLeftElement pointerEvents="none" color="surface.500" h="54px" pl={2}>
-              <Box as={HiOutlineMagnifyingGlass} boxSize={5} strokeWidth={2.5} />
-            </InputLeftElement>
-            <Input
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              borderRadius="20px"
-              border="1px solid"
-              borderColor="rgba(0, 0, 0, 0.06)"
-              bg="white"
-              h="54px"
-              fontSize="md"
-              fontWeight="650"
-              px={5}
-              boxShadow="0 4px 12px rgba(0, 0, 0, 0.03)"
-              _placeholder={{ color: "surface.400", fontWeight: 600 }}
-              _focusVisible={{
-                borderColor: "brand.300",
-                boxShadow: "0 8px 24px rgba(74, 132, 244, 0.12)",
-              }}
-              transition="all 0.2s ease"
-            />
-            <InputRightElement w="62px" h="54px" pr={1}>
-              <IconButton
-                aria-label="Filters"
-                icon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={5} strokeWidth={2} />}
-                size="sm"
-                borderRadius="14px"
-                bg="surface.50"
-                color="surface.600"
-                _hover={{ bg: "brand.50", color: "brand.600" }}
+          {activeTab === "checkout" ? (
+            <InputGroup size="md">
+              <InputLeftElement pointerEvents="none" color="surface.500" h="54px" pl={2}>
+                <Box as={HiOutlineMagnifyingGlass} boxSize={5} strokeWidth={2.5} />
+              </InputLeftElement>
+              <Input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                borderRadius="20px"
+                border="1px solid"
+                borderColor="rgba(0, 0, 0, 0.06)"
+                bg="white"
+                h="54px"
+                fontSize="md"
+                fontWeight="650"
+                px={5}
+                boxShadow="0 4px 12px rgba(0, 0, 0, 0.03)"
+                _placeholder={{ color: "surface.400", fontWeight: 600 }}
+                _focusVisible={{
+                  borderColor: "brand.300",
+                  boxShadow: "0 8px 24px rgba(74, 132, 244, 0.12)",
+                }}
+                transition="all 0.2s ease"
               />
-            </InputRightElement>
-          </InputGroup>
+              <InputRightElement w="62px" h="54px" pr={1}>
+                <IconButton
+                  aria-label="Filters"
+                  icon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={5} strokeWidth={2} />}
+                  size="sm"
+                  borderRadius="14px"
+                  bg="surface.50"
+                  color="surface.600"
+                  _hover={{ bg: "brand.50", color: "brand.600" }}
+                />
+              </InputRightElement>
+            </InputGroup>
+          ) : null}
         </VStack>
 
           {renderActiveTab()}
