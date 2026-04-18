@@ -488,8 +488,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               <Button
                 size="sm"
                 borderRadius="14px"
-                variant="outline"
-                borderColor="var(--app-border)"
+                bg="red.500"
+                color="white"
+                _hover={{ bg: "red.600" }}
                 onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
                 isDisabled={item.quantity <= 1}
                 isLoading={actionLoading}
@@ -499,8 +500,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               <Button
                 size="sm"
                 borderRadius="14px"
-                variant="outline"
-                borderColor="var(--app-border)"
+                bg="brand.500"
+                color="white"
+                _hover={{ bg: "brand.600" }}
                 onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
                 isLoading={actionLoading}
               >
