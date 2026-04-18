@@ -740,7 +740,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const renderCheckoutTab = () => (
     <VStack spacing={4} align="stretch">
-      {!shiftActive ? (
+      {!loading && !shiftActive ? (
         <Box
           bg={panelSurface}
           borderRadius={panelRadius}

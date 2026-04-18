@@ -130,7 +130,7 @@ function setStoredToken(token: string) {
 
 export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   mode: "demo",
-  loading: false,
+  loading: true,
   actionLoading: false,
   error: null,
   storeId: null,
