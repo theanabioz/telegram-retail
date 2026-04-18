@@ -379,11 +379,9 @@ export function AdminDashboardScreen({
       <SimpleGrid columns={2} spacing={3}>
         {[
           { label: "Today Revenue", value: data ? `EUR ${data.summary.totalRevenueToday.toFixed(2)}` : "..." },
-          { label: "All-time Revenue", value: data ? `EUR ${data.summary.totalRevenueAllTime.toFixed(2)}` : "..." },
           { label: "Sales Today", value: data ? String(data.summary.completedSalesToday) : "..." },
-          { label: "Active Shifts", value: data ? String(data.summary.activeShifts) : "..." },
-          { label: "Stores", value: data ? String(data.summary.totalStores) : "..." },
           { label: "Low Stock", value: data ? String(data.summary.lowStockCount) : "..." },
+          { label: "Active Sellers", value: data ? String(data.summary.totalSellers) : "..." },
         ].map((card) => (
           <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
             <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
