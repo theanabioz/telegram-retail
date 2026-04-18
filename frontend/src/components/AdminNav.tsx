@@ -40,11 +40,11 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
       bg="rgba(255, 255, 255, 0.9)"
       backdropFilter="blur(22px)"
       border="1px solid rgba(226, 224, 218, 0.86)"
-      borderRadius="26px"
-      px={2}
-      pt={2}
-      pb="calc(8px + env(safe-area-inset-bottom, 0px))"
-      boxShadow="0 18px 46px rgba(20, 20, 20, 0.12)"
+      borderRadius="24px"
+      px={1.5}
+      pt={1.5}
+      pb="calc(6px + env(safe-area-inset-bottom, 0px))"
+      boxShadow="0 16px 40px rgba(20, 20, 20, 0.1)"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -65,25 +65,25 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
             onClick={() => onChange(item.id)}
             border={0}
             px={1}
-            py={1.5}
-            minH="54px"
-            borderRadius="18px"
+            py={1}
+            minH="50px"
+            borderRadius="16px"
             bg="transparent"
             transition="all 0.18s ease"
           >
             <Box
-              w="36px"
-              h="36px"
-              borderRadius="15px"
+              w="34px"
+              h="34px"
+              borderRadius="14px"
               display="grid"
               placeItems="center"
               bg={isActive ? "surface.900" : "transparent"}
               color={isActive ? "white" : "surface.600"}
               boxShadow={isActive ? "0 10px 24px rgba(22, 22, 22, 0.18)" : "none"}
             >
-              <Box as={Icon} boxSize={6} />
+              <Box as={Icon} boxSize={5.5} />
             </Box>
-            <Text fontSize="10px" letterSpacing="-0.02em" lineHeight="1" noOfLines={1}>
+            <Text fontSize="9px" letterSpacing="-0.02em" lineHeight="1" noOfLines={1}>
               {item.label}
             </Text>
           </VStack>
