@@ -76,6 +76,25 @@ function formatDateTimeLabel(value: string | null) {
   });
 }
 
+function formatDateLabel(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatTimeLabel(value: string | null) {
+  if (!value) {
+    return "Ongoing";
+  }
+
+  return new Date(value).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
@@ -1367,22 +1386,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const renderShiftDetailsPage = () => (
     <VStack spacing={4} align="stretch">
-      <HStack justify="flex-end">
-        <Button
-          size="sm"
-          borderRadius="14px"
-          variant="ghost"
-          color="surface.600"
-          leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
-          onClick={() => {
-            clearShiftDetails();
-            setShiftView("history");
-          }}
-        >
-          Back
-        </Button>
-      </HStack>
-
       {shiftDetailsLoading ? (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
           <Text fontWeight="800">Loading shift details...</Text>
@@ -1411,34 +1414,53 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {shiftDetails.store?.name ?? storeName}
                   </Text>
                 </VStack>
-                <Box
-                  px={3}
-                  py={1.5}
-                  borderRadius="999px"
-                  bg={shiftDetails.shift.status === "closed" ? "surface.100" : "rgba(74,132,244,0.10)"}
-                  color={shiftDetails.shift.status === "closed" ? "surface.600" : "brand.500"}
-                >
-                  <Text fontSize="xs" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    {shiftDetails.shift.status}
-                  </Text>
-                </Box>
+                <HStack spacing={2}>
+                  <Box
+                    px={3}
+                    py={1.5}
+                    borderRadius="999px"
+                    bg={shiftDetails.shift.status === "closed" ? "surface.100" : "rgba(74,132,244,0.10)"}
+                    color={shiftDetails.shift.status === "closed" ? "surface.600" : "brand.500"}
+                  >
+                    <Text fontSize="xs" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                      {shiftDetails.shift.status}
+                    </Text>
+                  </Box>
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+                    onClick={() => {
+                      clearShiftDetails();
+                      setShiftView("history");
+                    }}
+                  >
+                    Back
+                  </Button>
+                </HStack>
               </HStack>
+
+              <Text fontSize="sm" color="surface.500" fontWeight="700">
+                {formatDateLabel(shiftDetails.shift.started_at)}
+              </Text>
 
               <SimpleGrid columns={2} spacing={3}>
                 <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     Started
                   </Text>
-                  <Text mt={1.5} fontWeight="800" fontSize="sm" lineHeight="1.35">
-                    {formatDateTimeLabel(shiftDetails.shift.started_at)}
+                  <Text mt={1.5} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                    {formatTimeLabel(shiftDetails.shift.started_at)}
                   </Text>
                 </Box>
                 <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     Ended
                   </Text>
-                  <Text mt={1.5} fontWeight="800" fontSize="sm" lineHeight="1.35">
-                    {formatDateTimeLabel(shiftDetails.shift.ended_at)}
+                  <Text mt={1.5} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                    {formatTimeLabel(shiftDetails.shift.ended_at)}
                   </Text>
                 </Box>
               </SimpleGrid>
