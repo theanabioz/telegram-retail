@@ -63,6 +63,7 @@ type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
 type InventoryMode = "stock" | "products";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
+type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -224,6 +225,7 @@ export function AdminDashboardScreen({
   const [inventoryView, setInventoryView] = useState<InventorySnapshot>({ items: [], history: [] });
   const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>({});
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
+  const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -995,6 +997,16 @@ export function AdminDashboardScreen({
         adjustQuantity: "1",
         adjustReason: "",
       };
+      const movementType = inventoryMovementTypes[selectedItem.storeProductId] ?? "restock";
+      const movementQuantity = Math.max(1, Number(draft.adjustQuantity) || 1);
+      const movementLabel =
+        movementType === "restock" ? "Restock" : movementType === "writeoff" ? "Write-off" : "Adjust";
+      const movementTone =
+        movementType === "restock"
+          ? { bg: "brand.500", hover: "brand.600", color: "white" }
+          : movementType === "writeoff"
+            ? { bg: "rgba(248,113,113,0.14)", hover: "rgba(248,113,113,0.22)", color: "red.500" }
+            : { bg: "surface.900", hover: "surface.700", color: "white" };
 
       return (
         <VStack spacing={4} align="stretch">
@@ -1121,72 +1133,117 @@ export function AdminDashboardScreen({
 
               <VStack align="stretch" spacing={3}>
                 <Text fontWeight="900">Stock Movement</Text>
-                <SimpleGrid columns={2} spacing={2}>
-                  <Input
-                    value={draft.adjustQuantity}
-                    onChange={(event) =>
-                      setInventoryEdits((current) => ({
-                        ...current,
-                        [selectedItem.storeProductId]: {
-                          ...draft,
-                          adjustQuantity: event.target.value,
-                        },
-                      }))
-                    }
-                    placeholder="Quantity"
-                    inputMode="decimal"
-                    borderRadius="18px"
-                    bg="white"
-                    borderColor="rgba(226,224,218,0.95)"
-                  />
-                  <Input
-                    value={draft.adjustReason}
-                    onChange={(event) =>
-                      setInventoryEdits((current) => ({
-                        ...current,
-                        [selectedItem.storeProductId]: {
-                          ...draft,
-                          adjustReason: event.target.value,
-                        },
-                      }))
-                    }
-                    placeholder="Reason"
-                    borderRadius="18px"
-                    bg="white"
-                    borderColor="rgba(226,224,218,0.95)"
-                  />
-                </SimpleGrid>
                 <SimpleGrid columns={3} spacing={2}>
-                  <Button
-                    borderRadius="16px"
-                    variant="outline"
-                    borderColor="var(--app-border)"
-                    isLoading={mutating}
-                    onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, "manual_adjustment")}
-                  >
-                    Adjust
-                  </Button>
-                  <Button
-                    borderRadius="16px"
-                    bg="brand.500"
-                    color="white"
-                    _hover={{ bg: "brand.600" }}
-                    isLoading={mutating}
-                    onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, "restock")}
-                  >
-                    Restock
-                  </Button>
-                  <Button
-                    borderRadius="16px"
-                    bg="rgba(248,113,113,0.14)"
-                    color="red.500"
-                    _hover={{ bg: "rgba(248,113,113,0.2)" }}
-                    isLoading={mutating}
-                    onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, "writeoff")}
-                  >
-                    Writeoff
-                  </Button>
+                  {([
+                    ["restock", "Restock"],
+                    ["writeoff", "Write-off"],
+                    ["manual_adjustment", "Adjust"],
+                  ] as Array<[InventoryMovementType, string]>).map(([type, label]) => {
+                    const isActive = movementType === type;
+
+                    return (
+                      <Button
+                        key={type}
+                        size="sm"
+                        borderRadius="14px"
+                        bg={isActive ? "surface.900" : panelMutedSurface}
+                        color={isActive ? "white" : type === "writeoff" ? "red.500" : "surface.700"}
+                        _hover={{ bg: isActive ? "surface.900" : "rgba(232,231,226,0.96)" }}
+                        onClick={() =>
+                          setInventoryMovementTypes((current) => ({
+                            ...current,
+                            [selectedItem.storeProductId]: type,
+                          }))
+                        }
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
                 </SimpleGrid>
+
+                <HStack justify="center" spacing={6} bg={panelMutedSurface} py={3} px={5} borderRadius="20px">
+                  <Button
+                    aria-label="Decrease movement quantity"
+                    minW="48px"
+                    h="48px"
+                    borderRadius="999px"
+                    bg="white"
+                    color="surface.700"
+                    fontSize="2xl"
+                    fontWeight="800"
+                    _hover={{ bg: "surface.50" }}
+                    onClick={() =>
+                      setInventoryEdits((current) => ({
+                        ...current,
+                        [selectedItem.storeProductId]: {
+                          ...draft,
+                          adjustQuantity: String(Math.max(1, movementQuantity - 1)),
+                        },
+                      }))
+                    }
+                  >
+                    -
+                  </Button>
+                  <VStack spacing={0}>
+                    <Text fontSize="2xl" fontWeight="900" color="surface.900" lineHeight="1">
+                      {movementQuantity}
+                    </Text>
+                    <Text fontSize="10px" fontWeight="800" color="surface.400" textTransform="uppercase">
+                      Units
+                    </Text>
+                  </VStack>
+                  <Button
+                    aria-label="Increase movement quantity"
+                    minW="48px"
+                    h="48px"
+                    borderRadius="999px"
+                    bg="white"
+                    color="surface.700"
+                    fontSize="2xl"
+                    fontWeight="800"
+                    _hover={{ bg: "surface.50" }}
+                    onClick={() =>
+                      setInventoryEdits((current) => ({
+                        ...current,
+                        [selectedItem.storeProductId]: {
+                          ...draft,
+                          adjustQuantity: String(movementQuantity + 1),
+                        },
+                      }))
+                    }
+                  >
+                    +
+                  </Button>
+                </HStack>
+
+                <Input
+                  value={draft.adjustReason}
+                  onChange={(event) =>
+                    setInventoryEdits((current) => ({
+                      ...current,
+                      [selectedItem.storeProductId]: {
+                        ...draft,
+                        adjustReason: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Reason (optional)"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+
+                <Button
+                  borderRadius="18px"
+                  bg={movementTone.bg}
+                  color={movementTone.color}
+                  _hover={{ bg: movementTone.hover }}
+                  isLoading={mutating}
+                  onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, movementType)}
+                >
+                  {movementLabel} {movementQuantity} Units
+                </Button>
               </VStack>
             </VStack>
           </Box>
