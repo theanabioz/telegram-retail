@@ -2,6 +2,7 @@ import {
   closeCurrentAssignment,
   createAdminProduct,
   createAdminStore,
+  deleteAdminProduct,
   createInventoryRowsForProduct,
   createStoreProductsForProduct,
   createUserStoreAssignment,
@@ -19,6 +20,7 @@ import {
   listInventoryRows,
   listOpenShifts,
   listProducts,
+  getProductReferenceCounts,
   updateAdminStore,
   updateAdminProduct,
   updateAdminStoreProduct,
@@ -576,6 +578,28 @@ export async function updateProduct(
       updatedAt: updated.updated_at,
     },
   };
+}
+
+export async function deleteProduct(productId: string) {
+  const existing = await findAdminProductById(productId);
+
+  if (!existing) {
+    throw new HttpError(404, "Product not found");
+  }
+
+  const references = await getProductReferenceCounts(productId);
+  const hasHistory = references.saleItems > 0 || references.returnItems > 0 || references.inventoryMovements > 0;
+
+  if (hasHistory) {
+    throw new HttpError(
+      409,
+      "Product has sales, returns or inventory history. Disable it instead to preserve reports."
+    );
+  }
+
+  await deleteAdminProduct(productId);
+
+  return { ok: true };
 }
 
 export async function updateStoreProductSettings(input: {

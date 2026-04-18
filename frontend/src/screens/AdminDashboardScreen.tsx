@@ -207,6 +207,7 @@ export function AdminDashboardScreen({
     updateStoreProduct,
     createProduct,
     updateProduct,
+    deleteProduct,
     adjustInventory,
   } = useAdminManagementStore();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
@@ -450,6 +451,20 @@ export function AdminDashboardScreen({
       defaultPrice: parsedPrice,
       isActive: draft.isActive,
     });
+
+    if (selectedInventoryStoreId) {
+      await loadInventory(selectedInventoryStoreId);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string, productName: string) => {
+    const confirmed = window.confirm(`Delete ${productName}? This is only possible if the product has no history.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteProduct(productId);
 
     if (selectedInventoryStoreId) {
       await loadInventory(selectedInventoryStoreId);
@@ -1417,6 +1432,17 @@ export function AdminDashboardScreen({
                             Save
                           </Button>
                         </HStack>
+                        <Button
+                          size="sm"
+                          borderRadius="14px"
+                          bg="rgba(248,113,113,0.14)"
+                          color="red.500"
+                          _hover={{ bg: "rgba(248,113,113,0.22)" }}
+                          isLoading={mutating}
+                          onClick={() => void handleDeleteProduct(product.id, product.name)}
+                        >
+                          Delete Product
+                        </Button>
                       </VStack>
                     </Box>
                   );

@@ -313,6 +313,70 @@ export async function updateAdminProduct(
   return data;
 }
 
+export async function getProductReferenceCounts(productId: string) {
+  const [saleItems, returnItems, inventoryMovements] = await Promise.all([
+    supabaseAdmin
+      .from("sale_items")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", productId),
+    supabaseAdmin
+      .from("return_items")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", productId),
+    supabaseAdmin
+      .from("inventory_movements")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", productId),
+  ]);
+
+  if (saleItems.error) {
+    throw new HttpError(500, `Failed to check product sales: ${saleItems.error.message}`);
+  }
+
+  if (returnItems.error) {
+    throw new HttpError(500, `Failed to check product returns: ${returnItems.error.message}`);
+  }
+
+  if (inventoryMovements.error) {
+    throw new HttpError(500, `Failed to check product inventory history: ${inventoryMovements.error.message}`);
+  }
+
+  return {
+    saleItems: saleItems.count ?? 0,
+    returnItems: returnItems.count ?? 0,
+    inventoryMovements: inventoryMovements.count ?? 0,
+  };
+}
+
+export async function deleteAdminProduct(productId: string) {
+  const { error: inventoryError } = await supabaseAdmin
+    .from("inventory")
+    .delete()
+    .eq("product_id", productId);
+
+  if (inventoryError) {
+    throw new HttpError(500, `Failed to delete product inventory: ${inventoryError.message}`);
+  }
+
+  const { error: storeProductsError } = await supabaseAdmin
+    .from("store_products")
+    .delete()
+    .eq("product_id", productId);
+
+  if (storeProductsError) {
+    throw new HttpError(500, `Failed to delete store products: ${storeProductsError.message}`);
+  }
+
+  const { error: productError } = await supabaseAdmin
+    .from("products")
+    .delete()
+    .eq("id", productId);
+
+  if (productError) {
+    throw new HttpError(500, `Failed to delete product: ${productError.message}`);
+  }
+}
+
 export async function createStoreProductsForProduct(input: {
   productId: string;
   price: number;

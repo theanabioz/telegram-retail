@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiGet, apiPatch, apiPost } from "../lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { triggerImpact, triggerNotification, triggerSelection } from "../lib/haptics";
 import type {
   AdminAssignmentMutationResponse,
@@ -81,6 +81,7 @@ type AdminManagementState = {
       isActive?: boolean;
     }
   ) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
 };
 
 export const useAdminManagementStore = create<AdminManagementState>((set, get) => ({
@@ -425,6 +426,32 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to update product",
+      });
+    }
+  },
+
+  deleteProduct: async (productId) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    const currentStoreId = get().inventoryItems[0]?.storeId;
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiDelete<{ ok: boolean }>(`/admin/products/${productId}`, token);
+      triggerNotification("success");
+      await Promise.all([get().loadProducts(), get().loadInventory(currentStoreId)]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      triggerNotification("error");
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to delete product",
       });
     }
   },

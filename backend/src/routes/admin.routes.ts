@@ -22,6 +22,7 @@ import {
   createAdminInventoryAdjustment,
   createProduct,
   createStore,
+  deleteProduct,
   getAdminDashboard,
   getAdminInventory,
   getAdminProducts,
@@ -122,6 +123,15 @@ adminRouter.patch(
     const params = adminProductParamsSchema.parse(req.params);
     const body = updateAdminProductBodySchema.parse(req.body);
     const result = await updateProduct(params.productId, body);
+    res.json(result);
+  })
+);
+
+adminRouter.delete(
+  "/products/:productId",
+  asyncHandler(async (req, res) => {
+    const params = adminProductParamsSchema.parse(req.params);
+    const result = await deleteProduct(params.productId);
     res.json(result);
   })
 );
