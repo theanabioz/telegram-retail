@@ -51,8 +51,8 @@ const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const innerSurface = "rgba(241,240,236,0.82)";
-const bottomDockReservedSpace = "calc(116px + env(safe-area-inset-bottom, 0px))";
-const bottomDockWithCartReservedSpace = "calc(182px + env(safe-area-inset-bottom, 0px))";
+const bottomDockReservedSpace = "calc(98px + env(safe-area-inset-bottom, 0px))";
+const bottomDockWithCartReservedSpace = "calc(150px + env(safe-area-inset-bottom, 0px))";
 
 export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScreenProps) {
   const {
@@ -615,24 +615,26 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       <HStack
         as="button"
         type="button"
-        w="calc(100% - 28px)"
+        w="calc(100% - 24px)"
         justify="space-between"
         align="center"
         position="absolute"
-        left="14px"
-        right="14px"
-        bottom="calc(100% - 16px)"
+        left="12px"
+        right="12px"
+        bottom="calc(100% - 10px)"
         bg="surface.900"
         color="white"
-        borderRadius="24px"
+        borderRadius="18px"
         px={4}
-        py={3}
-        boxShadow="0 20px 44px rgba(24, 24, 24, 0.24)"
+        py={2.5}
+        boxShadow="0 10px 24px rgba(24, 24, 24, 0.16)"
         onClick={() => setIsDraftCartOpen(true)}
       >
         <VStack align="start" spacing={0}>
-          <Text fontWeight="900">Draft Cart</Text>
-          <Text fontSize="sm" color="rgba(255,255,255,0.72)" fontWeight="700">
+          <Text fontWeight="900" fontSize="lg" lineHeight="1.1">
+            Draft Cart
+          </Text>
+          <Text fontSize="sm" color="rgba(255,255,255,0.72)" fontWeight="700" lineHeight="1.1">
             {draft.summary.itemsCount} items
           </Text>
         </VStack>
@@ -641,10 +643,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             EUR {draft.summary.totalAmount.toFixed(2)}
           </Text>
           <Box
-            px={3.5}
-            h="36px"
-            borderRadius="16px"
-            bg="rgba(255,255,255,0.14)"
+            px={3}
+            h="34px"
+            borderRadius="14px"
+            bg="rgba(255,255,255,0.18)"
             display="grid"
             placeItems="center"
             fontWeight="900"
