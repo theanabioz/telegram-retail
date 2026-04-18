@@ -506,6 +506,8 @@ export function AdminDashboardScreen({
                         color={isSelected ? "surface.800" : "surface.500"}
                         fontWeight={isSelected ? "900" : "700"}
                         opacity={shouldShowLabel ? 1 : 0}
+                        h="12px"
+                        lineHeight="12px"
                       >
                         {shouldShowLabel ? formatHourLabel(entry.hour).slice(0, 2) : " "}
                       </Text>
