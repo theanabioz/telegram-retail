@@ -146,15 +146,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const runStockOperation = (productId: string, operation: "restock" | "writeoff") => {
     const draft = getStockDraft(productId);
     const quantity = Number(draft.quantity);
-    const reason = draft.reason.trim();
+    const defaultReason = operation === "restock" ? "Manual Restock" : "Manual Write-off";
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      window.alert("Enter a quantity greater than 0.");
-      return;
-    }
-
-    if (!reason) {
-      window.alert("Reason is required for stock changes.");
+      window.alert("Select a quantity greater than 0.");
       return;
     }
 
@@ -164,12 +159,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     if (operation === "restock") {
-      void restockProduct(productId, quantity, reason);
+      void restockProduct(productId, quantity, defaultReason);
     } else {
-      void writeoffProduct(productId, quantity, reason);
+      void writeoffProduct(productId, quantity, defaultReason);
     }
 
-    updateStockDraft(productId, { reason: "" });
+    updateStockDraft(productId, { quantity: "1" });
   };
 
   const getDiscountDraft = (item: DraftResponse["items"][number]) =>
@@ -923,106 +918,181 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderStockTab = () => (
-    <VStack spacing={4} align="stretch">
-      {products.map((item) => (
-        <Box key={item.id} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={3}>
-            <VStack align="start" spacing={0}>
-              <Text fontWeight="800">{item.name}</Text>
-              <Text fontSize="sm" color="surface.500">
-                EUR {item.price.toFixed(2)} · Stock {item.stock}
-              </Text>
-            </VStack>
-            <SimpleGrid columns={2} spacing={2}>
-              <Input
-                value={getStockDraft(item.id).quantity}
-                onChange={(event) => updateStockDraft(item.id, { quantity: event.target.value })}
-                placeholder="Qty"
-                inputMode="decimal"
-                borderRadius="14px"
-                bg="white"
-                borderColor="var(--app-border)"
-              />
-              <Input
-                value={getStockDraft(item.id).reason}
-                onChange={(event) => updateStockDraft(item.id, { reason: event.target.value })}
-                placeholder="Reason"
-                borderRadius="14px"
-                bg="white"
-                borderColor="var(--app-border)"
-              />
-            </SimpleGrid>
-            <SimpleGrid columns={2} spacing={2}>
-              <Button
-                size="sm"
-                borderRadius="14px"
-                variant="outline"
-                borderColor="var(--app-border)"
-                onClick={() => runStockOperation(item.id, "restock")}
-                isLoading={actionLoading}
-                leftIcon={<Box as={HiOutlineArchiveBox} boxSize={4} />}
-              >
-                Restock
-              </Button>
-              <Button
-                size="sm"
-                borderRadius="14px"
-                variant="outline"
-                borderColor="var(--app-border)"
-                onClick={() => runStockOperation(item.id, "writeoff")}
-                isLoading={actionLoading}
-                leftIcon={<Box as={HiOutlineTrash} boxSize={4} />}
-              >
-                Writeoff
-              </Button>
-            </SimpleGrid>
-          </VStack>
-        </Box>
-      ))}
-
-      {inventoryHistory.length > 0 ? (
-        <Box
-          bg={panelSurface}
-          borderRadius={panelRadius}
-          px={4}
-          py={4}
-          boxShadow={panelShadow}
-        >
-          <VStack align="stretch" spacing={3}>
-            <HStack justify="space-between">
-              <Text fontWeight="900" fontSize="lg">
-                Inventory History
-              </Text>
-              <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {inventoryHistory.length} entries
-              </Text>
-            </HStack>
-
-            {inventoryHistory.map((entry) => (
-              <HStack key={entry.id} justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="700">{entry.product?.name ?? "Unknown product"}</Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {entry.movementType} · balance {entry.balanceAfter}
+    <VStack spacing={5} align="stretch">
+      {products.map((item) => {
+        const draft = getStockDraft(item.id);
+        const isLowStock = item.stock < 5;
+        const adjQty = Number(draft.quantity || 1);
+        
+        return (
+          <Box 
+            key={item.id} 
+            bg="white" 
+            borderRadius="28px" 
+            p={5} 
+            boxShadow="0 10px 30px rgba(0,0,0,0.04)"
+            border="1px solid"
+            borderColor="surface.100"
+          >
+            <VStack align="stretch" spacing={5}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={0.5}>
+                  <Text fontWeight="850" fontSize="lg" color="surface.900">
+                    {item.name}
                   </Text>
-                  {entry.reason ? (
-                    <Text fontSize="xs" color="surface.500">
-                      {entry.reason}
-                    </Text>
-                  ) : null}
+                  <Text fontSize="sm" color="surface.500" fontWeight="600">
+                    EUR {item.price.toFixed(2)} · Current Stock: {item.stock}
+                  </Text>
                 </VStack>
-                <Text
-                  fontWeight="800"
-                  color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}
+                <Box 
+                  bg={isLowStock ? "red.50" : "brand.50"} 
+                  px={3} 
+                  py={1.5} 
+                  borderRadius="14px"
                 >
-                  {entry.quantityDelta >= 0 ? "+" : ""}
-                  {entry.quantityDelta}
-                </Text>
+                  <Text fontSize="md" fontWeight="900" color={isLowStock ? "red.600" : "brand.600"}>
+                    {item.stock}
+                  </Text>
+                </Box>
               </HStack>
-            ))}
+
+              <VStack spacing={4}>
+                <HStack justify="center" spacing={6} bg="surface.50" py={3} px={6} borderRadius="20px">
+                  <IconButton
+                    aria-label="Decrease adjustment quantity"
+                    icon={<Text fontSize="2xl" lineHeight="1">−</Text>}
+                    onClick={() => updateStockDraft(item.id, { quantity: String(Math.max(1, adjQty - 1)) })}
+                    variant="ghost"
+                    color="surface.600"
+                    size="lg"
+                    isRound
+                  />
+                  <VStack spacing={0}>
+                    <Text fontSize="2xl" fontWeight="900" color="surface.900" lineHeight="1">
+                      {adjQty}
+                    </Text>
+                    <Text fontSize="10px" fontWeight="800" color="surface.400" textTransform="uppercase">
+                      Adjust By
+                    </Text>
+                  </VStack>
+                  <IconButton
+                    aria-label="Increase adjustment quantity"
+                    icon={<Text fontSize="2xl" lineHeight="1">+</Text>}
+                    onClick={() => updateStockDraft(item.id, { quantity: String(adjQty + 1) })}
+                    variant="ghost"
+                    color="surface.600"
+                    size="lg"
+                    isRound
+                  />
+                </HStack>
+
+                <HStack spacing={3} w="full">
+                  <Button
+                    flex="1"
+                    h="52px"
+                    borderRadius="18px"
+                    bg="white"
+                    color="surface.900"
+                    border="1px solid"
+                    borderColor="surface.200"
+                    fontSize="sm"
+                    fontWeight="800"
+                    onClick={() => runStockOperation(item.id, "restock")}
+                    isLoading={actionLoading}
+                    leftIcon={<Box as={HiOutlineArchiveBox} boxSize={5} />}
+                    _active={{ transform: "scale(0.96)", bg: "surface.50" }}
+                  >
+                    Restock
+                  </Button>
+                  <Button
+                    flex="1"
+                    h="52px"
+                    borderRadius="18px"
+                    bg="white"
+                    color="red.500"
+                    border="1px solid"
+                    borderColor="red.100"
+                    fontSize="sm"
+                    fontWeight="800"
+                    onClick={() => runStockOperation(item.id, "writeoff")}
+                    isLoading={actionLoading}
+                    leftIcon={<Box as={HiOutlineTrash} boxSize={5} />}
+                    _active={{ transform: "scale(0.96)", bg: "red.50" }}
+                  >
+                    Write-off
+                  </Button>
+                </HStack>
+              </VStack>
+            </VStack>
+          </Box>
+        );
+      })}
+
+      {inventoryHistory.length > 0 && (
+        <Box mt={4} mb={2}>
+          <HStack justify="space-between" mb={4} px={1}>
+            <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
+              Inventory History
+            </Text>
+            <Box bg="surface.100" px={2.5} py={1} borderRadius="full">
+              <Text color="surface.600" fontWeight="800" fontSize="xs">
+                {inventoryHistory.length}
+              </Text>
+            </Box>
+          </HStack>
+
+          <VStack spacing={3} align="stretch">
+            {inventoryHistory.map((entry) => {
+              const isPositive = entry.quantityDelta >= 0;
+              return (
+                <HStack 
+                  key={entry.id} 
+                  bg="rgba(255,255,255,0.6)" 
+                  p={4} 
+                  borderRadius="22px" 
+                  justify="space-between"
+                  border="1px solid"
+                  borderColor="surface.100"
+                >
+                  <HStack spacing={4}>
+                    <Box 
+                      w="40px" 
+                      h="40px" 
+                      borderRadius="12px" 
+                      bg={isPositive ? "green.50" : "red.50"} 
+                      display="grid" 
+                      placeItems="center"
+                      color={isPositive ? "green.600" : "red.500"}
+                    >
+                      <Box as={isPositive ? HiOutlineArchiveBox : HiOutlineTrash} boxSize={5} />
+                    </Box>
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="800" fontSize="sm" color="surface.900">
+                        {entry.product?.name ?? "Unknown"}
+                      </Text>
+                      <Text fontSize="xs" color="surface.500" fontWeight="600">
+                        {entry.movementType} · {entry.reason || "No reason"}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <VStack align="end" spacing={0}>
+                    <Text
+                      fontWeight="900"
+                      fontSize="md"
+                      color={isPositive ? "green.600" : "red.500"}
+                    >
+                      {isPositive ? "+" : ""}{entry.quantityDelta}
+                    </Text>
+                    <Text fontSize="10px" color="surface.400" fontWeight="700">
+                      Bal: {entry.balanceAfter}
+                    </Text>
+                  </VStack>
+                </HStack>
+              );
+            })}
           </VStack>
         </Box>
-      ) : null}
+      )}
     </VStack>
   );
 
