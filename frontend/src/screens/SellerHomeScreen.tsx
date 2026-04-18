@@ -871,7 +871,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     <VStack spacing={4} align="stretch">
       {sales.length > 0 ? (
         sales.map((sale) => (
-          <Box
+          <HStack
             key={sale.id}
             as="button"
             type="button"
@@ -882,41 +882,34 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             py={4}
             boxShadow={panelShadow}
             border={0}
+            justify="space-between"
+            align="center"
             onClick={() => setSelectedSaleId(sale.id)}
           >
-            <VStack align="stretch" spacing={3}>
-              <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="800">
-                    {sale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {new Date(sale.created_at).toLocaleString()} · {sale.payment_method.toUpperCase()}
-                  </Text>
-                </VStack>
-                <Text fontWeight="900">EUR {sale.total_amount.toFixed(2)}</Text>
-              </HStack>
-
-              {sale.items.map((item) => (
-                <HStack key={item.id} justify="space-between" align="start">
-                  <VStack align="start" spacing={0}>
-                    <Text fontSize="sm" fontWeight="700">
-                      {item.product_name_snapshot}
-                    </Text>
-                    <Text fontSize="xs" color="surface.500">
-                      Qty {item.quantity} · EUR {item.final_price.toFixed(2)}
-                    </Text>
-                  </VStack>
-                  <Text fontSize="sm" fontWeight="800">
-                    EUR {item.line_total.toFixed(2)}
-                  </Text>
-                </HStack>
-              ))}
-              <Text fontSize="xs" color="surface.500">
-                Tap to open receipt
+            <VStack align="start" spacing={0.5}>
+              <Text fontWeight="800">
+                {sale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
+              </Text>
+              <Text fontSize="sm" color="surface.500">
+                {new Date(sale.created_at).toLocaleDateString()}
+              </Text>
+              <Text fontSize="sm" color="surface.500">
+                {new Date(sale.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })} · {sale.payment_method.toUpperCase()}
               </Text>
             </VStack>
-          </Box>
+
+            <VStack align="end" spacing={0.5}>
+              <Text fontWeight="900" fontSize="lg">
+                EUR {sale.total_amount.toFixed(2)}
+              </Text>
+              <Text fontSize="xs" color="surface.500" fontWeight="700">
+                Open receipt
+              </Text>
+            </VStack>
+          </HStack>
         ))
       ) : (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
