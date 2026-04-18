@@ -70,10 +70,6 @@ function formatShortDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
 
-function formatHourLabel(hour: number) {
-  return `${String(hour).padStart(2, "0")}:00`;
-}
-
 function withOverviewChartMockLayer(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
   if (!ADMIN_OVERVIEW_CHART_MOCK_LAYER) {
     return hourlyRevenueToday;
@@ -450,72 +446,73 @@ export function AdminDashboardScreen({
           </HStack>
 
           {data ? (
-            <HStack align="end" spacing={1.5} h="180px" px={1} overflow="hidden">
-              {(() => {
-                const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
-                const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
+            <VStack align="stretch" spacing={2}>
+              <HStack align="end" spacing={1.5} h="164px" px={1} overflow="hidden">
+                {(() => {
+                  const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
+                  const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
 
-                return chartSeries.map((entry, index) => {
-                  const height = Math.max(12, (entry.total / maxHourTotal) * 132);
-                  const isActiveHour = entry.total > 0;
-                  const isSelected = selectedOverviewHour === entry.hour;
-                  const shouldShowLabel = index % 3 === 0;
+                  return chartSeries.map((entry) => {
+                    const height = Math.max(12, (entry.total / maxHourTotal) * 132);
+                    const isActiveHour = entry.total > 0;
+                    const isSelected = selectedOverviewHour === entry.hour;
 
-                  return (
-                    <VStack key={entry.hour} flex="1" minW={0} spacing={2} align="center" justify="end" h="full">
-                      <Text
-                        fontSize="10px"
-                        fontWeight="900"
-                        color="surface.700"
-                        opacity={isSelected ? 1 : 0}
-                        noOfLines={1}
-                      >
-                        {isSelected ? entry.total.toFixed(0) : ""}
-                      </Text>
-                      <Box
-                        as="button"
-                        type="button"
-                        w="full"
-                        maxW="12px"
-                        h={`${height}px`}
-                        borderRadius="999px"
-                        cursor="pointer"
-                        transition="all 0.18s ease"
-                        bg={
-                          isActiveHour
-                            ? isSelected
-                              ? "linear-gradient(180deg, rgba(53,102,216,1) 0%, rgba(82,129,236,0.88) 100%)"
-                              : "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
-                            : "rgba(226,224,218,0.8)"
-                        }
-                        boxShadow={
-                          isActiveHour
-                            ? isSelected
-                              ? "0 10px 22px rgba(82,129,236,0.28)"
-                              : "0 8px 18px rgba(82,129,236,0.18)"
-                            : "none"
-                        }
-                        transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
-                        _active={{ transform: "scale(0.96)" }}
-                        onClick={() =>
-                          setSelectedOverviewHour((current) => (current === entry.hour ? null : entry.hour))
-                        }
-                      />
-                      <Text
-                        fontSize="10px"
-                        color={isSelected ? "surface.800" : "surface.500"}
-                        fontWeight={isSelected ? "900" : "700"}
-                        opacity={shouldShowLabel ? 1 : 0}
-                        h="12px"
-                        lineHeight="12px"
-                      >
-                        {shouldShowLabel ? formatHourLabel(entry.hour).slice(0, 2) : " "}
-                      </Text>
-                    </VStack>
-                  );
-                });
-              })()}
-            </HStack>
+                    return (
+                      <VStack key={entry.hour} flex="1" minW={0} spacing={2} align="center" justify="end" h="full">
+                        <Text
+                          fontSize="10px"
+                          fontWeight="900"
+                          color="surface.700"
+                          opacity={isSelected ? 1 : 0}
+                          noOfLines={1}
+                          h="12px"
+                          lineHeight="12px"
+                        >
+                          {isSelected ? entry.total.toFixed(0) : ""}
+                        </Text>
+                        <Box
+                          as="button"
+                          type="button"
+                          w="full"
+                          maxW="12px"
+                          h={`${height}px`}
+                          borderRadius="999px"
+                          cursor="pointer"
+                          transition="all 0.18s ease"
+                          bg={
+                            isActiveHour
+                              ? isSelected
+                                ? "linear-gradient(180deg, rgba(53,102,216,1) 0%, rgba(82,129,236,0.88) 100%)"
+                                : "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
+                              : "rgba(226,224,218,0.8)"
+                          }
+                          boxShadow={
+                            isActiveHour
+                              ? isSelected
+                                ? "0 10px 22px rgba(82,129,236,0.28)"
+                                : "0 8px 18px rgba(82,129,236,0.18)"
+                              : "none"
+                          }
+                          transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
+                          _active={{ transform: "scale(0.96)" }}
+                          onClick={() =>
+                            setSelectedOverviewHour((current) => (current === entry.hour ? null : entry.hour))
+                          }
+                        />
+                      </VStack>
+                    );
+                  });
+                })()}
+              </HStack>
+
+              <HStack justify="space-between" px={1}>
+                {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => (
+                  <Text key={hour} fontSize="10px" color="surface.500" fontWeight="700">
+                    {hour === 24 ? "00" : String(hour).padStart(2, "0")}
+                  </Text>
+                ))}
+              </HStack>
+            </VStack>
           ) : null}
         </VStack>
       </Box>
