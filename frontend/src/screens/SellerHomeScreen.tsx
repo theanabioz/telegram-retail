@@ -608,7 +608,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     return (
-      <Box position="fixed" left={0} right={0} bottom="104px" zIndex={29} px={3}>
+      <Box position="fixed" left={0} right={0} bottom="88px" zIndex={29} px={3}>
         <Container maxW="container.sm" px={0}>
           <HStack
             as="button"
@@ -1181,7 +1181,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   };
 
   return (
-    <Box minH="100vh" px={3} pt={4} pb="140px">
+    <Box minH="100vh" px={3} pt={4} pb="120px">
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
           <Box
@@ -1322,7 +1322,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         position="fixed"
         left={0}
         right={0}
-        bottom={0}
+        bottom={2}
         zIndex={30}
         px={3}
       >

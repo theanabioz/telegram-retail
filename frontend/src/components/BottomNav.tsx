@@ -35,14 +35,14 @@ export function BottomNav({ activeTab, onChange }: BottomNavProps) {
       as="nav"
       justify="space-between"
       align="stretch"
-      bg="rgba(255, 255, 255, 0.94)"
-      backdropFilter="blur(24px)"
-      borderTop="1px solid rgba(226, 224, 218, 0.9)"
-      borderRadius="28px 28px 0 0"
+      bg="rgba(255, 255, 255, 0.9)"
+      backdropFilter="blur(22px)"
+      border="1px solid rgba(226, 224, 218, 0.86)"
+      borderRadius="26px"
       px={2}
       pt={2}
-      pb="calc(12px + env(safe-area-inset-bottom, 0px))"
-      boxShadow="0 -16px 36px rgba(20, 20, 20, 0.07)"
+      pb="calc(8px + env(safe-area-inset-bottom, 0px))"
+      boxShadow="0 18px 46px rgba(20, 20, 20, 0.12)"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -56,34 +56,32 @@ export function BottomNav({ activeTab, onChange }: BottomNavProps) {
             aria-current={isActive ? "page" : undefined}
             key={item.label}
             flex="1"
-            spacing={1.5}
-            color={isActive ? "brand.600" : "surface.500"}
-            fontWeight={isActive ? "800" : "700"}
+            spacing={1}
+            color={isActive ? "surface.900" : "surface.500"}
+            fontWeight={isActive ? "900" : "750"}
             cursor="pointer"
             onClick={() => onChange(item.id)}
             border={0}
-            px={1.5}
-            py={2}
-            borderRadius="20px"
-            bg={isActive ? "rgba(238, 245, 255, 0.95)" : "transparent"}
+            px={1}
+            py={1.5}
+            minH="54px"
+            borderRadius="18px"
+            bg="transparent"
             transition="all 0.18s ease"
           >
             <Box
-              w="44px"
-              h="44px"
+              w="36px"
+              h="36px"
               borderRadius="15px"
               display="grid"
               placeItems="center"
-              bg={isActive ? "white" : "rgba(241, 240, 236, 0.95)"}
-              boxShadow={
-                isActive
-                  ? "0 8px 20px rgba(74, 132, 244, 0.18)"
-                  : "inset 0 0 0 1px rgba(226, 224, 218, 0.9)"
-              }
+              bg={isActive ? "surface.900" : "transparent"}
+              color={isActive ? "white" : "surface.600"}
+              boxShadow={isActive ? "0 10px 24px rgba(22, 22, 22, 0.18)" : "none"}
             >
-              <Box as={Icon} boxSize={7} />
+              <Box as={Icon} boxSize={6} />
             </Box>
-            <Text fontSize="11px" letterSpacing="-0.01em" lineHeight="1">
+            <Text fontSize="10px" letterSpacing="-0.02em" lineHeight="1" noOfLines={1}>
               {item.label}
             </Text>
           </VStack>
