@@ -16,6 +16,10 @@ function isAllowedLocalOrigin(origin: string) {
       return true;
     }
 
+    if (hostname === "telegram-retail.vercel.app" || hostname.endsWith(".vercel.app")) {
+      return true;
+    }
+
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return true;
     }
