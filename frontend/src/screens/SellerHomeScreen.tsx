@@ -1358,12 +1358,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               >
                 {activeTabTitle[activeTab]}
               </Text>
-              <HStack spacing={1.5} mt={1}>
-                <Box w="6px" h="6px" borderRadius="full" bg="green.500" />
-                <Text fontSize="xs" fontWeight="700" color="surface.500" textTransform="uppercase" letterSpacing="0.05em">
-                  Live Terminal
-                </Text>
-              </HStack>
             </VStack>
 
             <HStack 
