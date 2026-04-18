@@ -1,11 +1,11 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 import {
-  HiArchiveBox,
-  HiClock,
-  HiCog6Tooth,
-  HiShoppingCart,
-  HiReceiptPercent,
-} from "react-icons/hi2";
+  LuClock3,
+  LuPackage2,
+  LuReceiptText,
+  LuSettings2,
+  LuShoppingCart,
+} from "react-icons/lu";
 import type { IconType } from "react-icons";
 import type { ReactNode } from "react";
 
@@ -18,11 +18,11 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { id: "checkout", label: "Checkout", icon: HiShoppingCart },
-  { id: "orders", label: "Orders", icon: HiReceiptPercent },
-  { id: "stock", label: "My Stock", icon: HiArchiveBox },
-  { id: "shift", label: "Shift", icon: HiClock },
-  { id: "options", label: "Options", icon: HiCog6Tooth },
+  { id: "checkout", label: "Checkout", icon: LuShoppingCart },
+  { id: "orders", label: "Orders", icon: LuReceiptText },
+  { id: "stock", label: "My Stock", icon: LuPackage2 },
+  { id: "shift", label: "Shift", icon: LuClock3 },
+  { id: "options", label: "Options", icon: LuSettings2 },
 ];
 
 type BottomNavProps = {
@@ -33,20 +33,19 @@ type BottomNavProps = {
 
 export function BottomNav({ activeTab, onChange, topAccessory }: BottomNavProps) {
   return (
-    <VStack
+    <Box
       as="nav"
-      align="stretch"
+      position="relative"
       bg="rgba(255, 255, 255, 0.98)"
-      border="1px solid rgba(232, 229, 223, 0.96)"
-      borderRadius="24px"
-      px={2}
-      pt={topAccessory ? 1.5 : 1}
-      pb="max(2px, calc(env(safe-area-inset-bottom, 0px) - 4px))"
-      boxShadow="0 12px 26px rgba(20, 20, 20, 0.07)"
-      spacing={topAccessory ? 1.5 : 0}
+      borderTop="1px solid rgba(232, 229, 223, 0.96)"
+      borderTopRadius="30px"
+      px={3}
+      pt={topAccessory ? 7 : 2.5}
+      pb="max(8px, env(safe-area-inset-bottom, 0px))"
+      boxShadow="0 -8px 30px rgba(20, 20, 20, 0.08)"
     >
       {topAccessory ? (
-        <Box px={0.5}>
+        <Box position="absolute" left={3} right={3} top="-44px">
           {topAccessory}
         </Box>
       ) : null}
@@ -72,24 +71,24 @@ export function BottomNav({ activeTab, onChange, topAccessory }: BottomNavProps)
               border={0}
               px={0.5}
               py={0.5}
-              minH="38px"
+              minH="48px"
               borderRadius="12px"
               bg="transparent"
               transition="all 0.18s ease"
             >
               <Box
-                w="36px"
-                h="36px"
-                borderRadius="11px"
+                w="38px"
+                h="38px"
+                borderRadius="14px"
                 display="grid"
                 placeItems="center"
                 color={isActive ? "brand.500" : "surface.500"}
                 bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
               >
-                <Icon size={24} />
+                <Icon size={23} strokeWidth={2.2} />
               </Box>
               <Text
-                fontSize="8px"
+                fontSize="9px"
                 letterSpacing="-0.02em"
                 lineHeight="1"
                 noOfLines={1}
@@ -102,6 +101,6 @@ export function BottomNav({ activeTab, onChange, topAccessory }: BottomNavProps)
           );
         })}
       </HStack>
-    </VStack>
+    </Box>
   );
 }

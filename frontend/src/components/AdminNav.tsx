@@ -1,12 +1,12 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 import {
-  HiBuildingStorefront,
-  HiChartBarSquare,
-  HiOutlineReceiptPercent,
-  HiOutlineUsers,
-  HiSquares2X2,
-  HiWrenchScrewdriver,
-} from "react-icons/hi2";
+  LuBoxes,
+  LuLayoutDashboard,
+  LuReceiptText,
+  LuSettings2,
+  LuStore,
+  LuUsers,
+} from "react-icons/lu";
 import type { IconType } from "react-icons";
 
 export type AdminTab = "dashboard" | "sales" | "inventory" | "stores" | "staff" | "options";
@@ -18,12 +18,12 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: HiChartBarSquare },
-  { id: "sales", label: "Sales", icon: HiOutlineReceiptPercent },
-  { id: "inventory", label: "Inventory", icon: HiSquares2X2 },
-  { id: "stores", label: "Stores", icon: HiBuildingStorefront },
-  { id: "staff", label: "Staff", icon: HiOutlineUsers },
-  { id: "options", label: "Options", icon: HiWrenchScrewdriver },
+  { id: "dashboard", label: "Dashboard", icon: LuLayoutDashboard },
+  { id: "sales", label: "Sales", icon: LuReceiptText },
+  { id: "inventory", label: "Inventory", icon: LuBoxes },
+  { id: "stores", label: "Stores", icon: LuStore },
+  { id: "staff", label: "Staff", icon: LuUsers },
+  { id: "options", label: "Options", icon: LuSettings2 },
 ];
 
 type AdminNavProps = {
@@ -33,17 +33,15 @@ type AdminNavProps = {
 
 export function AdminNav({ activeTab, onChange }: AdminNavProps) {
   return (
-    <VStack
+    <Box
       as="nav"
-      align="stretch"
       bg="rgba(255, 255, 255, 0.98)"
-      border="1px solid rgba(232, 229, 223, 0.96)"
-      borderRadius="24px"
-      px={2}
-      pt={1}
-      pb="max(2px, calc(env(safe-area-inset-bottom, 0px) - 4px))"
-      boxShadow="0 12px 26px rgba(20, 20, 20, 0.07)"
-      spacing={0}
+      borderTop="1px solid rgba(232, 229, 223, 0.96)"
+      borderTopRadius="30px"
+      px={3}
+      pt={2.5}
+      pb="max(8px, env(safe-area-inset-bottom, 0px))"
+      boxShadow="0 -8px 30px rgba(20, 20, 20, 0.08)"
     >
       <HStack justify="space-between" align="stretch">
         {items.map((item) => {
@@ -66,24 +64,24 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
               border={0}
               px={0.5}
               py={0.5}
-              minH="38px"
+              minH="48px"
               borderRadius="12px"
               bg="transparent"
               transition="all 0.18s ease"
             >
               <Box
-                w="36px"
-                h="36px"
-                borderRadius="11px"
+                w="38px"
+                h="38px"
+                borderRadius="14px"
                 display="grid"
                 placeItems="center"
                 color={isActive ? "brand.500" : "surface.500"}
                 bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
               >
-                <Icon size={24} />
+                <Icon size={23} strokeWidth={2.2} />
               </Box>
               <Text
-                fontSize="8px"
+                fontSize="9px"
                 letterSpacing="-0.02em"
                 lineHeight="1"
                 noOfLines={1}
@@ -96,6 +94,6 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
           );
         })}
       </HStack>
-    </VStack>
+    </Box>
   );
 }

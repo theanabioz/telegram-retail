@@ -51,8 +51,8 @@ const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const innerSurface = "rgba(241,240,236,0.82)";
-const bottomDockReservedSpace = "calc(84px + env(safe-area-inset-bottom, 0px))";
-const bottomDockWithCartReservedSpace = "calc(132px + env(safe-area-inset-bottom, 0px))";
+const bottomDockReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
+const bottomDockWithCartReservedSpace = "calc(148px + env(safe-area-inset-bottom, 0px))";
 
 export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScreenProps) {
   const {
@@ -618,11 +618,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         w="100%"
         justify="space-between"
         align="center"
-        bg="rgba(29, 26, 24, 0.96)"
+        bg="rgba(29, 26, 24, 0.98)"
         color="white"
-        borderRadius="16px"
+        borderRadius="18px"
         px={3.5}
-        py={2}
+        py={2.5}
+        boxShadow="0 12px 26px rgba(17, 17, 17, 0.16)"
         onClick={() => setIsDraftCartOpen(true)}
       >
         <VStack align="start" spacing={0}>
@@ -639,7 +640,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Text>
           <Box
             px={2.5}
-            h="30px"
+            h="32px"
             borderRadius="12px"
             bg="rgba(255,255,255,0.18)"
             display="grid"
@@ -1332,17 +1333,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         right={0}
         bottom={0}
         zIndex={30}
-        px={3}
       >
-        <Container maxW="container.sm" px={0}>
-          <Box position="relative" pb={2}>
-            <BottomNav
-              activeTab={activeTab}
-              onChange={setActiveTab}
-              topAccessory={renderDraftCartBar()}
-            />
-          </Box>
-        </Container>
+        <BottomNav
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          topAccessory={renderDraftCartBar()}
+        />
       </Box>
     </Box>
   );
