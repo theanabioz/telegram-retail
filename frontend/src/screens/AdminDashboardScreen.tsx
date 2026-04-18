@@ -1982,16 +1982,14 @@ export function AdminDashboardScreen({
             </HStack>
           </HStack>
 
-          {loading || loadingStores || loadingStaff || loadingInventory || loadingSales ? (
+          {loading || loadingStores || loadingStaff || loadingInventory ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
               <Text fontWeight="800">
                 {activeTab === "team"
                   ? "Loading team data..."
-                  : activeTab === "sales"
-                    ? "Loading sales..."
-                    : activeTab === "inventory"
-                      ? "Loading inventory..."
-                      : "Loading admin data..."}
+                  : activeTab === "inventory"
+                    ? "Loading inventory..."
+                    : "Loading admin data..."}
               </Text>
             </Box>
           ) : null}
