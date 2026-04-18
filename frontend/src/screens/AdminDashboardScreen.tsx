@@ -148,6 +148,7 @@ export function AdminDashboardScreen({
     adjustInventory,
   } = useAdminManagementStore();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [selectedOverviewHour, setSelectedOverviewHour] = useState<number | null>(null);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -457,37 +458,53 @@ export function AdminDashboardScreen({
                 return chartSeries.map((entry, index) => {
                   const height = Math.max(12, (entry.total / maxHourTotal) * 132);
                   const isActiveHour = entry.total > 0;
-                  const isPeakHour = entry.total >= maxHourTotal * 0.72;
-                  const shouldShowTopValue = isPeakHour || (isActiveHour && index % 4 === 0);
+                  const isSelected = selectedOverviewHour === entry.hour;
                   const shouldShowLabel = index % 3 === 0;
 
                   return (
                     <VStack key={entry.hour} flex="1" minW={0} spacing={2} align="center" justify="end" h="full">
                       <Text
                         fontSize="10px"
-                        fontWeight="800"
-                        color={isActiveHour ? "surface.700" : "surface.400"}
-                        opacity={shouldShowTopValue ? 1 : 0}
+                        fontWeight="900"
+                        color="surface.700"
+                        opacity={isSelected ? 1 : 0}
                         noOfLines={1}
                       >
-                        {shouldShowTopValue ? entry.total.toFixed(0) : ""}
+                        {isSelected ? entry.total.toFixed(0) : ""}
                       </Text>
                       <Box
+                        as="button"
+                        type="button"
                         w="full"
                         maxW="12px"
                         h={`${height}px`}
                         borderRadius="999px"
+                        cursor="pointer"
+                        transition="all 0.18s ease"
                         bg={
                           isActiveHour
-                            ? "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
+                            ? isSelected
+                              ? "linear-gradient(180deg, rgba(53,102,216,1) 0%, rgba(82,129,236,0.88) 100%)"
+                              : "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
                             : "rgba(226,224,218,0.8)"
                         }
-                        boxShadow={isActiveHour ? "0 8px 18px rgba(82,129,236,0.18)" : "none"}
+                        boxShadow={
+                          isActiveHour
+                            ? isSelected
+                              ? "0 10px 22px rgba(82,129,236,0.28)"
+                              : "0 8px 18px rgba(82,129,236,0.18)"
+                            : "none"
+                        }
+                        transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
+                        _active={{ transform: "scale(0.96)" }}
+                        onClick={() =>
+                          setSelectedOverviewHour((current) => (current === entry.hour ? null : entry.hour))
+                        }
                       />
                       <Text
                         fontSize="10px"
-                        color="surface.500"
-                        fontWeight="700"
+                        color={isSelected ? "surface.800" : "surface.500"}
+                        fontWeight={isSelected ? "900" : "700"}
                         opacity={shouldShowLabel ? 1 : 0}
                       >
                         {shouldShowLabel ? formatHourLabel(entry.hour).slice(0, 2) : " "}
