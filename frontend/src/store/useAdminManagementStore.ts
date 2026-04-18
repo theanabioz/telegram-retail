@@ -1,0 +1,410 @@
+import { create } from "zustand";
+import { apiGet, apiPatch, apiPost } from "../lib/api";
+import type {
+  AdminAssignmentMutationResponse,
+  AdminInventoryResponse,
+  AdminProductMutationResponse,
+  AdminProductsResponse,
+  AdminSalesOverviewResponse,
+  AdminStoreProductMutationResponse,
+  AdminStaffResponse,
+  AdminStoreMutationResponse,
+  AdminStoresResponse,
+} from "../types/admin";
+
+const TOKEN_KEY = "telegram-retail-token";
+
+function getStoredToken() {
+  return window.localStorage.getItem(TOKEN_KEY);
+}
+
+type AdminManagementState = {
+  loadingStores: boolean;
+  loadingStaff: boolean;
+  mutating: boolean;
+  loadingInventory: boolean;
+  loadingSales: boolean;
+  error: string | null;
+  stores: AdminStoresResponse["stores"];
+  staff: AdminStaffResponse["sellers"];
+  inventoryStores: AdminInventoryResponse["stores"];
+  products: AdminProductsResponse["products"];
+  inventoryItems: AdminInventoryResponse["items"];
+  inventoryHistory: AdminInventoryResponse["history"];
+  salesFilters: AdminSalesOverviewResponse["filters"] | null;
+  salesStores: AdminSalesOverviewResponse["stores"];
+  salesSellers: AdminSalesOverviewResponse["sellers"];
+  salesOverview: AdminSalesOverviewResponse["sales"];
+  returnsOverview: AdminSalesOverviewResponse["returns"];
+  loadStores: () => Promise<void>;
+  loadStaff: () => Promise<void>;
+  loadInventory: (storeId?: string) => Promise<void>;
+  loadProducts: () => Promise<void>;
+  loadSalesOverview: (filters?: {
+    storeId?: string;
+    sellerId?: string;
+    saleStatus?: "all" | "completed" | "deleted";
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+  }) => Promise<void>;
+  createStore: (input: { name: string; address?: string | null; isActive?: boolean }) => Promise<void>;
+  updateStore: (
+    storeId: string,
+    input: { name?: string; address?: string | null; isActive?: boolean }
+  ) => Promise<void>;
+  assignSeller: (sellerId: string, storeId: string) => Promise<void>;
+  updateStoreProduct: (
+    storeProductId: string,
+    input: { price?: number; isEnabled?: boolean }
+  ) => Promise<void>;
+  adjustInventory: (input: {
+    storeId: string;
+    productId: string;
+    movementType: "manual_adjustment" | "restock" | "writeoff";
+    quantity: number;
+    reason: string;
+  }) => Promise<void>;
+  createProduct: (input: {
+    name: string;
+    sku: string;
+    defaultPrice: number;
+    isActive?: boolean;
+  }) => Promise<void>;
+  updateProduct: (
+    productId: string,
+    input: {
+      name?: string;
+      sku?: string;
+      defaultPrice?: number;
+      isActive?: boolean;
+    }
+  ) => Promise<void>;
+};
+
+export const useAdminManagementStore = create<AdminManagementState>((set, get) => ({
+  loadingStores: false,
+  loadingStaff: false,
+  mutating: false,
+  loadingInventory: false,
+  loadingSales: false,
+  error: null,
+  stores: [],
+  staff: [],
+  inventoryStores: [],
+  products: [],
+  inventoryItems: [],
+  inventoryHistory: [],
+  salesFilters: null,
+  salesStores: [],
+  salesSellers: [],
+  salesOverview: [],
+  returnsOverview: [],
+
+  loadStores: async () => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ loadingStores: false, error: "Missing auth token" });
+      return;
+    }
+
+    set({ loadingStores: true, error: null });
+
+    try {
+      const data = await apiGet<AdminStoresResponse>("/admin/stores", token);
+      set({ stores: data.stores, loadingStores: false, error: null });
+    } catch (error) {
+      set({
+        loadingStores: false,
+        error: error instanceof Error ? error.message : "Failed to load stores",
+      });
+    }
+  },
+
+  loadStaff: async () => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ loadingStaff: false, error: "Missing auth token" });
+      return;
+    }
+
+    set({ loadingStaff: true, error: null });
+
+    try {
+      const data = await apiGet<AdminStaffResponse>("/admin/staff", token);
+      set({ staff: data.sellers, loadingStaff: false, error: null });
+    } catch (error) {
+      set({
+        loadingStaff: false,
+        error: error instanceof Error ? error.message : "Failed to load staff",
+      });
+    }
+  },
+
+  loadInventory: async (storeId) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ loadingInventory: false, error: "Missing auth token" });
+      return;
+    }
+
+    set({ loadingInventory: true, error: null });
+
+    try {
+      const query = storeId ? `?storeId=${encodeURIComponent(storeId)}&historyLimit=20` : "?historyLimit=20";
+      const data = await apiGet<AdminInventoryResponse>(`/admin/inventory${query}`, token);
+      set({
+        inventoryStores: data.stores,
+        products: data.products,
+        inventoryItems: data.items,
+        inventoryHistory: data.history,
+        loadingInventory: false,
+        error: null,
+      });
+    } catch (error) {
+      set({
+        loadingInventory: false,
+        error: error instanceof Error ? error.message : "Failed to load inventory",
+      });
+    }
+  },
+
+  loadProducts: async () => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    try {
+      const data = await apiGet<AdminProductsResponse>("/admin/products", token);
+      set({ products: data.products, error: null });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : "Failed to load products",
+      });
+    }
+  },
+
+  loadSalesOverview: async (filters) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ loadingSales: false, error: "Missing auth token" });
+      return;
+    }
+
+    set({ loadingSales: true, error: null });
+
+    try {
+      const params = new URLSearchParams();
+
+      if (filters?.storeId) {
+        params.set("storeId", filters.storeId);
+      }
+
+      if (filters?.sellerId) {
+        params.set("sellerId", filters.sellerId);
+      }
+
+      if (filters?.saleStatus) {
+        params.set("saleStatus", filters.saleStatus);
+      }
+
+      if (filters?.dateFrom) {
+        params.set("dateFrom", filters.dateFrom);
+      }
+
+      if (filters?.dateTo) {
+        params.set("dateTo", filters.dateTo);
+      }
+
+      params.set("limit", String(filters?.limit ?? 20));
+
+      const data = await apiGet<AdminSalesOverviewResponse>(`/admin/sales?${params.toString()}`, token);
+      set({
+        salesFilters: data.filters,
+        salesStores: data.stores,
+        salesSellers: data.sellers,
+        salesOverview: data.sales,
+        returnsOverview: data.returns,
+        loadingSales: false,
+        error: null,
+      });
+    } catch (error) {
+      set({
+        loadingSales: false,
+        error: error instanceof Error ? error.message : "Failed to load sales overview",
+      });
+    }
+  },
+
+  createStore: async (input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost<AdminStoreMutationResponse>("/admin/stores", input, token);
+      await get().loadStores();
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to create store",
+      });
+    }
+  },
+
+  updateStore: async (storeId, input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPatch<AdminStoreMutationResponse>(`/admin/stores/${storeId}`, input, token);
+      await get().loadStores();
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to update store",
+      });
+    }
+  },
+
+  assignSeller: async (sellerId, storeId) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost<AdminAssignmentMutationResponse>(
+        `/admin/staff/${sellerId}/assignment`,
+        { storeId },
+        token
+      );
+      await Promise.all([get().loadStaff(), get().loadStores()]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to assign seller",
+      });
+    }
+  },
+
+  updateStoreProduct: async (storeProductId, input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    const currentStoreId = get().inventoryItems.find((item) => item.storeProductId === storeProductId)?.storeId;
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPatch<AdminStoreProductMutationResponse>(
+        `/admin/store-products/${storeProductId}`,
+        input,
+        token
+      );
+      await get().loadInventory(currentStoreId);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to update store product",
+      });
+    }
+  },
+
+  adjustInventory: async (input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost("/admin/inventory/adjustment", input, token);
+      await get().loadInventory(input.storeId);
+      await get().loadStores();
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to adjust inventory",
+      });
+    }
+  },
+
+  createProduct: async (input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost<AdminProductMutationResponse>("/admin/products", input, token);
+      await Promise.all([get().loadProducts(), get().loadInventory()]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to create product",
+      });
+    }
+  },
+
+  updateProduct: async (productId, input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPatch<AdminProductMutationResponse>(`/admin/products/${productId}`, input, token);
+      await Promise.all([get().loadProducts(), get().loadInventory()]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to update product",
+      });
+    }
+  },
+}));
