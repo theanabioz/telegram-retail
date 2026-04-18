@@ -129,6 +129,10 @@ function setStoredToken(token: string) {
   window.localStorage.setItem(TOKEN_KEY, token);
 }
 
+function resolveCurrentToken(stateToken: string | null) {
+  return getStoredToken() ?? stateToken;
+}
+
 export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   mode: "demo",
   loading: true,
@@ -153,7 +157,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      let token = get().token ?? getStoredToken();
+      let token = resolveCurrentToken(get().token);
 
       if (!token) {
         const session = await apiPost<AuthSessionResponse>("/auth/dev-login", {
@@ -167,6 +171,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           storeId: session.assignment?.store_id ?? null,
           storeName: session.assignment?.store_name ?? sellerHomeMock.storeName,
         });
+      }
+
+      if (token !== get().token) {
+        set({ token });
       }
 
       const [me, shiftState, shiftHistory] = await Promise.all([
@@ -249,7 +257,8 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   startShift: async () => {
-    const { token, storeId } = get();
+    const token = resolveCurrentToken(get().token);
+    const { storeId } = get();
 
     if (!token || !storeId) {
       set({ error: "Missing token or store assignment" });
@@ -273,7 +282,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   pauseShift: async () => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -296,7 +305,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   resumeShift: async () => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -319,7 +328,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   stopShift: async () => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -342,7 +351,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   addToDraft: async (productId: string) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
 
     if (!token) {
       set({ error: "Missing auth token" });
@@ -431,7 +440,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   updateDraftItem: async (itemId, updates) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -490,7 +499,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   removeDraftItem: async (itemId: string) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -530,7 +539,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   checkout: async (paymentMethod: "cash" | "card") => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
 
     if (!token) {
       set({ error: "Missing auth token" });
@@ -610,7 +619,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   deleteSale: async (saleId: string, reason: string) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -633,7 +642,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   returnSaleItem: async (saleId: string, saleItemId: string, reason: string) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -664,7 +673,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   restockProduct: async (productId: string, quantity: number, reason: string) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -695,7 +704,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   writeoffProduct: async (productId: string, quantity: number, reason: string) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
       return;
@@ -726,7 +735,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   loadShiftHistory: async (limit = 7, offset = 0) => {
-    const { token } = get();
+    const token = resolveCurrentToken(get().token);
 
     if (!token) {
       set({ error: "Missing auth token" });
