@@ -4,12 +4,11 @@ import {
   LuLayoutDashboard,
   LuReceiptText,
   LuSettings2,
-  LuStore,
   LuUsers,
 } from "react-icons/lu";
 import type { IconType } from "react-icons";
 
-export type AdminTab = "dashboard" | "sales" | "inventory" | "stores" | "staff" | "options";
+export type AdminTab = "overview" | "sales" | "inventory" | "team" | "settings";
 
 type NavItem = {
   id: AdminTab;
@@ -18,12 +17,11 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: LuLayoutDashboard },
+  { id: "overview", label: "Overview", icon: LuLayoutDashboard },
   { id: "sales", label: "Sales", icon: LuReceiptText },
   { id: "inventory", label: "Inventory", icon: LuBoxes },
-  { id: "stores", label: "Stores", icon: LuStore },
-  { id: "staff", label: "Staff", icon: LuUsers },
-  { id: "options", label: "Options", icon: LuSettings2 },
+  { id: "team", label: "Team", icon: LuUsers },
+  { id: "settings", label: "Settings", icon: LuSettings2 },
 ];
 
 type AdminNavProps = {

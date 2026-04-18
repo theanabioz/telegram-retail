@@ -20,6 +20,13 @@ const panelMutedSurface = "rgba(241,240,236,0.82)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const bottomNavReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
+const adminTabTitle: Record<AdminTab, string> = {
+  overview: "Overview",
+  sales: "Sales",
+  inventory: "Inventory",
+  team: "Team",
+  settings: "Settings",
+};
 
 type AdminDashboardScreenProps = {
   operatorName: string;
@@ -102,7 +109,7 @@ export function AdminDashboardScreen({
     updateProduct,
     adjustInventory,
   } = useAdminManagementStore();
-  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -447,7 +454,7 @@ export function AdminDashboardScreen({
     </VStack>
   );
 
-  const renderStores = () => (
+  const renderStoresSection = () => (
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
@@ -1265,7 +1272,7 @@ export function AdminDashboardScreen({
     </VStack>
   );
 
-  const renderStaff = () => (
+  const renderStaffSection = () => (
     <VStack spacing={3} align="stretch">
       {staff.map((seller) => (
         <Box key={seller.id} bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
@@ -1368,6 +1375,57 @@ export function AdminDashboardScreen({
     </VStack>
   );
 
+  const renderTeam = () => (
+    <VStack spacing={4} align="stretch">
+      <SimpleGrid columns={2} spacing={3}>
+        <Box bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+          <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
+            Active Stores
+          </Text>
+          <Text fontSize="2xl" fontWeight="900" mt={2}>
+            {stores.filter((store) => store.isActive).length}
+          </Text>
+        </Box>
+        <Box bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+          <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
+            Sellers
+          </Text>
+          <Text fontSize="2xl" fontWeight="900" mt={2}>
+            {staff.length}
+          </Text>
+        </Box>
+      </SimpleGrid>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <HStack justify="space-between" align="center">
+            <Text fontWeight="900" fontSize="lg">
+              Stores
+            </Text>
+            <Text color="surface.500" fontWeight="700" fontSize="sm">
+              {stores.length} locations
+            </Text>
+          </HStack>
+          {renderStoresSection()}
+        </VStack>
+      </Box>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <HStack justify="space-between" align="center">
+            <Text fontWeight="900" fontSize="lg">
+              Staff
+            </Text>
+            <Text color="surface.500" fontWeight="700" fontSize="sm">
+              {staff.length} sellers
+            </Text>
+          </HStack>
+          {renderStaffSection()}
+        </VStack>
+      </Box>
+    </VStack>
+  );
+
   const renderPlaceholder = (title: string, description: string) => (
     <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
       <Text fontWeight="900" fontSize="lg">
@@ -1385,16 +1443,14 @@ export function AdminDashboardScreen({
         return renderSales();
       case "inventory":
         return renderInventory();
-      case "stores":
-        return renderStores();
-      case "staff":
-        return renderStaff();
-      case "options":
+      case "team":
+        return renderTeam();
+      case "settings":
         return (
           <VStack spacing={4} align="stretch">
             {renderPlaceholder(
-              "Admin Options",
-              "Developer tools live here for now. Later we can add admin preferences and support diagnostics."
+              "Admin Settings",
+              "Session controls and admin-side environment tools live here for now. Later we can add account preferences and support diagnostics."
             )}
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
@@ -1434,7 +1490,7 @@ export function AdminDashboardScreen({
             </Box>
           </VStack>
         );
-      case "dashboard":
+      case "overview":
       default:
         return renderDashboard();
     }
@@ -1444,51 +1500,47 @@ export function AdminDashboardScreen({
     <Box minH="100vh" px={3} pt={4} pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
-          <Box
-            bg="rgba(255, 255, 255, 0.68)"
-            border="1px solid rgba(255, 255, 255, 0.78)"
-            borderRadius="30px"
-            px={4}
-            py={4}
-            boxShadow="0 18px 50px rgba(41, 36, 26, 0.06)"
-            backdropFilter="blur(12px)"
-          >
-            <HStack justify="space-between" align="start">
-              <VStack align="start" spacing={1}>
-                <Text fontSize="3xl" lineHeight="1.05" fontWeight="900" letterSpacing="-0.03em">
-                  Retail Control Room
+          <HStack justify="space-between" align="center" px={1} pt={2} mb={2}>
+            <Text
+              fontSize="3xl"
+              fontWeight="900"
+              letterSpacing="-0.04em"
+              color="surface.900"
+              lineHeight="1"
+            >
+              {adminTabTitle[activeTab]}
+            </Text>
+
+            <HStack
+              spacing={3}
+              bg="rgba(255,255,255,0.9)"
+              borderRadius="18px"
+              px={3}
+              py={2}
+              boxShadow="0 12px 30px rgba(17, 17, 17, 0.06)"
+            >
+              <Avatar size="sm" name={operatorName} bg="surface.200" color="surface.800" />
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="800" lineHeight="1">
+                  {operatorName}
                 </Text>
-                <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  Stores, staffing and operations in one place
+                <Text fontSize="xs" color="surface.500" fontWeight="700" lineHeight="1.1">
+                  Admin
                 </Text>
               </VStack>
-
-              <HStack
-                spacing={3}
-                bg="rgba(255,255,255,0.9)"
-                borderRadius="18px"
-                px={3}
-                py={2}
-                boxShadow="0 12px 30px rgba(17, 17, 17, 0.06)"
-              >
-                <Avatar size="sm" name={operatorName} bg="surface.200" color="surface.800" />
-                <Text fontWeight="800">{operatorName}</Text>
-              </HStack>
             </HStack>
-          </Box>
+          </HStack>
 
           {loading || loadingStores || loadingStaff || loadingInventory || loadingSales ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
               <Text fontWeight="800">
-                {activeTab === "stores"
-                  ? "Loading stores..."
-                  : activeTab === "staff"
-                    ? "Loading staff..."
-                    : activeTab === "sales"
-                      ? "Loading sales..."
+                {activeTab === "team"
+                  ? "Loading team data..."
+                  : activeTab === "sales"
+                    ? "Loading sales..."
                     : activeTab === "inventory"
                       ? "Loading inventory..."
-                    : "Loading admin data..."}
+                      : "Loading admin data..."}
               </Text>
             </Box>
           ) : null}
