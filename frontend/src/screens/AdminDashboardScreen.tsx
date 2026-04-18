@@ -14,12 +14,35 @@ import {
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
+import type { AdminDashboardResponse } from "../types/admin";
 
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelMutedSurface = "rgba(241,240,236,0.82)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const bottomNavReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
+const ADMIN_OVERVIEW_CHART_MOCK_LAYER = true;
+const ADMIN_OVERVIEW_CHART_MOCK_TOTALS: Record<number, number> = {
+  0: 18,
+  1: 26,
+  2: 14,
+  8: 32,
+  9: 48,
+  10: 44,
+  11: 57,
+  12: 63,
+  13: 52,
+  14: 68,
+  15: 74,
+  16: 59,
+  17: 82,
+  18: 91,
+  19: 76,
+  20: 88,
+  21: 72,
+  22: 54,
+  23: 37,
+};
 const adminTabTitle: Record<AdminTab, string> = {
   overview: "Overview",
   sales: "Sales",
@@ -49,6 +72,17 @@ function formatShortDate(value: string) {
 
 function formatHourLabel(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function withOverviewChartMockLayer(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
+  if (!ADMIN_OVERVIEW_CHART_MOCK_LAYER) {
+    return hourlyRevenueToday;
+  }
+
+  return hourlyRevenueToday.map((entry) => ({
+    ...entry,
+    total: entry.total > 0 ? entry.total : (ADMIN_OVERVIEW_CHART_MOCK_TOTALS[entry.hour] ?? 0),
+  }));
 }
 
 function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "blue" | "orange" | "gray" }) {
@@ -417,9 +451,10 @@ export function AdminDashboardScreen({
           {data ? (
             <HStack align="end" spacing={2} h="180px" px={1}>
               {(() => {
-                const maxHourTotal = Math.max(...data.hourlyRevenueToday.map((entry) => entry.total), 1);
+                const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
+                const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
 
-                return data.hourlyRevenueToday.map((entry, index) => {
+                return chartSeries.map((entry, index) => {
                   const height = Math.max(12, (entry.total / maxHourTotal) * 132);
                   const isActiveHour = entry.total > 0;
                   const shouldShowLabel = index % 3 === 0;
