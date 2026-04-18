@@ -181,7 +181,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     checkout: "Checkout",
     orders: "Orders",
     stock: "My Stock",
-    shift: shiftView === "history" ? "Shift History" : shiftView === "detail" ? "Shift Details" : "Shift",
+    shift: shiftView === "history" ? "Shift History" : shiftView === "detail" ? "Shift Report" : "Shift",
     options: "Settings",
   };
 
@@ -1407,11 +1407,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <VStack align="stretch" spacing={4}>
               <HStack justify="space-between" align="start">
                 <VStack align="start" spacing={1}>
-                  <Text fontSize="11px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Shift Report
-                  </Text>
-                  <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                  <Text
+                    fontWeight="800"
+                    fontSize="lg"
+                    letterSpacing="-0.02em"
+                    color="surface.900"
+                    noOfLines={1}
+                  >
                     {shiftDetails.store?.name ?? storeName}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700">
+                    {formatDateLabel(shiftDetails.shift.started_at)}
                   </Text>
                 </VStack>
                 <HStack spacing={2}>
@@ -1441,10 +1447,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   </Button>
                 </HStack>
               </HStack>
-
-              <Text fontSize="sm" color="surface.500" fontWeight="700">
-                {formatDateLabel(shiftDetails.shift.started_at)}
-              </Text>
 
               <SimpleGrid columns={2} spacing={3}>
                 <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
