@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { sellerHomeMock } from "../data/mockSellerHome";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { config } from "../lib/config";
+import { triggerImpact, triggerNotification, triggerSelection } from "../lib/haptics";
 import type {
   AuthSessionResponse,
   CheckoutResponse,
@@ -259,9 +260,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/start", { storeId }, token);
+      triggerNotification("success");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to start shift",
@@ -280,9 +283,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/pause", {}, token);
+      triggerSelection();
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to pause shift",
@@ -301,9 +306,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/resume", {}, token);
+      triggerNotification("success");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to resume shift",
@@ -322,9 +329,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/stop", {}, token);
+      triggerNotification("warning");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to stop shift",
@@ -391,6 +400,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       );
 
       if (mutationVersion === draftMutationVersion) {
+        triggerSelection();
         set({ draft, mode: "live", error: null });
       } else {
         const currentDraft = get().draft;
@@ -411,6 +421,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       }
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
+        triggerNotification("error");
         set({
           draft: previousDraft,
           error: error instanceof Error ? error.message : "Failed to add item to cart",
@@ -460,10 +471,16 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     try {
       const draft = await apiPatch<DraftResponse>(`/seller/draft/items/${itemId}`, updates, token);
       if (mutationVersion === draftMutationVersion) {
+        if (updates.discountType !== undefined || updates.discountValue !== undefined) {
+          triggerImpact("soft");
+        } else {
+          triggerSelection();
+        }
         set({ draft });
       }
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
+        triggerNotification("error");
         set({
           draft: previousDraft,
           error: error instanceof Error ? error.message : "Failed to update cart item",
@@ -497,11 +514,13 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       if (isUuid(itemId)) {
         const draft = await apiDelete<DraftResponse>(`/seller/draft/items/${itemId}`, token);
         if (mutationVersion === draftMutationVersion) {
+          triggerImpact("rigid");
           set({ draft });
         }
       }
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
+        triggerNotification("error");
         set({
           draft: previousDraft,
           error: error instanceof Error ? error.message : "Failed to remove cart item",
@@ -570,6 +589,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           items: checkoutResult.items,
         };
 
+        triggerNotification("success");
         set({
           draft: buildDraftState(previousDraft, [], get().storeId),
           sales: [sale, ...get().sales.filter((item) => item.id !== optimisticSale.id)],
@@ -578,6 +598,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       }
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
+        triggerNotification("error");
         set({
           draft: previousDraft,
           sales: previousSales,
@@ -599,9 +620,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost(`/seller/sales/${saleId}/delete`, { reason }, token);
+      triggerNotification("warning");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to delete sale",
@@ -628,9 +651,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         },
         token
       );
+      triggerNotification("warning");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to create return",
@@ -657,9 +682,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         },
         token
       );
+      triggerNotification("success");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to restock product",
@@ -686,9 +713,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         },
         token
       );
+      triggerNotification("warning");
       set({ actionLoading: false });
       await get().bootstrap();
     } catch (error) {
+      triggerNotification("error");
       set({
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to write off product",
@@ -715,6 +744,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         error: null,
       });
     } catch (error) {
+      triggerNotification("error");
       set({
         error: error instanceof Error ? error.message : "Failed to load shift history",
       });

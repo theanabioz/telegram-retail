@@ -4,6 +4,7 @@ import WebApp from "@twa-dev/sdk";
 import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
+import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
 import { SellerHomeScreen } from "./screens/SellerHomeScreen";
 import type { AuthSessionResponse } from "./types/seller";
@@ -108,11 +109,17 @@ export function App() {
 
   const switchPanel = async (nextPanel: DevPanel) => {
     if (nextPanel === currentPanel) {
+      triggerSelection();
       return;
     }
 
     setCurrentPanel(nextPanel);
-    await bootstrap(nextPanel, true);
+    try {
+      await bootstrap(nextPanel, true);
+      triggerImpact("medium");
+    } catch {
+      triggerNotification("error");
+    }
   };
 
   const impersonateSeller = async (sellerId: string) => {
@@ -138,6 +145,7 @@ export function App() {
       window.localStorage.setItem(TOKEN_KEY, authSession.token);
       window.localStorage.setItem(PANEL_KEY, "seller");
       setCurrentPanel("seller");
+      triggerImpact("medium");
       setSession({
         role: authSession.user.app_role,
         operatorName: authSession.user.full_name,
@@ -145,6 +153,7 @@ export function App() {
         error: null,
       });
     } catch (error) {
+      triggerNotification("error");
       setSession((current) => ({
         ...current,
         loading: false,

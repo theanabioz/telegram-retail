@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
+import { triggerImpact, triggerNotification, triggerSelection } from "../lib/haptics";
 import type {
   AdminAssignmentMutationResponse,
   AdminInventoryResponse,
@@ -255,9 +256,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
 
     try {
       await apiPost<AdminStoreMutationResponse>("/admin/stores", input, token);
+      triggerNotification("success");
       await get().loadStores();
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to create store",
@@ -277,9 +280,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
 
     try {
       await apiPatch<AdminStoreMutationResponse>(`/admin/stores/${storeId}`, input, token);
+      triggerNotification("success");
       await get().loadStores();
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to update store",
@@ -303,9 +308,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         { storeId },
         token
       );
+      triggerImpact("medium");
       await Promise.all([get().loadStaff(), get().loadStores()]);
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to assign seller",
@@ -331,9 +338,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         input,
         token
       );
+      triggerNotification("success");
       await get().loadInventory(currentStoreId);
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to update store product",
@@ -353,10 +362,18 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
 
     try {
       await apiPost("/admin/inventory/adjustment", input, token);
+      if (input.movementType === "writeoff") {
+        triggerNotification("warning");
+      } else if (input.movementType === "restock") {
+        triggerNotification("success");
+      } else {
+        triggerSelection();
+      }
       await get().loadInventory(input.storeId);
       await get().loadStores();
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to adjust inventory",
@@ -376,9 +393,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
 
     try {
       await apiPost<AdminProductMutationResponse>("/admin/products", input, token);
+      triggerNotification("success");
       await Promise.all([get().loadProducts(), get().loadInventory()]);
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to create product",
@@ -398,9 +417,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
 
     try {
       await apiPatch<AdminProductMutationResponse>(`/admin/products/${productId}`, input, token);
+      triggerNotification("success");
       await Promise.all([get().loadProducts(), get().loadInventory()]);
       set({ mutating: false, error: null });
     } catch (error) {
+      triggerNotification("error");
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to update product",
