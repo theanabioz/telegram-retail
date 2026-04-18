@@ -71,15 +71,15 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
             transition="all 0.18s ease"
           >
             <Box
-              w="30px"
-              h="30px"
+              w="34px"
+              h="34px"
               borderRadius="12px"
               display="grid"
               placeItems="center"
               color={isActive ? "brand.500" : "surface.500"}
               bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
             >
-              <Box as={Icon} boxSize={5.75} />
+              <Icon size={22} />
             </Box>
             <Text
               fontSize="9px"
