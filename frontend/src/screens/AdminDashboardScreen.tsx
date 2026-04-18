@@ -524,10 +524,10 @@ export function AdminDashboardScreen({
               Recent Sales
             </Text>
             <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {data?.recentSales.length ?? 0} items
+              {(data?.recentSales ?? []).slice(0, 5).length} latest
             </Text>
           </HStack>
-          {(data?.recentSales ?? []).map((sale) => (
+          {(data?.recentSales ?? []).slice(0, 5).map((sale) => (
             <HStack key={sale.id} justify="space-between" align="start">
               <VStack align="start" spacing={0}>
                 <Text fontWeight="800">{sale.store?.name ?? "Unknown store"}</Text>
