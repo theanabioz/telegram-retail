@@ -1042,12 +1042,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const renderShiftTab = () => (
     <VStack spacing={5} align="stretch">
       <Box 
-        bg="white" 
-        borderRadius="28px" 
-        p={6} 
-        boxShadow="0 10px 30px rgba(0,0,0,0.04)"
-        border="1px solid"
-        borderColor="surface.100"
+        bg={panelSurface}
+        borderRadius={panelRadius}
+        px={4}
+        py={4}
+        boxShadow={panelShadow}
       >
         <VStack align="stretch" spacing={6}>
           <HStack justify="space-between" align="center">
@@ -1073,12 +1072,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <VStack
               align="start"
               spacing={1}
-              bg="rgba(255,255,255,0.96)"
+              bg={innerSurface}
               p={4}
-              borderRadius="22px"
-              border="1px solid"
-              borderColor="rgba(224,221,214,0.95)"
-              boxShadow="0 8px 22px rgba(20,20,20,0.04)"
+              borderRadius="18px"
             >
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 Time Worked
@@ -1090,12 +1086,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <VStack
               align="start"
               spacing={1}
-              bg="rgba(255,255,255,0.96)"
+              bg={innerSurface}
               p={4}
-              borderRadius="22px"
-              border="1px solid"
-              borderColor="rgba(224,221,214,0.95)"
-              boxShadow="0 8px 22px rgba(20,20,20,0.04)"
+              borderRadius="18px"
             >
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 On Break
@@ -1215,14 +1208,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           {shiftHistory.map((entry) => (
             <Box
               key={entry.shift.id}
-              bg="white"
+              bg={panelSurface}
               p={4}
-              borderRadius="24px"
-              border="1px solid"
-              borderColor="rgba(224,221,214,0.9)"
-              boxShadow="0 8px 24px rgba(20,20,20,0.04)"
+              borderRadius={panelRadius}
+              boxShadow={panelShadow}
               transition="all 0.2s ease"
-              _active={{ bg: "rgba(255,255,255,0.98)", transform: "scale(0.985)" }}
+              _active={{ bg: panelSurface, transform: "scale(0.985)" }}
             >
               <HStack justify="space-between" align="center">
                 <HStack spacing={4}>
