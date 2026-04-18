@@ -3,6 +3,7 @@ import { Box, Text } from "@chakra-ui/react";
 import WebApp from "@twa-dev/sdk";
 import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
+import { attachGlobalHaptics } from "./lib/haptics";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
 import { SellerHomeScreen } from "./screens/SellerHomeScreen";
 import type { AuthSessionResponse } from "./types/seller";
@@ -98,6 +99,8 @@ export function App() {
       // Local browser mode is expected before Telegram integration is wired.
     }
   }, []);
+
+  useEffect(() => attachGlobalHaptics(), []);
 
   useEffect(() => {
     void bootstrap(currentPanel);
