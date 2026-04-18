@@ -40,8 +40,8 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
       border="1px solid rgba(232, 229, 223, 0.96)"
       borderRadius="24px"
       px={2}
-      pt={1.5}
-      pb="calc(7px + env(safe-area-inset-bottom, 0px))"
+      pt={1}
+      pb="max(2px, calc(env(safe-area-inset-bottom, 0px) - 4px))"
       boxShadow="0 12px 26px rgba(20, 20, 20, 0.07)"
       spacing={0}
     >
@@ -66,21 +66,21 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
               border={0}
               px={0.5}
               py={0.5}
-              minH="40px"
+              minH="38px"
               borderRadius="12px"
               bg="transparent"
               transition="all 0.18s ease"
             >
               <Box
-                w="32px"
-                h="32px"
+                w="36px"
+                h="36px"
                 borderRadius="11px"
                 display="grid"
                 placeItems="center"
                 color={isActive ? "brand.500" : "surface.500"}
                 bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
               >
-                <Icon size={20} />
+                <Icon size={24} />
               </Box>
               <Text
                 fontSize="8px"
