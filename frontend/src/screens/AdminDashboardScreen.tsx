@@ -58,6 +58,41 @@ type AdminDashboardScreenProps = {
   onViewAsSeller: (sellerId: string) => Promise<void>;
 };
 
+type SalesLedgerMode = "sales" | "returns";
+type SalesPeriod = "today" | "week" | "month" | "custom";
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getSalesPeriodRange(period: Exclude<SalesPeriod, "custom">) {
+  const now = new Date();
+  const from = new Date(now);
+
+  if (period === "week") {
+    const day = from.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    from.setDate(from.getDate() + mondayOffset);
+  }
+
+  if (period === "month") {
+    from.setDate(1);
+  }
+
+  return {
+    from: toDateInputValue(from),
+    to: toDateInputValue(now),
+  };
+}
+
+function formatSalesTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function formatDateTime(value: string | null) {
   if (!value) {
     return "No activity yet";
@@ -145,6 +180,9 @@ export function AdminDashboardScreen({
   } = useAdminManagementStore();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [selectedOverviewHour, setSelectedOverviewHour] = useState<number | null>(null);
+  const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
+  const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
+  const [selectedAdminReturnId, setSelectedAdminReturnId] = useState<string | null>(null);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -156,8 +194,9 @@ export function AdminDashboardScreen({
   const [salesStoreFilter, setSalesStoreFilter] = useState("");
   const [salesSellerFilter, setSalesSellerFilter] = useState("");
   const [salesStatusFilter, setSalesStatusFilter] = useState<"all" | "completed" | "deleted">("all");
-  const [salesDateFrom, setSalesDateFrom] = useState("");
-  const [salesDateTo, setSalesDateTo] = useState("");
+  const [salesPeriod, setSalesPeriod] = useState<SalesPeriod>("today");
+  const [salesDateFrom, setSalesDateFrom] = useState(() => getSalesPeriodRange("today").from);
+  const [salesDateTo, setSalesDateTo] = useState(() => getSalesPeriodRange("today").to);
   const [storeEdits, setStoreEdits] = useState<
     Record<string, { name: string; address: string; isActive: boolean }>
   >({});
@@ -175,7 +214,13 @@ export function AdminDashboardScreen({
     void loadStaff();
     void loadInventory();
     void loadProducts();
-    void loadSalesOverview({ saleStatus: "all", limit: 20 });
+    const today = getSalesPeriodRange("today");
+    void loadSalesOverview({
+      saleStatus: "all",
+      dateFrom: new Date(`${today.from}T00:00:00`).toISOString(),
+      dateTo: new Date(`${today.to}T23:59:59`).toISOString(),
+      limit: 20,
+    });
   }, [load, loadStaff, loadStores, loadInventory, loadProducts, loadSalesOverview]);
 
   useEffect(() => {
@@ -395,18 +440,43 @@ export function AdminDashboardScreen({
     }));
   };
 
-  const handleApplySalesFilters = async () => {
-    const dateFrom = salesDateFrom ? new Date(`${salesDateFrom}T00:00:00`).toISOString() : undefined;
-    const dateTo = salesDateTo ? new Date(`${salesDateTo}T23:59:59`).toISOString() : undefined;
+  const handleApplySalesFilters = async (overrides?: {
+    storeId?: string;
+    sellerId?: string;
+    saleStatus?: "all" | "completed" | "deleted";
+    dateFrom?: string;
+    dateTo?: string;
+  }) => {
+    const nextStoreId = overrides?.storeId ?? salesStoreFilter;
+    const nextSellerId = overrides?.sellerId ?? salesSellerFilter;
+    const nextSaleStatus = overrides?.saleStatus ?? salesStatusFilter;
+    const nextDateFrom = overrides?.dateFrom ?? salesDateFrom;
+    const nextDateTo = overrides?.dateTo ?? salesDateTo;
+
+    const dateFrom = nextDateFrom ? new Date(`${nextDateFrom}T00:00:00`).toISOString() : undefined;
+    const dateTo = nextDateTo ? new Date(`${nextDateTo}T23:59:59`).toISOString() : undefined;
 
     await loadSalesOverview({
-      storeId: salesStoreFilter || undefined,
-      sellerId: salesSellerFilter || undefined,
-      saleStatus: salesStatusFilter,
+      storeId: nextStoreId || undefined,
+      sellerId: nextSellerId || undefined,
+      saleStatus: nextSaleStatus,
       dateFrom,
       dateTo,
       limit: 20,
     });
+  };
+
+  const handleSelectSalesPeriod = async (period: SalesPeriod) => {
+    setSalesPeriod(period);
+
+    if (period === "custom") {
+      return;
+    }
+
+    const range = getSalesPeriodRange(period);
+    setSalesDateFrom(range.from);
+    setSalesDateTo(range.to);
+    await handleApplySalesFilters({ dateFrom: range.from, dateTo: range.to });
   };
 
   const renderDashboard = () => (
@@ -1186,212 +1256,472 @@ export function AdminDashboardScreen({
     </VStack>
   );
 
-  const renderSales = () => (
-    <VStack spacing={4} align="stretch">
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">
-            Sales Filters
-          </Text>
-          <Select
-            value={salesStoreFilter}
-            onChange={(event) => setSalesStoreFilter(event.target.value)}
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          >
-            <option value="">All stores</option>
-            {salesStores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={salesSellerFilter}
-            onChange={(event) => setSalesSellerFilter(event.target.value)}
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          >
-            <option value="">All sellers</option>
-            {salesSellers.map((seller) => (
-              <option key={seller.id} value={seller.id}>
-                {seller.fullName}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={salesStatusFilter}
-            onChange={(event) => setSalesStatusFilter(event.target.value as "all" | "completed" | "deleted")}
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          >
-            <option value="all">All sales</option>
-            <option value="completed">Completed only</option>
-            <option value="deleted">Deleted only</option>
-          </Select>
-          <SimpleGrid columns={2} spacing={2}>
-            <Input
-              value={salesDateFrom}
-              onChange={(event) => setSalesDateFrom(event.target.value)}
-              type="date"
-              borderRadius="18px"
-              bg="white"
-              borderColor="rgba(226,224,218,0.95)"
-            />
-            <Input
-              value={salesDateTo}
-              onChange={(event) => setSalesDateTo(event.target.value)}
-              type="date"
-              borderRadius="18px"
-              bg="white"
-              borderColor="rgba(226,224,218,0.95)"
-            />
-          </SimpleGrid>
-          <Button
-            alignSelf="flex-start"
-            borderRadius="16px"
-            bg="brand.500"
-            color="white"
-            _hover={{ bg: "brand.600" }}
-            isLoading={loadingSales}
-            onClick={() => void handleApplySalesFilters()}
-          >
-            Apply Filters
-          </Button>
-        </VStack>
-      </Box>
+  const renderSales = () => {
+    const selectedSale = selectedAdminSaleId
+      ? salesOverview.find((sale) => sale.id === selectedAdminSaleId) ?? null
+      : null;
+    const selectedReturn = selectedAdminReturnId
+      ? returnsOverview.find((entry) => entry.id === selectedAdminReturnId) ?? null
+      : null;
+    const salesTotal = salesOverview.reduce((total, sale) => total + sale.totalAmount, 0);
+    const cashTotal = salesOverview
+      .filter((sale) => sale.paymentMethod === "cash")
+      .reduce((total, sale) => total + sale.totalAmount, 0);
+    const cardTotal = salesOverview
+      .filter((sale) => sale.paymentMethod === "card")
+      .reduce((total, sale) => total + sale.totalAmount, 0);
+    const returnsTotal = returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0);
+    const returnedUnits = returnsOverview.reduce(
+      (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
+      0
+    );
+    const salesSummaryCards = salesLedgerMode === "sales"
+      ? [
+          { label: "Revenue", value: `EUR ${salesTotal.toFixed(2)}` },
+          { label: "Sales", value: String(salesOverview.length) },
+          { label: "Cash", value: `EUR ${cashTotal.toFixed(2)}` },
+          { label: "Card", value: `EUR ${cardTotal.toFixed(2)}` },
+        ]
+      : [
+          { label: "Returned", value: `EUR ${returnsTotal.toFixed(2)}` },
+          { label: "Returns", value: String(returnsOverview.length) },
+          { label: "Units", value: String(returnedUnits) },
+          { label: "Avg Return", value: `EUR ${(returnsTotal / Math.max(returnsOverview.length, 1)).toFixed(2)}` },
+        ];
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">
-              Sales
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {salesOverview.length} items
-            </Text>
-          </HStack>
-          {salesOverview.length === 0 ? (
-            <Text color="surface.500" fontSize="sm">
-              No sales match the current filters.
-            </Text>
-          ) : null}
-          {salesOverview.map((sale) => (
-            <Box key={sale.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-              <VStack align="stretch" spacing={2}>
-                <HStack justify="space-between" align="start">
+    if (selectedSale) {
+      return (
+        <VStack spacing={4} align="stretch">
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={1}>
+                  <Text fontWeight="900" fontSize="xl">
+                    Sale Receipt
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {selectedSale.store?.name ?? "Unknown store"} · {selectedSale.seller?.fullName ?? "Unknown seller"}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {formatDateTime(selectedSale.createdAt)}
+                  </Text>
+                </VStack>
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => setSelectedAdminSaleId(null)}
+                >
+                  Back
+                </Button>
+              </HStack>
+
+              <HStack justify="space-between">
+                <StatusPill
+                  label={selectedSale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
+                  tone={selectedSale.status === "deleted" ? "red" : "green"}
+                />
+                <Text fontWeight="900">{selectedSale.paymentMethod.toUpperCase()}</Text>
+              </HStack>
+
+              <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
+
+              {selectedSale.items.map((item) => (
+                <HStack key={item.id} justify="space-between" align="start">
                   <VStack align="start" spacing={0}>
-                    <HStack spacing={2}>
-                      <Text fontWeight="900">{sale.store?.name ?? "Unknown store"}</Text>
-                      <StatusPill
-                        label={sale.status === "deleted" ? "Deleted" : "Completed"}
-                        tone={sale.status === "deleted" ? "red" : "green"}
-                      />
-                    </HStack>
+                    <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      {sale.seller?.fullName ?? "Unknown seller"} · {sale.paymentMethod.toUpperCase()}
+                      {item.skuSnapshot} · Qty {item.quantity} x EUR {item.finalPrice.toFixed(2)}
                     </Text>
-                    <Text fontSize="xs" color="surface.500">
-                      {formatDateTime(sale.createdAt)}
-                    </Text>
-                  </VStack>
-                  <Text fontWeight="900">EUR {sale.totalAmount.toFixed(2)}</Text>
-                </HStack>
-
-                {sale.items.map((item) => (
-                  <HStack key={item.id} justify="space-between" align="start">
-                    <VStack align="start" spacing={0}>
-                      <Text fontSize="sm" fontWeight="700">
-                        {item.productNameSnapshot}
-                      </Text>
+                    {item.discountType ? (
                       <Text fontSize="xs" color="surface.500">
-                        Qty {item.quantity} · EUR {item.finalPrice.toFixed(2)} · {item.skuSnapshot}
+                        Discount {item.discountType}: {item.discountValue}
                       </Text>
-                    </VStack>
-                    <Text fontSize="sm" fontWeight="800">
-                      EUR {item.lineTotal.toFixed(2)}
-                    </Text>
-                  </HStack>
-                ))}
+                    ) : null}
+                  </VStack>
+                  <Text fontWeight="900">EUR {item.lineTotal.toFixed(2)}</Text>
+                </HStack>
+              ))}
 
-                {sale.status === "deleted" ? (
-                  <Box bg="rgba(248,113,113,0.08)" borderRadius="14px" px={3} py={2}>
-                    <Text fontSize="sm" fontWeight="700" color="red.500">
-                      Deleted {sale.deletedAt ? formatDateTime(sale.deletedAt) : ""}
-                    </Text>
-                    <Text fontSize="xs" color="surface.500">
-                      {sale.deletedBy?.fullName ?? "Unknown user"} · {sale.deletionReason ?? "No reason"}
-                    </Text>
-                  </Box>
-                ) : null}
+              <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
+
+              <VStack align="stretch" spacing={2}>
+                <HStack justify="space-between">
+                  <Text color="surface.500" fontWeight="700">
+                    Subtotal
+                  </Text>
+                  <Text fontWeight="800">EUR {selectedSale.subtotalAmount.toFixed(2)}</Text>
+                </HStack>
+                <HStack justify="space-between">
+                  <Text color="surface.500" fontWeight="700">
+                    Discount
+                  </Text>
+                  <Text fontWeight="800">EUR {selectedSale.discountAmount.toFixed(2)}</Text>
+                </HStack>
+                <HStack justify="space-between">
+                  <Text fontSize="lg" fontWeight="900">
+                    Total
+                  </Text>
+                  <Text fontSize="lg" fontWeight="900">
+                    EUR {selectedSale.totalAmount.toFixed(2)}
+                  </Text>
+                </HStack>
               </VStack>
-            </Box>
-          ))}
-        </VStack>
-      </Box>
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">
-              Returns
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {returnsOverview.length} items
-            </Text>
-          </HStack>
-          {returnsOverview.length === 0 ? (
-            <Text color="surface.500" fontSize="sm">
-              No returns match the current filters.
-            </Text>
-          ) : null}
-          {returnsOverview.map((entry) => (
-            <Box key={entry.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-              <VStack align="stretch" spacing={2}>
-                <HStack justify="space-between" align="start">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="900">{entry.store?.name ?? "Unknown store"}</Text>
-                    <Text fontSize="sm" color="surface.500">
-                      {entry.seller?.fullName ?? "Unknown seller"} · Sale {entry.saleId.slice(0, 8)}
-                    </Text>
-                    <Text fontSize="xs" color="surface.500">
-                      {formatDateTime(entry.createdAt)}
-                    </Text>
-                  </VStack>
-                  <Text fontWeight="900">EUR {entry.totalAmount.toFixed(2)}</Text>
-                </HStack>
-
-                {entry.items.map((item) => (
-                  <HStack key={item.id} justify="space-between" align="start">
-                    <VStack align="start" spacing={0}>
-                      <Text fontSize="sm" fontWeight="700">
-                        {item.productNameSnapshot}
-                      </Text>
-                      <Text fontSize="xs" color="surface.500">
-                        Qty {item.quantity} · EUR {item.returnedPrice.toFixed(2)} · {item.skuSnapshot}
-                      </Text>
-                    </VStack>
-                    <Text fontSize="sm" fontWeight="800">
-                      EUR {item.lineTotal.toFixed(2)}
-                    </Text>
-                  </HStack>
-                ))}
-
-                <Box bg="rgba(74,132,244,0.08)" borderRadius="14px" px={3} py={2}>
+              {selectedSale.status === "deleted" ? (
+                <Box bg="rgba(248,113,113,0.08)" borderRadius="16px" px={3} py={3}>
+                  <Text fontSize="sm" fontWeight="800" color="red.500">
+                    Deleted {selectedSale.deletedAt ? formatDateTime(selectedSale.deletedAt) : ""}
+                  </Text>
                   <Text fontSize="xs" color="surface.500">
-                    {entry.reason}
+                    {selectedSale.deletedBy?.fullName ?? "Unknown user"} · {selectedSale.deletionReason ?? "No reason"}
                   </Text>
                 </Box>
-              </VStack>
+              ) : null}
+
+              <Text fontSize="xs" color="surface.500">
+                Sale ID: {selectedSale.id}
+              </Text>
+            </VStack>
+          </Box>
+        </VStack>
+      );
+    }
+
+    if (selectedReturn) {
+      return (
+        <VStack spacing={4} align="stretch">
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={1}>
+                  <Text fontWeight="900" fontSize="xl">
+                    Return Receipt
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {selectedReturn.store?.name ?? "Unknown store"} · {selectedReturn.seller?.fullName ?? "Unknown seller"}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {formatDateTime(selectedReturn.createdAt)}
+                  </Text>
+                </VStack>
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => setSelectedAdminReturnId(null)}
+                >
+                  Back
+                </Button>
+              </HStack>
+
+              <Box bg="rgba(74,132,244,0.08)" borderRadius="16px" px={3} py={3}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Reason
+                </Text>
+                <Text fontWeight="800">{selectedReturn.reason}</Text>
+              </Box>
+
+              <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
+
+              {selectedReturn.items.map((item) => (
+                <HStack key={item.id} justify="space-between" align="start">
+                  <VStack align="start" spacing={0}>
+                    <Text fontWeight="800">{item.productNameSnapshot}</Text>
+                    <Text fontSize="sm" color="surface.500">
+                      {item.skuSnapshot} · Qty {item.quantity} x EUR {item.returnedPrice.toFixed(2)}
+                    </Text>
+                  </VStack>
+                  <Text fontWeight="900">EUR {item.lineTotal.toFixed(2)}</Text>
+                </HStack>
+              ))}
+
+              <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
+
+              <HStack justify="space-between">
+                <Text fontSize="lg" fontWeight="900">
+                  Total Returned
+                </Text>
+                <Text fontSize="lg" fontWeight="900">
+                  EUR {selectedReturn.totalAmount.toFixed(2)}
+                </Text>
+              </HStack>
+
+              <Text fontSize="xs" color="surface.500">
+                Return ID: {selectedReturn.id} · Sale {selectedReturn.saleId.slice(0, 8)}
+              </Text>
+            </VStack>
+          </Box>
+        </VStack>
+      );
+    }
+
+    return (
+      <VStack spacing={4} align="stretch">
+        <SimpleGrid columns={2} spacing={3}>
+          {salesSummaryCards.map((card) => (
+            <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
+                {card.label}
+              </Text>
+              <Text fontSize="2xl" fontWeight="900" mt={2}>
+                {card.value}
+              </Text>
             </Box>
           ))}
-        </VStack>
-      </Box>
-    </VStack>
-  );
+        </SimpleGrid>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+          <VStack align="stretch" spacing={3}>
+            <HStack spacing={2}>
+              {(["today", "week", "month", "custom"] as SalesPeriod[]).map((period) => {
+                const isActive = salesPeriod === period;
+
+                return (
+                  <Button
+                    key={period}
+                    size="sm"
+                    flex="1"
+                    borderRadius="999px"
+                    bg={isActive ? "brand.500" : panelMutedSurface}
+                    color={isActive ? "white" : "surface.700"}
+                    _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
+                    onClick={() => void handleSelectSalesPeriod(period)}
+                  >
+                    {period === "today" ? "Today" : period === "week" ? "Week" : period === "month" ? "Month" : "Custom"}
+                  </Button>
+                );
+              })}
+            </HStack>
+
+            <SimpleGrid columns={2} spacing={2}>
+              <Select
+                value={salesStoreFilter}
+                onChange={(event) => {
+                  const storeId = event.target.value;
+                  setSalesStoreFilter(storeId);
+                  void handleApplySalesFilters({ storeId });
+                }}
+                borderRadius="18px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+              >
+                <option value="">All stores</option>
+                {salesStores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={salesSellerFilter}
+                onChange={(event) => {
+                  const sellerId = event.target.value;
+                  setSalesSellerFilter(sellerId);
+                  void handleApplySalesFilters({ sellerId });
+                }}
+                borderRadius="18px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+              >
+                <option value="">All sellers</option>
+                {salesSellers.map((seller) => (
+                  <option key={seller.id} value={seller.id}>
+                    {seller.fullName}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={salesStatusFilter}
+                onChange={(event) => {
+                  const saleStatus = event.target.value as "all" | "completed" | "deleted";
+                  setSalesStatusFilter(saleStatus);
+                  void handleApplySalesFilters({ saleStatus });
+                }}
+                borderRadius="18px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+              >
+                <option value="all">All sales</option>
+                <option value="completed">Completed</option>
+                <option value="deleted">Deleted</option>
+              </Select>
+              <Button
+                borderRadius="18px"
+                bg={panelMutedSurface}
+                color="surface.700"
+                _hover={{ bg: "rgba(232,231,226,0.96)" }}
+                isLoading={loadingSales}
+                onClick={() => void handleApplySalesFilters()}
+              >
+                Refresh
+              </Button>
+            </SimpleGrid>
+
+            {salesPeriod === "custom" ? (
+              <SimpleGrid columns={2} spacing={2}>
+                <Input
+                  value={salesDateFrom}
+                  onChange={(event) => setSalesDateFrom(event.target.value)}
+                  type="date"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+                <Input
+                  value={salesDateTo}
+                  onChange={(event) => setSalesDateTo(event.target.value)}
+                  type="date"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+                <Button
+                  gridColumn="1 / -1"
+                  borderRadius="18px"
+                  bg="brand.500"
+                  color="white"
+                  _hover={{ bg: "brand.600" }}
+                  isLoading={loadingSales}
+                  onClick={() => void handleApplySalesFilters()}
+                >
+                  Apply Custom Range
+                </Button>
+              </SimpleGrid>
+            ) : null}
+          </VStack>
+        </Box>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+          <HStack spacing={2}>
+            {(["sales", "returns"] as SalesLedgerMode[]).map((mode) => {
+              const isActive = salesLedgerMode === mode;
+
+              return (
+                <Button
+                  key={mode}
+                  flex="1"
+                  size="sm"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onClick={() => setSalesLedgerMode(mode)}
+                >
+                  {mode === "sales" ? `Sales · ${salesOverview.length}` : `Returns · ${returnsOverview.length}`}
+                </Button>
+              );
+            })}
+          </HStack>
+        </Box>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+          <VStack align="stretch" spacing={3}>
+            <HStack justify="space-between">
+              <Text fontWeight="900" fontSize="lg">
+                {salesLedgerMode === "sales" ? "Sales Ledger" : "Returns Ledger"}
+              </Text>
+              <Text color="surface.500" fontWeight="700" fontSize="sm">
+                {salesLedgerMode === "sales" ? salesOverview.length : returnsOverview.length} items
+              </Text>
+            </HStack>
+
+            {salesLedgerMode === "sales" && salesOverview.length === 0 ? (
+              <Text color="surface.500" fontSize="sm">
+                No sales match the current filters.
+              </Text>
+            ) : null}
+
+            {salesLedgerMode === "returns" && returnsOverview.length === 0 ? (
+              <Text color="surface.500" fontSize="sm">
+                No returns match the current filters.
+              </Text>
+            ) : null}
+
+            {salesLedgerMode === "sales"
+              ? salesOverview.map((sale) => (
+                  <Box
+                    key={sale.id}
+                    as="button"
+                    type="button"
+                    textAlign="left"
+                    bg={panelMutedSurface}
+                    borderRadius="18px"
+                    px={3}
+                    py={3}
+                    onClick={() => setSelectedAdminSaleId(sale.id)}
+                  >
+                    <HStack justify="space-between" align="start">
+                      <VStack align="start" spacing={1} minW={0}>
+                        <HStack spacing={2}>
+                          <Text fontWeight="900">
+                            {sale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
+                          </Text>
+                          <StatusPill
+                            label={sale.paymentMethod.toUpperCase()}
+                            tone={sale.paymentMethod === "cash" ? "green" : "blue"}
+                          />
+                        </HStack>
+                        <Text fontSize="sm" color="surface.600" fontWeight="700">
+                          {sale.store?.name ?? "Unknown store"}
+                        </Text>
+                        <Text fontSize="xs" color="surface.500">
+                          {formatShortDate(sale.createdAt)} · {formatSalesTime(sale.createdAt)} ·{" "}
+                          {sale.seller?.fullName ?? "Unknown seller"} · {sale.items.length} items
+                        </Text>
+                      </VStack>
+                      <VStack align="end" spacing={1}>
+                        <Text fontWeight="900">EUR {sale.totalAmount.toFixed(2)}</Text>
+                        <StatusPill
+                          label={sale.status === "deleted" ? "Deleted" : "Completed"}
+                          tone={sale.status === "deleted" ? "red" : "green"}
+                        />
+                      </VStack>
+                    </HStack>
+                  </Box>
+                ))
+              : returnsOverview.map((entry) => (
+                  <Box
+                    key={entry.id}
+                    as="button"
+                    type="button"
+                    textAlign="left"
+                    bg={panelMutedSurface}
+                    borderRadius="18px"
+                    px={3}
+                    py={3}
+                    onClick={() => setSelectedAdminReturnId(entry.id)}
+                  >
+                    <HStack justify="space-between" align="start">
+                      <VStack align="start" spacing={1} minW={0}>
+                        <HStack spacing={2}>
+                          <Text fontWeight="900">Return</Text>
+                          <StatusPill label="Return" tone="orange" />
+                        </HStack>
+                        <Text fontSize="sm" color="surface.600" fontWeight="700">
+                          {entry.store?.name ?? "Unknown store"}
+                        </Text>
+                        <Text fontSize="xs" color="surface.500">
+                          {formatShortDate(entry.createdAt)} · {formatSalesTime(entry.createdAt)} ·{" "}
+                          {entry.seller?.fullName ?? "Unknown seller"} · {entry.items.length} items
+                        </Text>
+                      </VStack>
+                      <VStack align="end" spacing={1}>
+                        <Text fontWeight="900">EUR {entry.totalAmount.toFixed(2)}</Text>
+                        <Text fontSize="xs" color="surface.500" fontWeight="700">
+                          Sale {entry.saleId.slice(0, 8)}
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </Box>
+                ))}
+          </VStack>
+        </Box>
+      </VStack>
+    );
+  };
 
   const renderStaffSection = () => (
     <VStack spacing={3} align="stretch">
