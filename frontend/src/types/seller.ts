@@ -145,3 +145,9 @@ export type SellerSalesResponse = {
   storeName: string;
   sales: SellerSale[];
 };
+
+export type CheckoutResponse = {
+  sale: Omit<SellerSale, "items">;
+  items: DraftItem[];
+  summary: DraftResponse["summary"];
+};

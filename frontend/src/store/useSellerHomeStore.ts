@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { config } from "../lib/config";
 import type {
   AuthSessionResponse,
+  CheckoutResponse,
   DraftResponse,
   InventoryHistoryResponse,
   SellerCatalogResponse,
@@ -56,6 +57,11 @@ type SellerHomeState = {
 };
 
 const TOKEN_KEY = "telegram-retail-token";
+let draftMutationVersion = 0;
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 function summarizeDraftItems(items: DraftResponse["items"]) {
   const subtotalAmount = Number(items.reduce((sum, item) => sum + item.base_price * item.quantity, 0).toFixed(2));
@@ -66,6 +72,23 @@ function summarizeDraftItems(items: DraftResponse["items"]) {
     discountAmount: Number((subtotalAmount - totalAmount).toFixed(2)),
     totalAmount,
     itemsCount: items.length,
+  };
+}
+
+function buildDraftState(
+  previousDraft: DraftResponse | null,
+  items: DraftResponse["items"],
+  storeId: string | null
+): DraftResponse {
+  return {
+    draft: previousDraft?.draft ?? {
+      id: "optimistic-draft",
+      seller_id: "",
+      store_id: storeId ?? "",
+      shift_id: "",
+    },
+    items,
+    summary: summarizeDraftItems(items),
   };
 }
 
@@ -347,30 +370,15 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
               line_total: product.price,
             },
           ];
-      const subtotalAmount = Number(nextItems.reduce((sum, item) => sum + item.base_price * item.quantity, 0).toFixed(2));
-      const totalAmount = Number(nextItems.reduce((sum, item) => sum + item.line_total, 0).toFixed(2));
-
       set({
         error: null,
-        draft: {
-          draft: previousDraft?.draft ?? {
-            id: "optimistic-draft",
-            seller_id: "",
-            store_id: get().storeId ?? "",
-            shift_id: "",
-          },
-          items: nextItems,
-          summary: {
-            subtotalAmount,
-            discountAmount: Number((subtotalAmount - totalAmount).toFixed(2)),
-            totalAmount,
-            itemsCount: nextItems.length,
-          },
-        },
+        draft: buildDraftState(previousDraft ?? null, nextItems, get().storeId),
       });
     } else {
       set({ error: null });
     }
+
+    const mutationVersion = ++draftMutationVersion;
 
     try {
       const draft = await apiPost<DraftResponse>(
@@ -382,12 +390,32 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         token
       );
 
-      set({ draft, mode: "live", error: null });
+      if (mutationVersion === draftMutationVersion) {
+        set({ draft, mode: "live", error: null });
+      } else {
+        const currentDraft = get().draft;
+        const outOfSyncItems = draft.items.filter((serverItem) => {
+          const localItem = currentDraft?.items.find((item) => item.product_id === serverItem.product_id);
+          return !localItem || localItem.quantity < serverItem.quantity;
+        });
+
+        void Promise.all(
+          outOfSyncItems.map((serverItem) => {
+            const localItem = currentDraft?.items.find((item) => item.product_id === serverItem.product_id);
+
+            return localItem
+              ? apiPatch(`/seller/draft/items/${serverItem.id}`, { quantity: localItem.quantity }, token).catch(() => null)
+              : apiDelete(`/seller/draft/items/${serverItem.id}`, token).catch(() => null);
+          })
+        );
+      }
     } catch (error) {
-      set({
-        draft: previousDraft,
-        error: error instanceof Error ? error.message : "Failed to add item to cart",
-      });
+      if (mutationVersion === draftMutationVersion) {
+        set({
+          draft: previousDraft,
+          error: error instanceof Error ? error.message : "Failed to add item to cart",
+        });
+      }
     }
   },
 
@@ -422,26 +450,25 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         };
       });
 
-      set({
-        error: null,
-        draft: {
-          ...previousDraft,
-          items: nextItems,
-          summary: summarizeDraftItems(nextItems),
-        },
-      });
+      set({ error: null, draft: buildDraftState(previousDraft, nextItems, get().storeId) });
     } else {
       set({ error: null });
     }
 
+    const mutationVersion = ++draftMutationVersion;
+
     try {
       const draft = await apiPatch<DraftResponse>(`/seller/draft/items/${itemId}`, updates, token);
-      set({ draft });
+      if (mutationVersion === draftMutationVersion) {
+        set({ draft });
+      }
     } catch (error) {
-      set({
-        draft: previousDraft,
-        error: error instanceof Error ? error.message : "Failed to update cart item",
-      });
+      if (mutationVersion === draftMutationVersion) {
+        set({
+          draft: previousDraft,
+          error: error instanceof Error ? error.message : "Failed to update cart item",
+        });
+      }
     }
   },
 
@@ -452,17 +479,34 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previousDraft = get().draft;
+
+    if (previousDraft) {
+      const nextItems = previousDraft.items.filter((item) => item.id !== itemId);
+      set({
+        error: null,
+        draft: buildDraftState(previousDraft, nextItems, get().storeId),
+      });
+    } else {
+      set({ error: null });
+    }
+
+    const mutationVersion = ++draftMutationVersion;
 
     try {
-      await apiDelete(`/seller/draft/items/${itemId}`, token);
-      set({ actionLoading: false });
-      await get().bootstrap();
+      if (isUuid(itemId)) {
+        const draft = await apiDelete<DraftResponse>(`/seller/draft/items/${itemId}`, token);
+        if (mutationVersion === draftMutationVersion) {
+          set({ draft });
+        }
+      }
     } catch (error) {
-      set({
-        actionLoading: false,
-        error: error instanceof Error ? error.message : "Failed to remove cart item",
-      });
+      if (mutationVersion === draftMutationVersion) {
+        set({
+          draft: previousDraft,
+          error: error instanceof Error ? error.message : "Failed to remove cart item",
+        });
+      }
     }
   },
 
@@ -474,17 +518,73 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previousDraft = get().draft;
+    const previousSales = get().sales;
+    const previousProducts = get().products;
+
+    if (!previousDraft || previousDraft.items.length === 0) {
+      set({ error: "Draft cart is empty" });
+      return;
+    }
+
+    const optimisticSale = {
+      id: `optimistic-sale-${Date.now()}`,
+      seller_id: previousDraft.draft.seller_id,
+      store_id: previousDraft.draft.store_id,
+      shift_id: previousDraft.draft.shift_id,
+      payment_method: paymentMethod,
+      status: "completed" as const,
+      subtotal_amount: previousDraft.summary.subtotalAmount,
+      discount_amount: previousDraft.summary.discountAmount,
+      total_amount: previousDraft.summary.totalAmount,
+      created_at: new Date().toISOString(),
+      items: previousDraft.items,
+    };
+
+    set({
+      error: null,
+      draft: buildDraftState(previousDraft, [], get().storeId),
+      sales: [optimisticSale, ...previousSales],
+      products: previousProducts.map((product) => {
+        const soldQuantity = previousDraft.items
+          .filter((item) => item.product_id === product.id)
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        return soldQuantity > 0
+          ? {
+              ...product,
+              stock: Math.max(0, product.stock - soldQuantity),
+            }
+          : product;
+      }),
+    });
+
+    const mutationVersion = ++draftMutationVersion;
 
     try {
-      await apiPost("/seller/checkout", { paymentMethod }, token);
-      set({ actionLoading: false });
-      await get().bootstrap();
+      const checkoutResult = await apiPost<CheckoutResponse>("/seller/checkout", { paymentMethod }, token);
+
+      if (mutationVersion === draftMutationVersion) {
+        const sale = {
+          ...checkoutResult.sale,
+          items: checkoutResult.items,
+        };
+
+        set({
+          draft: buildDraftState(previousDraft, [], get().storeId),
+          sales: [sale, ...get().sales.filter((item) => item.id !== optimisticSale.id)],
+          error: null,
+        });
+      }
     } catch (error) {
-      set({
-        actionLoading: false,
-        error: error instanceof Error ? error.message : "Checkout failed",
-      });
+      if (mutationVersion === draftMutationVersion) {
+        set({
+          draft: previousDraft,
+          sales: previousSales,
+          products: previousProducts,
+          error: error instanceof Error ? error.message : "Checkout failed",
+        });
+      }
     }
   },
 
