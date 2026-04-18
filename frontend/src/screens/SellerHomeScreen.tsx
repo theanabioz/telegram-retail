@@ -51,8 +51,8 @@ const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const innerSurface = "rgba(241,240,236,0.82)";
-const bottomDockReservedSpace = "calc(98px + env(safe-area-inset-bottom, 0px))";
-const bottomDockWithCartReservedSpace = "calc(150px + env(safe-area-inset-bottom, 0px))";
+const bottomDockReservedSpace = "calc(84px + env(safe-area-inset-bottom, 0px))";
+const bottomDockWithCartReservedSpace = "calc(132px + env(safe-area-inset-bottom, 0px))";
 
 export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScreenProps) {
   const {
@@ -615,42 +615,37 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       <HStack
         as="button"
         type="button"
-        w="calc(100% - 24px)"
+        w="100%"
         justify="space-between"
         align="center"
-        position="absolute"
-        left="12px"
-        right="12px"
-        bottom="calc(100% - 10px)"
-        bg="surface.900"
+        bg="rgba(29, 26, 24, 0.96)"
         color="white"
-        borderRadius="18px"
-        px={4}
-        py={2.5}
-        boxShadow="0 10px 24px rgba(24, 24, 24, 0.16)"
+        borderRadius="16px"
+        px={3.5}
+        py={2}
         onClick={() => setIsDraftCartOpen(true)}
       >
         <VStack align="start" spacing={0}>
-          <Text fontWeight="900" fontSize="lg" lineHeight="1.1">
+          <Text fontWeight="900" fontSize="md" lineHeight="1.1">
             Draft Cart
           </Text>
-          <Text fontSize="sm" color="rgba(255,255,255,0.72)" fontWeight="700" lineHeight="1.1">
+          <Text fontSize="xs" color="rgba(255,255,255,0.72)" fontWeight="700" lineHeight="1.1">
             {draft.summary.itemsCount} items
           </Text>
         </VStack>
         <HStack spacing={3}>
-          <Text fontSize="lg" fontWeight="900">
+          <Text fontSize="md" fontWeight="900">
             EUR {draft.summary.totalAmount.toFixed(2)}
           </Text>
           <Box
-            px={3}
-            h="34px"
-            borderRadius="14px"
+            px={2.5}
+            h="30px"
+            borderRadius="12px"
             bg="rgba(255,255,255,0.18)"
             display="grid"
             placeItems="center"
             fontWeight="900"
-            fontSize="sm"
+            fontSize="xs"
           >
             Open
           </Box>
@@ -1341,11 +1336,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       >
         <Container maxW="container.sm" px={0}>
           <Box position="relative" pb={2}>
-            {renderDraftCartBar()}
             <BottomNav
               activeTab={activeTab}
               onChange={setActiveTab}
-              hasAttachedBar={activeTab === "checkout" && !!draft?.items.length && !isDraftCartOpen}
+              topAccessory={renderDraftCartBar()}
             />
           </Box>
         </Container>
