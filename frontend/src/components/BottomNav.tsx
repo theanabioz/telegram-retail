@@ -1,10 +1,10 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 import {
-  HiOutlineArchiveBox,
-  HiOutlineClock,
-  HiOutlineCog6Tooth,
-  HiOutlineShoppingCart,
-  HiOutlineReceiptPercent,
+  HiArchiveBox,
+  HiClock,
+  HiCog6Tooth,
+  HiShoppingCart,
+  HiReceiptPercent,
 } from "react-icons/hi2";
 import type { IconType } from "react-icons";
 
@@ -17,11 +17,11 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { id: "checkout", label: "Checkout", icon: HiOutlineShoppingCart },
-  { id: "orders", label: "Orders", icon: HiOutlineReceiptPercent },
-  { id: "stock", label: "My Stock", icon: HiOutlineArchiveBox },
-  { id: "shift", label: "Shift", icon: HiOutlineClock },
-  { id: "options", label: "Options", icon: HiOutlineCog6Tooth },
+  { id: "checkout", label: "Checkout", icon: HiShoppingCart },
+  { id: "orders", label: "Orders", icon: HiReceiptPercent },
+  { id: "stock", label: "My Stock", icon: HiArchiveBox },
+  { id: "shift", label: "Shift", icon: HiClock },
+  { id: "options", label: "Options", icon: HiCog6Tooth },
 ];
 
 type BottomNavProps = {
@@ -38,11 +38,11 @@ export function BottomNav({ activeTab, onChange, hasAttachedBar = false }: Botto
       align="stretch"
       bg="rgba(255, 255, 255, 0.98)"
       border="1px solid rgba(232, 229, 223, 0.96)"
-      borderRadius="28px"
+      borderRadius="26px"
       px={2}
-      pt={hasAttachedBar ? 3.5 : 2.5}
-      pb="calc(10px + env(safe-area-inset-bottom, 0px))"
-      boxShadow="0 10px 24px rgba(20, 20, 20, 0.08)"
+      pt={hasAttachedBar ? 3 : 2}
+      pb="calc(8px + env(safe-area-inset-bottom, 0px))"
+      boxShadow="0 10px 22px rgba(20, 20, 20, 0.07)"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -63,23 +63,25 @@ export function BottomNav({ activeTab, onChange, hasAttachedBar = false }: Botto
             onClick={() => onChange(item.id)}
             border={0}
             px={1}
-            py={1}
-            minH="50px"
-            borderRadius="16px"
+            py={0.5}
+            minH="44px"
+            borderRadius="14px"
             bg="transparent"
-            transition="color 0.18s ease"
+            transition="all 0.18s ease"
           >
             <Box
-              w="26px"
-              h="26px"
+              w="30px"
+              h="30px"
+              borderRadius="12px"
               display="grid"
               placeItems="center"
               color={isActive ? "brand.500" : "surface.500"}
+              bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
             >
-              <Box as={Icon} boxSize={5.5} strokeWidth={1.8} />
+              <Box as={Icon} boxSize={5} />
             </Box>
             <Text
-              fontSize="10px"
+              fontSize="9px"
               letterSpacing="-0.02em"
               lineHeight="1"
               noOfLines={1}
