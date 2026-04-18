@@ -78,7 +78,7 @@ export function BottomNav({ activeTab, onChange, hasAttachedBar = false }: Botto
               color={isActive ? "brand.500" : "surface.500"}
               bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
             >
-              <Box as={Icon} boxSize={5} />
+              <Box as={Icon} boxSize={5.75} />
             </Box>
             <Text
               fontSize="9px"
