@@ -62,6 +62,20 @@ function formatMonthLabel(value: string) {
   return new Date(value).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
+function formatDateTimeLabel(value: string | null) {
+  if (!value) {
+    return "Ongoing";
+  }
+
+  return new Date(value).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
@@ -1353,31 +1367,21 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const renderShiftDetailsPage = () => (
     <VStack spacing={4} align="stretch">
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <HStack justify="space-between" align="start">
-          <VStack align="start" spacing={1}>
-            <Text fontWeight="900" fontSize="xl">
-              Shift Report
-            </Text>
-            <Text fontSize="sm" color="surface.500">
-              {shiftDetails?.store?.name ?? storeName}
-            </Text>
-          </VStack>
-          <Button
-            size="sm"
-            borderRadius="14px"
-            variant="outline"
-            borderColor="surface.200"
-            leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
-            onClick={() => {
-              clearShiftDetails();
-              setShiftView("history");
-            }}
-          >
-            Back
-          </Button>
-        </HStack>
-      </Box>
+      <HStack justify="flex-end">
+        <Button
+          size="sm"
+          borderRadius="14px"
+          variant="ghost"
+          color="surface.600"
+          leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+          onClick={() => {
+            clearShiftDetails();
+            setShiftView("history");
+          }}
+        >
+          Back
+        </Button>
+      </HStack>
 
       {shiftDetailsLoading ? (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
@@ -1396,125 +1400,160 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       {shiftDetails ? (
         <>
+          <Box bg={panelSurface} borderRadius={panelRadius} px={5} py={5} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={1}>
+                  <Text fontSize="11px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    Shift Report
+                  </Text>
+                  <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                    {shiftDetails.store?.name ?? storeName}
+                  </Text>
+                </VStack>
+                <Box
+                  px={3}
+                  py={1.5}
+                  borderRadius="999px"
+                  bg={shiftDetails.shift.status === "closed" ? "surface.100" : "rgba(74,132,244,0.10)"}
+                  color={shiftDetails.shift.status === "closed" ? "surface.600" : "brand.500"}
+                >
+                  <Text fontSize="xs" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    {shiftDetails.shift.status}
+                  </Text>
+                </Box>
+              </HStack>
+
+              <SimpleGrid columns={2} spacing={3}>
+                <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
+                  <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    Started
+                  </Text>
+                  <Text mt={1.5} fontWeight="800" fontSize="sm" lineHeight="1.35">
+                    {formatDateTimeLabel(shiftDetails.shift.started_at)}
+                  </Text>
+                </Box>
+                <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
+                  <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    Ended
+                  </Text>
+                  <Text mt={1.5} fontWeight="800" fontSize="sm" lineHeight="1.35">
+                    {formatDateTimeLabel(shiftDetails.shift.ended_at)}
+                  </Text>
+                </Box>
+              </SimpleGrid>
+            </VStack>
+          </Box>
+
           <SimpleGrid columns={2} spacing={3}>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                Started
-              </Text>
-              <Text fontWeight="900" mt={2}>
-                {new Date(shiftDetails.shift.started_at).toLocaleString()}
-              </Text>
-            </Box>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                Ended
-              </Text>
-              <Text fontWeight="900" mt={2}>
-                {shiftDetails.shift.ended_at ? new Date(shiftDetails.shift.ended_at).toLocaleString() : "Ongoing"}
-              </Text>
-            </Box>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                Time Worked
-              </Text>
-              <Text fontWeight="900" fontSize="xl" mt={2}>
-                {formatDuration(shiftDetails.summary.workedSeconds)}
-              </Text>
-            </Box>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                Break Time
-              </Text>
-              <Text fontWeight="900" fontSize="xl" mt={2}>
-                {formatDuration(shiftDetails.summary.pausedSeconds)}
-              </Text>
-            </Box>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                Completed Sales
-              </Text>
-              <Text fontWeight="900" fontSize="xl" mt={2}>
-                {shiftDetails.salesSummary.count}
-              </Text>
-            </Box>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                Revenue
-              </Text>
-              <Text fontWeight="900" fontSize="xl" mt={2}>
-                EUR {shiftDetails.salesSummary.totalRevenue.toFixed(2)}
-              </Text>
-            </Box>
+            {[
+              { label: "Time Worked", value: formatDuration(shiftDetails.summary.workedSeconds) },
+              { label: "Break Time", value: formatDuration(shiftDetails.summary.pausedSeconds) },
+              { label: "Completed Sales", value: String(shiftDetails.salesSummary.count) },
+              { label: "Revenue", value: `EUR ${shiftDetails.salesSummary.totalRevenue.toFixed(2)}` },
+            ].map((item) => (
+              <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+                <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                  {item.label}
+                </Text>
+                <Text mt={2} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                  {item.value}
+                </Text>
+              </Box>
+            ))}
           </SimpleGrid>
 
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" spacing={4}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
                   Payment Breakdown
                 </Text>
-                <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
-                  {shiftDetails.shift.status}
+                <Text fontSize="sm" color="surface.500" fontWeight="700">
+                  {shiftDetails.salesSummary.count} sales
                 </Text>
               </HStack>
 
               <SimpleGrid columns={2} spacing={3}>
-                <Box bg={innerSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase">
+                <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
+                  <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     Cash Sales
                   </Text>
-                  <Text fontWeight="900" mt={1}>
+                  <Text fontWeight="900" fontSize="2xl" mt={2} letterSpacing="-0.03em">
                     {shiftDetails.salesSummary.cashSalesCount}
                   </Text>
-                  <Text fontSize="sm" color="surface.500">
+                  <Text fontSize="sm" color="surface.500" fontWeight="700">
                     EUR {shiftDetails.salesSummary.cashRevenue.toFixed(2)}
                   </Text>
                 </Box>
-                <Box bg={innerSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase">
+                <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
+                  <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     Card Sales
                   </Text>
-                  <Text fontWeight="900" mt={1}>
+                  <Text fontWeight="900" fontSize="2xl" mt={2} letterSpacing="-0.03em">
                     {shiftDetails.salesSummary.cardSalesCount}
                   </Text>
-                  <Text fontSize="sm" color="surface.500">
+                  <Text fontSize="sm" color="surface.500" fontWeight="700">
                     EUR {shiftDetails.salesSummary.cardRevenue.toFixed(2)}
                   </Text>
                 </Box>
               </SimpleGrid>
 
-              <HStack justify="space-between">
-                <Text color="surface.500" fontWeight="700">
-                  Last Sale
-                </Text>
-                <Text fontWeight="800">
-                  {shiftDetails.salesSummary.lastSaleAt
-                    ? new Date(shiftDetails.salesSummary.lastSaleAt).toLocaleString()
-                    : "No sales"}
-                </Text>
-              </HStack>
+              <Box
+                bg="rgba(255,255,255,0.68)"
+                borderRadius="18px"
+                px={4}
+                py={3}
+                border="1px solid rgba(231,228,222,0.85)"
+              >
+                <HStack justify="space-between" align="center">
+                  <Text color="surface.500" fontWeight="700">
+                    Last Sale
+                  </Text>
+                  <Text fontWeight="800" fontSize="sm" textAlign="right">
+                    {shiftDetails.salesSummary.lastSaleAt
+                      ? formatDateTimeLabel(shiftDetails.salesSummary.lastSaleAt)
+                      : "No sales"}
+                  </Text>
+                </HStack>
+              </Box>
             </VStack>
           </Box>
 
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
-              <Text fontWeight="900" fontSize="lg">
-                Commission
-              </Text>
-              <HStack justify="space-between">
-                <Text color="surface.500" fontWeight="700">
-                  Rate
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="center">
+                <Text fontWeight="900" fontSize="lg">
+                  Commission
                 </Text>
-                <Text fontWeight="800">{shiftDetails.commission.ratePercent}%</Text>
+                <Box px={3} py={1.5} borderRadius="999px" bg="surface.100">
+                  <Text fontSize="xs" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    Future Ready
+                  </Text>
+                </Box>
               </HStack>
-              <HStack justify="space-between">
-                <Text color="surface.500" fontWeight="700">
-                  Amount
-                </Text>
-                <Text fontWeight="900">EUR {shiftDetails.commission.amount.toFixed(2)}</Text>
-              </HStack>
-              <Text fontSize="xs" color="surface.500">
-                Commission rules are prepared for future admin setup. Until a personal rate is assigned, this value stays at 0%.
+
+              <SimpleGrid columns={2} spacing={3}>
+                <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
+                  <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    Rate
+                  </Text>
+                  <Text mt={2} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                    {shiftDetails.commission.ratePercent}%
+                  </Text>
+                </Box>
+                <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
+                  <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                    Amount
+                  </Text>
+                  <Text mt={2} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
+                    EUR {shiftDetails.commission.amount.toFixed(2)}
+                  </Text>
+                </Box>
+              </SimpleGrid>
+
+              <Text fontSize="sm" color="surface.500" lineHeight="1.5">
+                Admins will later be able to assign a personal commission rate for each seller. Until then, commission stays at zero and this card remains informational.
               </Text>
             </VStack>
           </Box>
