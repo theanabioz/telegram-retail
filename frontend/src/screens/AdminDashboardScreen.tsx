@@ -14,7 +14,7 @@ import {
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
-import type { AdminDashboardResponse, AdminSalesOverviewResponse } from "../types/admin";
+import type { AdminDashboardResponse, AdminInventoryResponse, AdminSalesOverviewResponse } from "../types/admin";
 
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelMutedSurface = "rgba(241,240,236,0.82)";
@@ -62,6 +62,7 @@ type SalesLedgerMode = "sales" | "returns";
 type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
 type InventoryMode = "stock" | "products";
+type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -220,6 +221,9 @@ export function AdminDashboardScreen({
   const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("stock");
   const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
+  const [inventoryView, setInventoryView] = useState<InventorySnapshot>({ items: [], history: [] });
+  const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>({});
+  const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -315,6 +319,22 @@ export function AdminDashboardScreen({
   }, [salesOverview, returnsOverview]);
 
   useEffect(() => {
+    const snapshot = { items: inventoryItems, history: inventoryHistory };
+    const responseStoreId = inventoryItems[0]?.storeId ?? selectedInventoryStoreId;
+    const key = responseStoreId || "all";
+
+    setInventoryCache((current) => ({
+      ...current,
+      [key]: snapshot,
+    }));
+
+    if (!selectedInventoryStoreId || !responseStoreId || responseStoreId === selectedInventoryStoreId) {
+      setInventoryView(snapshot);
+      setInventorySoftRefreshing(false);
+    }
+  }, [inventoryItems, inventoryHistory]);
+
+  useEffect(() => {
     setInventoryEdits((current) => {
       const next = { ...current };
 
@@ -350,8 +370,15 @@ export function AdminDashboardScreen({
 
   useEffect(() => {
     if (selectedInventoryStoreId) {
-      void loadInventory(selectedInventoryStoreId);
+      const cachedSnapshot = inventoryCache[selectedInventoryStoreId];
+
+      if (cachedSnapshot) {
+        setInventoryView(cachedSnapshot);
+      }
+
+      setInventorySoftRefreshing(true);
       setSelectedInventoryItemId(null);
+      void loadInventory(selectedInventoryStoreId).finally(() => setInventorySoftRefreshing(false));
     }
   }, [loadInventory, selectedInventoryStoreId]);
 
@@ -945,18 +972,20 @@ export function AdminDashboardScreen({
   );
 
   const renderInventory = () => {
+    const visibleInventoryItems = inventoryView.items;
+    const visibleInventoryHistory = inventoryView.history;
     const selectedStore = inventoryStores.find((store) => store.id === selectedInventoryStoreId) ?? null;
     const selectedItem = selectedInventoryItemId
-      ? inventoryItems.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
+      ? visibleInventoryItems.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
       : null;
-    const totalUnits = inventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
-    const lowStockCount = inventoryItems.filter((item) => item.stockQuantity <= 10).length;
-    const disabledCount = inventoryItems.filter((item) => !item.isEnabled || !item.isProductActive).length;
+    const totalUnits = visibleInventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
+    const lowStockCount = visibleInventoryItems.filter((item) => item.stockQuantity <= 10).length;
+    const disabledCount = visibleInventoryItems.filter((item) => !item.isEnabled || !item.isProductActive).length;
     const inventorySummaryCards = [
       { label: "Total Units", value: String(totalUnits) },
       { label: "Low Stock", value: String(lowStockCount) },
       { label: "Disabled", value: String(disabledCount) },
-      { label: "Products", value: String(inventoryItems.length) },
+      { label: "Products", value: String(visibleInventoryItems.length) },
     ];
 
     if (selectedItem) {
@@ -1191,7 +1220,7 @@ export function AdminDashboardScreen({
                   {selectedStore?.name ?? "Select store"}
                 </Text>
               </VStack>
-              {loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
+              {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
             </HStack>
             <HStack spacing={2} overflowX="auto" pb={1}>
               {inventoryStores.map((store) => {
@@ -1232,7 +1261,7 @@ export function AdminDashboardScreen({
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
                   onClick={() => setInventoryMode(mode)}
                 >
-                  {mode === "stock" ? `Stock · ${inventoryItems.length}` : `Products · ${products.length}`}
+                  {mode === "stock" ? `Stock · ${visibleInventoryItems.length}` : `Products · ${products.length}`}
                 </Button>
               );
             })}
@@ -1247,11 +1276,11 @@ export function AdminDashboardScreen({
                   Stock List
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {inventoryItems.length} items
+                  {visibleInventoryItems.length} items
                 </Text>
               </HStack>
 
-              {inventoryItems.map((item) => (
+              {visibleInventoryItems.map((item) => (
                 <Box
                   key={item.storeProductId}
                   as="button"
@@ -1452,7 +1481,7 @@ export function AdminDashboardScreen({
           </VStack>
         )}
 
-        {inventoryMode === "stock" && inventoryHistory.length > 0 ? (
+        {inventoryMode === "stock" && visibleInventoryHistory.length > 0 ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
@@ -1460,11 +1489,11 @@ export function AdminDashboardScreen({
                   Recent Movements
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {inventoryHistory.length} entries
+                  {visibleInventoryHistory.length} entries
                 </Text>
               </HStack>
 
-              {inventoryHistory.slice(0, 6).map((entry) => (
+              {visibleInventoryHistory.slice(0, 6).map((entry) => (
                 <HStack key={entry.id} justify="space-between" align="start">
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{entry.product?.name ?? "Unknown product"}</Text>
@@ -2220,14 +2249,10 @@ export function AdminDashboardScreen({
             </HStack>
           </HStack>
 
-          {loading || loadingStores || loadingStaff || loadingInventory ? (
+          {loading || loadingStores || loadingStaff ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
               <Text fontWeight="800">
-                {activeTab === "team"
-                  ? "Loading team data..."
-                  : activeTab === "inventory"
-                    ? "Loading inventory..."
-                    : "Loading admin data..."}
+                {activeTab === "team" ? "Loading team data..." : "Loading admin data..."}
               </Text>
             </Box>
           ) : null}
