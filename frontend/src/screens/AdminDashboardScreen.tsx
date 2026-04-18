@@ -14,7 +14,7 @@ import {
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
-import type { AdminDashboardResponse } from "../types/admin";
+import type { AdminDashboardResponse, AdminSalesOverviewResponse } from "../types/admin";
 
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelMutedSurface = "rgba(241,240,236,0.82)";
@@ -60,6 +60,7 @@ type AdminDashboardScreenProps = {
 
 type SalesLedgerMode = "sales" | "returns";
 type SalesPeriod = "today" | "week" | "month" | "custom";
+type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -91,6 +92,24 @@ function getSalesPeriodRange(period: Exclude<SalesPeriod, "custom">) {
 
 function formatSalesTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function buildSalesCacheKey(input: {
+  period: SalesPeriod;
+  storeId: string;
+  sellerId: string;
+  saleStatus: "all" | "completed" | "deleted";
+  dateFrom: string;
+  dateTo: string;
+}) {
+  return [
+    input.period,
+    input.storeId || "all-stores",
+    input.sellerId || "all-sellers",
+    input.saleStatus,
+    input.dateFrom || "open-from",
+    input.dateTo || "open-to",
+  ].join("|");
 }
 
 function formatDateTime(value: string | null) {
@@ -183,6 +202,9 @@ export function AdminDashboardScreen({
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
   const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
   const [selectedAdminReturnId, setSelectedAdminReturnId] = useState<string | null>(null);
+  const [salesView, setSalesView] = useState<SalesLedgerSnapshot>({ sales: [], returns: [] });
+  const [salesCache, setSalesCache] = useState<Record<string, SalesLedgerSnapshot>>({});
+  const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -257,6 +279,25 @@ export function AdminDashboardScreen({
       setSelectedInventoryStoreId(firstActiveStore.id);
     }
   }, [inventoryStores, selectedInventoryStoreId]);
+
+  useEffect(() => {
+    const snapshot = { sales: salesOverview, returns: returnsOverview };
+    const key = buildSalesCacheKey({
+      period: salesPeriod,
+      storeId: salesStoreFilter,
+      sellerId: salesSellerFilter,
+      saleStatus: salesStatusFilter,
+      dateFrom: salesDateFrom,
+      dateTo: salesDateTo,
+    });
+
+    setSalesView(snapshot);
+    setSalesSoftRefreshing(false);
+    setSalesCache((current) => ({
+      ...current,
+      [key]: snapshot,
+    }));
+  }, [salesOverview, returnsOverview]);
 
   useEffect(() => {
     setInventoryEdits((current) => {
@@ -452,6 +493,22 @@ export function AdminDashboardScreen({
     const nextSaleStatus = overrides?.saleStatus ?? salesStatusFilter;
     const nextDateFrom = overrides?.dateFrom ?? salesDateFrom;
     const nextDateTo = overrides?.dateTo ?? salesDateTo;
+    const cachedSnapshot = salesCache[
+      buildSalesCacheKey({
+        period: salesPeriod,
+        storeId: nextStoreId,
+        sellerId: nextSellerId,
+        saleStatus: nextSaleStatus,
+        dateFrom: nextDateFrom,
+        dateTo: nextDateTo,
+      })
+    ];
+
+    if (cachedSnapshot) {
+      setSalesView(cachedSnapshot);
+    }
+
+    setSalesSoftRefreshing(true);
 
     const dateFrom = nextDateFrom ? new Date(`${nextDateFrom}T00:00:00`).toISOString() : undefined;
     const dateTo = nextDateTo ? new Date(`${nextDateTo}T23:59:59`).toISOString() : undefined;
@@ -464,6 +521,7 @@ export function AdminDashboardScreen({
       dateTo,
       limit: 20,
     });
+    setSalesSoftRefreshing(false);
   };
 
   const handleSelectSalesPeriod = async (period: SalesPeriod) => {
@@ -474,6 +532,21 @@ export function AdminDashboardScreen({
     }
 
     const range = getSalesPeriodRange(period);
+    const cachedSnapshot = salesCache[
+      buildSalesCacheKey({
+        period,
+        storeId: salesStoreFilter,
+        sellerId: salesSellerFilter,
+        saleStatus: salesStatusFilter,
+        dateFrom: range.from,
+        dateTo: range.to,
+      })
+    ];
+
+    if (cachedSnapshot) {
+      setSalesView(cachedSnapshot);
+    }
+
     setSalesDateFrom(range.from);
     setSalesDateTo(range.to);
     await handleApplySalesFilters({ dateFrom: range.from, dateTo: range.to });
@@ -1257,36 +1330,38 @@ export function AdminDashboardScreen({
   );
 
   const renderSales = () => {
+    const visibleSales = salesView.sales;
+    const visibleReturns = salesView.returns;
     const selectedSale = selectedAdminSaleId
-      ? salesOverview.find((sale) => sale.id === selectedAdminSaleId) ?? null
+      ? visibleSales.find((sale) => sale.id === selectedAdminSaleId) ?? null
       : null;
     const selectedReturn = selectedAdminReturnId
-      ? returnsOverview.find((entry) => entry.id === selectedAdminReturnId) ?? null
+      ? visibleReturns.find((entry) => entry.id === selectedAdminReturnId) ?? null
       : null;
-    const salesTotal = salesOverview.reduce((total, sale) => total + sale.totalAmount, 0);
-    const cashTotal = salesOverview
+    const salesTotal = visibleSales.reduce((total, sale) => total + sale.totalAmount, 0);
+    const cashTotal = visibleSales
       .filter((sale) => sale.paymentMethod === "cash")
       .reduce((total, sale) => total + sale.totalAmount, 0);
-    const cardTotal = salesOverview
+    const cardTotal = visibleSales
       .filter((sale) => sale.paymentMethod === "card")
       .reduce((total, sale) => total + sale.totalAmount, 0);
-    const returnsTotal = returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0);
-    const returnedUnits = returnsOverview.reduce(
+    const returnsTotal = visibleReturns.reduce((total, entry) => total + entry.totalAmount, 0);
+    const returnedUnits = visibleReturns.reduce(
       (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
       0
     );
     const salesSummaryCards = salesLedgerMode === "sales"
       ? [
           { label: "Revenue", value: `EUR ${salesTotal.toFixed(2)}` },
-          { label: "Sales", value: String(salesOverview.length) },
+          { label: "Sales", value: String(visibleSales.length) },
           { label: "Cash", value: `EUR ${cashTotal.toFixed(2)}` },
           { label: "Card", value: `EUR ${cardTotal.toFixed(2)}` },
         ]
       : [
           { label: "Returned", value: `EUR ${returnsTotal.toFixed(2)}` },
-          { label: "Returns", value: String(returnsOverview.length) },
+          { label: "Returns", value: String(visibleReturns.length) },
           { label: "Units", value: String(returnedUnits) },
-          { label: "Avg Return", value: `EUR ${(returnsTotal / Math.max(returnsOverview.length, 1)).toFixed(2)}` },
+          { label: "Avg Return", value: `EUR ${(returnsTotal / Math.max(visibleReturns.length, 1)).toFixed(2)}` },
         ];
 
     if (selectedSale) {
@@ -1610,7 +1685,7 @@ export function AdminDashboardScreen({
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
                   onClick={() => setSalesLedgerMode(mode)}
                 >
-                  {mode === "sales" ? `Sales · ${salesOverview.length}` : `Returns · ${returnsOverview.length}`}
+                  {mode === "sales" ? `Sales · ${visibleSales.length}` : `Returns · ${visibleReturns.length}`}
                 </Button>
               );
             })}
@@ -1623,25 +1698,29 @@ export function AdminDashboardScreen({
               <Text fontWeight="900" fontSize="lg">
                 {salesLedgerMode === "sales" ? "Sales Ledger" : "Returns Ledger"}
               </Text>
-              <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {salesLedgerMode === "sales" ? salesOverview.length : returnsOverview.length} items
-              </Text>
+              {salesSoftRefreshing || loadingSales ? (
+                <StatusPill label="Updating" tone="blue" />
+              ) : (
+                <Text color="surface.500" fontWeight="700" fontSize="sm">
+                  {salesLedgerMode === "sales" ? visibleSales.length : visibleReturns.length} items
+                </Text>
+              )}
             </HStack>
 
-            {salesLedgerMode === "sales" && salesOverview.length === 0 ? (
+            {salesLedgerMode === "sales" && visibleSales.length === 0 ? (
               <Text color="surface.500" fontSize="sm">
                 No sales match the current filters.
               </Text>
             ) : null}
 
-            {salesLedgerMode === "returns" && returnsOverview.length === 0 ? (
+            {salesLedgerMode === "returns" && visibleReturns.length === 0 ? (
               <Text color="surface.500" fontSize="sm">
                 No returns match the current filters.
               </Text>
             ) : null}
 
             {salesLedgerMode === "sales"
-              ? salesOverview.map((sale) => (
+              ? visibleSales.map((sale) => (
                   <Box
                     key={sale.id}
                     as="button"
@@ -1682,7 +1761,7 @@ export function AdminDashboardScreen({
                     </HStack>
                   </Box>
                 ))
-              : returnsOverview.map((entry) => (
+              : visibleReturns.map((entry) => (
                   <Box
                     key={entry.id}
                     as="button"
