@@ -1070,19 +1070,37 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </HStack>
 
           <SimpleGrid columns={2} spacing={4}>
-            <VStack align="start" spacing={1} bg="surface.50" p={4} borderRadius="22px" border="1px solid" borderColor="surface.100">
-              <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+            <VStack
+              align="start"
+              spacing={1}
+              bg="rgba(255,255,255,0.96)"
+              p={4}
+              borderRadius="22px"
+              border="1px solid"
+              borderColor="rgba(224,221,214,0.95)"
+              boxShadow="0 8px 22px rgba(20,20,20,0.04)"
+            >
+              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 Time Worked
               </Text>
-              <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.02em">
+              <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.03em">
                 {shiftSummary ? formatDuration(shiftSummary.workedSeconds) : "0h 0m"}
               </Text>
             </VStack>
-            <VStack align="start" spacing={1} bg="surface.50" p={4} borderRadius="22px" border="1px solid" borderColor="surface.100">
-              <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+            <VStack
+              align="start"
+              spacing={1}
+              bg="rgba(255,255,255,0.96)"
+              p={4}
+              borderRadius="22px"
+              border="1px solid"
+              borderColor="rgba(224,221,214,0.95)"
+              boxShadow="0 8px 22px rgba(20,20,20,0.04)"
+            >
+              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 On Break
               </Text>
-              <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.02em">
+              <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.03em">
                 {shiftSummary ? formatDuration(shiftSummary.pausedSeconds) : "0h 0m"}
               </Text>
             </VStack>
@@ -1113,15 +1131,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     flex="1"
                     h="52px"
                     borderRadius="18px"
-                    variant="outline"
+                    bg="surface.50"
+                    border="1px solid"
                     borderColor="surface.200"
-                    color="surface.700"
+                    color="surface.800"
                     fontWeight="800"
                     onClick={() => void pauseShift()}
                     isDisabled={shiftStatus !== "active"}
                     isLoading={actionLoading}
                     leftIcon={<Box as={HiOutlinePause} boxSize={5} />}
-                    _active={{ bg: "surface.50" }}
+                    _hover={{ bg: "white" }}
+                    _active={{ bg: "surface.100" }}
                   >
                     Pause
                   </Button>
@@ -1129,15 +1149,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     flex="1"
                     h="52px"
                     borderRadius="18px"
-                    variant="outline"
+                    bg="surface.50"
+                    border="1px solid"
                     borderColor="surface.200"
-                    color="surface.700"
+                    color="surface.800"
                     fontWeight="800"
                     onClick={() => void resumeShift()}
                     isDisabled={shiftStatus !== "paused"}
                     isLoading={actionLoading}
                     leftIcon={<Box as={HiOutlinePlay} boxSize={5} />}
-                    _active={{ bg: "surface.50" }}
+                    _hover={{ bg: "white" }}
+                    _active={{ bg: "surface.100" }}
                   >
                     Resume
                   </Button>
@@ -1146,8 +1168,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   w="full"
                   h="52px"
                   borderRadius="18px"
-                  variant="ghost"
+                  bg="rgba(248,113,113,0.08)"
                   color="red.500"
+                  border="1px solid"
+                  borderColor="rgba(248,113,113,0.12)"
                   fontWeight="800"
                   onClick={() => {
                     if (window.confirm("Stop this shift now?")) {
@@ -1157,6 +1181,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   isDisabled={shiftStatus === "inactive" || shiftStatus === "closed"}
                   isLoading={actionLoading}
                   leftIcon={<Box as={HiOutlinePower} boxSize={5} />}
+                  _hover={{ bg: "rgba(248,113,113,0.12)" }}
+                  _active={{ bg: "rgba(248,113,113,0.16)" }}
                 >
                   End Shift
                 </Button>
@@ -1189,13 +1215,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           {shiftHistory.map((entry) => (
             <Box
               key={entry.shift.id}
-              bg="rgba(255,255,255,0.6)"
+              bg="white"
               p={4}
               borderRadius="24px"
               border="1px solid"
-              borderColor="surface.100"
+              borderColor="rgba(224,221,214,0.9)"
+              boxShadow="0 8px 24px rgba(20,20,20,0.04)"
               transition="all 0.2s ease"
-              _active={{ bg: "white", transform: "scale(0.985)" }}
+              _active={{ bg: "rgba(255,255,255,0.98)", transform: "scale(0.985)" }}
             >
               <HStack justify="space-between" align="center">
                 <HStack spacing={4}>
