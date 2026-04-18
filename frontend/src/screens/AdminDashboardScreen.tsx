@@ -19,8 +19,7 @@ const panelSurface = "rgba(255,255,255,0.88)";
 const panelMutedSurface = "rgba(241,240,236,0.82)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
-const bottomNavOffset = "max(8px, env(safe-area-inset-bottom, 0px))";
-const bottomNavReservedSpace = "calc(82px + env(safe-area-inset-bottom, 0px))";
+const bottomNavReservedSpace = "calc(116px + env(safe-area-inset-bottom, 0px))";
 
 type AdminDashboardScreenProps = {
   operatorName: string;
@@ -1514,7 +1513,7 @@ export function AdminDashboardScreen({
         </VStack>
       </Container>
 
-      <Box position="fixed" left={0} right={0} bottom={bottomNavOffset} zIndex={30} px={3}>
+      <Box position="fixed" left={0} right={0} bottom={0} zIndex={30} px={3}>
         <Container maxW="container.sm" px={0}>
           <AdminNav activeTab={activeTab} onChange={setActiveTab} />
         </Container>

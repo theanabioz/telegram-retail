@@ -37,14 +37,14 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
       as="nav"
       justify="space-between"
       align="stretch"
-      bg="rgba(255, 255, 255, 0.9)"
-      backdropFilter="blur(22px)"
-      border="1px solid rgba(226, 224, 218, 0.86)"
-      borderRadius="24px"
-      px={1.5}
-      pt={1.5}
-      pb="calc(6px + env(safe-area-inset-bottom, 0px))"
-      boxShadow="0 16px 40px rgba(20, 20, 20, 0.1)"
+      bg="rgba(255, 255, 255, 0.96)"
+      backdropFilter="blur(28px)"
+      border="1px solid rgba(228, 226, 220, 0.9)"
+      borderRadius="30px"
+      px={2}
+      pt={2.5}
+      pb="calc(10px + env(safe-area-inset-bottom, 0px))"
+      boxShadow="0 22px 54px rgba(20, 20, 20, 0.12)"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -65,25 +65,25 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
             onClick={() => onChange(item.id)}
             border={0}
             px={1}
-            py={1}
-            minH="50px"
-            borderRadius="16px"
+            py={1.5}
+            minH="60px"
+            borderRadius="18px"
             bg="transparent"
             transition="all 0.18s ease"
           >
             <Box
-              w="34px"
-              h="34px"
-              borderRadius="14px"
+              w="42px"
+              h="42px"
+              borderRadius="18px"
               display="grid"
               placeItems="center"
-              bg={isActive ? "surface.900" : "transparent"}
-              color={isActive ? "white" : "surface.600"}
-              boxShadow={isActive ? "0 10px 24px rgba(22, 22, 22, 0.18)" : "none"}
+              bg={isActive ? "brand.500" : "rgba(241, 239, 234, 0.92)"}
+              color={isActive ? "white" : "surface.700"}
+              boxShadow={isActive ? "0 12px 28px rgba(82, 129, 236, 0.34)" : "none"}
             >
-              <Box as={Icon} boxSize={5.5} />
+              <Box as={Icon} boxSize={6} />
             </Box>
-            <Text fontSize="9px" letterSpacing="-0.02em" lineHeight="1" noOfLines={1}>
+            <Text fontSize="11px" letterSpacing="-0.02em" lineHeight="1" noOfLines={1}>
               {item.label}
             </Text>
           </VStack>
