@@ -71,6 +71,30 @@ export type ShiftHistoryResponse = {
   };
 };
 
+export type ShiftHistoryItem = ShiftHistoryResponse["items"][number];
+
+export type ShiftDetailsResponse = {
+  shift: NonNullable<ShiftStateResponse["activeShift"]>;
+  summary: ShiftSummary;
+  store: {
+    id: string;
+    name: string;
+  } | null;
+  salesSummary: {
+    count: number;
+    totalRevenue: number;
+    cashSalesCount: number;
+    cardSalesCount: number;
+    cashRevenue: number;
+    cardRevenue: number;
+    lastSaleAt: string | null;
+  };
+  commission: {
+    ratePercent: number;
+    amount: number;
+  };
+};
+
 export type DraftItem = {
   id: string;
   product_id: string;

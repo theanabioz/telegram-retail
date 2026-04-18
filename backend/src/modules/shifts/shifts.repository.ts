@@ -14,6 +14,19 @@ export type ShiftRecord = {
   updated_at: string;
 };
 
+export type ShiftStoreRecord = {
+  id: string;
+  name: string;
+};
+
+export type ShiftSaleRecord = {
+  id: string;
+  shift_id: string;
+  payment_method: "cash" | "card";
+  total_amount: number;
+  created_at: string;
+};
+
 export async function findOpenShiftByUserId(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("shifts")
@@ -62,6 +75,35 @@ export async function listShiftsByUserId(userId: string, limit: number, offset: 
   }
 
   return (data ?? []) as ShiftRecord[];
+}
+
+export async function findStoreById(storeId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("stores")
+    .select("id, name")
+    .eq("id", storeId)
+    .maybeSingle<ShiftStoreRecord>();
+
+  if (error) {
+    throw new HttpError(500, `Failed to load shift store: ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function listCompletedSalesByShift(shiftId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("sales")
+    .select("id, shift_id, payment_method, total_amount, created_at")
+    .eq("shift_id", shiftId)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new HttpError(500, `Failed to load shift sales: ${error.message}`);
+  }
+
+  return (data ?? []) as ShiftSaleRecord[];
 }
 
 export async function createShift(input: {

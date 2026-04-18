@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { asyncHandler } from "../lib/async-handler.js";
 import { requireAuth, requireRole } from "../middleware/auth.middleware.js";
-import { shiftHistoryQuerySchema, startShiftBodySchema } from "../modules/shifts/shift.schemas.js";
+import { shiftHistoryQuerySchema, shiftParamsSchema, startShiftBodySchema } from "../modules/shifts/shift.schemas.js";
 import {
+  getShiftDetails,
   getShiftHistory,
   getShiftState,
   pauseShift,
@@ -28,6 +29,15 @@ shiftsRouter.get(
   asyncHandler(async (req, res) => {
     const query = shiftHistoryQuerySchema.parse(req.query);
     const result = await getShiftHistory(req.auth!.app_user_id, query.limit, query.offset);
+    res.json(result);
+  })
+);
+
+shiftsRouter.get(
+  "/history/:shiftId",
+  asyncHandler(async (req, res) => {
+    const params = shiftParamsSchema.parse(req.params);
+    const result = await getShiftDetails(req.auth!.app_user_id, params.shiftId);
     res.json(result);
   })
 );

@@ -24,6 +24,7 @@ import {
 import {
   HiOutlineAdjustmentsHorizontal,
   HiOutlineArchiveBox,
+  HiOutlineChevronLeft,
   HiOutlineMagnifyingGlass,
   HiOutlinePause,
   HiOutlinePlay,
@@ -35,7 +36,7 @@ import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
-import type { DraftResponse } from "../types/seller";
+import type { DraftResponse, ShiftHistoryItem } from "../types/seller";
 
 type SellerHomeScreenProps = {
   currentPanel: "admin" | "seller";
@@ -46,6 +47,19 @@ function formatDuration(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   return `${hours}h ${minutes}m`;
+}
+
+function formatShiftDateRange(startedAt: string, endedAt: string | null) {
+  const start = new Date(startedAt);
+  const end = endedAt ? new Date(endedAt) : null;
+
+  return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${
+    end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Ongoing"
+  }`;
+}
+
+function formatMonthLabel(value: string) {
+  return new Date(value).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
 const panelSurface = "rgba(255,255,255,0.88)";
@@ -78,6 +92,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     shiftActive,
     shiftHistory,
     shiftHistoryPagination,
+    shiftDetails,
+    shiftDetailsLoading,
     shiftStatus,
     shiftSummary,
     startShift,
@@ -85,6 +101,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     storeName,
     updateDraftItem,
     writeoffProduct,
+    loadShiftDetails,
+    clearShiftDetails,
   } = useSellerHomeStore();
 
   const [activeTab, setActiveTab] = useState<SellerTab>("checkout");
@@ -94,7 +112,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [discountModalItemId, setDiscountModalItemId] = useState<string | null>(null);
   const [isDraftCartOpen, setIsDraftCartOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-  const [showFullShiftHistory, setShowFullShiftHistory] = useState(false);
+  const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
 
   useEffect(() => {
     void bootstrap();
@@ -130,9 +148,26 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     checkout: "Checkout",
     orders: "Orders",
     stock: "My Stock",
-    shift: "Shift",
+    shift: shiftView === "history" ? "Shift History" : shiftView === "detail" ? "Shift Details" : "Shift",
     options: "Settings",
   };
+
+  const groupedShiftHistory = useMemo(() => {
+    const groups: Array<{ label: string; items: ShiftHistoryItem[] }> = [];
+
+    for (const entry of shiftHistory) {
+      const label = formatMonthLabel(entry.shift.started_at);
+      const existingGroup = groups.find((group) => group.label === label);
+
+      if (existingGroup) {
+        existingGroup.items.push(entry);
+      } else {
+        groups.push({ label, items: [entry] });
+      }
+    }
+
+    return groups;
+  }, [shiftHistory]);
 
   const getStockDraft = (productId: string) =>
     stockEdits[productId] ?? {
@@ -1039,15 +1074,63 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     </VStack>
   );
 
-  const renderShiftTab = () => (
+  const renderShiftHistoryCard = (entry: ShiftHistoryItem) => (
+    <Box
+      key={entry.shift.id}
+      as="button"
+      type="button"
+      textAlign="left"
+      bg={panelSurface}
+      p={4}
+      borderRadius={panelRadius}
+      boxShadow={panelShadow}
+      transition="all 0.2s ease"
+      _active={{ bg: panelSurface, transform: "scale(0.985)" }}
+      onClick={() => {
+        setShiftView("detail");
+        void loadShiftDetails(entry.shift.id);
+      }}
+    >
+      <HStack justify="space-between" align="center">
+        <HStack spacing={4}>
+          <Box
+            w="44px"
+            h="44px"
+            borderRadius="14px"
+            bg="surface.50"
+            display="grid"
+            placeItems="center"
+            color="surface.400"
+          >
+            <Box as={LuClock3} boxSize={6} />
+          </Box>
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="850" fontSize="sm" color="surface.900">
+              {new Date(entry.shift.started_at).toLocaleDateString(undefined, {
+                day: "numeric",
+                month: "short",
+              })}
+            </Text>
+            <Text fontSize="xs" color="surface.500" fontWeight="600">
+              {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
+            </Text>
+          </VStack>
+        </HStack>
+        <VStack align="end" spacing={0}>
+          <Text fontWeight="900" fontSize="md" color="surface.900">
+            {formatDuration(entry.summary.workedSeconds)}
+          </Text>
+          <Text fontSize="10px" color="surface.400" fontWeight="700" textTransform="uppercase">
+            {entry.shift.status}
+          </Text>
+        </VStack>
+      </HStack>
+    </Box>
+  );
+
+  const renderShiftOverview = () => (
     <VStack spacing={5} align="stretch">
-      <Box 
-        bg={panelSurface}
-        borderRadius={panelRadius}
-        px={4}
-        py={4}
-        boxShadow={panelShadow}
-      >
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={6}>
           <HStack justify="space-between" align="center">
             <VStack align="start" spacing={0.5}>
@@ -1055,11 +1138,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 Shift Control
               </Text>
               <HStack spacing={1.5}>
-                <Box 
-                  w="8px" 
-                  h="8px" 
-                  borderRadius="full" 
-                  bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.300"} 
+                <Box
+                  w="8px"
+                  h="8px"
+                  borderRadius="full"
+                  bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.300"}
                 />
                 <Text color="surface.500" fontWeight="700" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em">
                   {shiftLabel}
@@ -1069,13 +1152,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </HStack>
 
           <SimpleGrid columns={2} spacing={4}>
-            <VStack
-              align="start"
-              spacing={1}
-              bg={innerSurface}
-              p={4}
-              borderRadius="18px"
-            >
+            <VStack align="start" spacing={1} bg={innerSurface} p={4} borderRadius="18px">
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 Time Worked
               </Text>
@@ -1083,13 +1160,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {shiftSummary ? formatDuration(shiftSummary.workedSeconds) : "0h 0m"}
               </Text>
             </VStack>
-            <VStack
-              align="start"
-              spacing={1}
-              bg={innerSurface}
-              p={4}
-              borderRadius="18px"
-            >
+            <VStack align="start" spacing={1} bg={innerSurface} p={4} borderRadius="18px">
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 On Break
               </Text>
@@ -1187,7 +1258,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       <VStack align="stretch" spacing={4} mt={2}>
         <HStack justify="space-between" px={1}>
-          <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">Shift History</Text>
+          <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
+            Shift History
+          </Text>
           <Button
             size="sm"
             borderRadius="12px"
@@ -1195,86 +1268,272 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             color="brand.500"
             fontWeight="800"
             onClick={() => {
-              const next = !showFullShiftHistory;
-              setShowFullShiftHistory(next);
-              void loadShiftHistory(next ? 50 : 7, 0);
+              setShiftView("history");
+              void loadShiftHistory(50, 0);
             }}
           >
-            {showFullShiftHistory ? "Show Recent" : "View All"}
+            View All
           </Button>
         </HStack>
 
         <VStack spacing={3} align="stretch">
-          {shiftHistory.map((entry) => (
-            <Box
-              key={entry.shift.id}
-              bg={panelSurface}
-              p={4}
-              borderRadius={panelRadius}
-              boxShadow={panelShadow}
-              transition="all 0.2s ease"
-              _active={{ bg: panelSurface, transform: "scale(0.985)" }}
-            >
-              <HStack justify="space-between" align="center">
-                <HStack spacing={4}>
-                  <Box 
-                    w="44px" 
-                    h="44px" 
-                    borderRadius="14px" 
-                    bg="surface.50" 
-                    display="grid" 
-                    placeItems="center"
-                    color="surface.400"
-                  >
-                    <Box as={LuClock3} boxSize={6} />
-                  </Box>
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="850" fontSize="sm" color="surface.900">
-                      {new Date(entry.shift.started_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                    </Text>
-                    <Text fontSize="xs" color="surface.500" fontWeight="600">
-                      {new Date(entry.shift.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                      {" - "} 
-                      {entry.shift.ended_at 
-                        ? new Date(entry.shift.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : "Ongoing"}
-                    </Text>
-                  </VStack>
-                </HStack>
-                <VStack align="end" spacing={0}>
-                  <Text fontWeight="900" fontSize="md" color="surface.900">
-                    {formatDuration(entry.summary.workedSeconds)}
-                  </Text>
-                  <Text fontSize="10px" color="surface.400" fontWeight="700" textTransform="uppercase">
-                    {entry.shift.status}
-                  </Text>
-                </VStack>
-              </HStack>
-            </Box>
-          ))}
+          {shiftHistory.slice(0, 7).map(renderShiftHistoryCard)}
 
-          {shiftHistory.length === 0 && (
+          {shiftHistory.length === 0 ? (
             <Text color="surface.400" fontSize="sm" textAlign="center" py={4} fontWeight="600">
               No shift records found
             </Text>
-          )}
-
-          {showFullShiftHistory && shiftHistoryPagination?.hasMore && (
-            <Button
-              borderRadius="18px"
-              variant="outline"
-              borderColor="surface.200"
-              fontWeight="800"
-              onClick={() => void loadShiftHistory(50, (shiftHistoryPagination.offset ?? 0) + 50)}
-              mt={2}
-            >
-              Load Older Shifts
-            </Button>
-          )}
+          ) : null}
         </VStack>
       </VStack>
     </VStack>
   );
+
+  const renderShiftHistoryPage = () => (
+    <VStack spacing={4} align="stretch">
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <HStack justify="space-between" align="center">
+          <VStack align="start" spacing={1}>
+            <Text fontWeight="900" fontSize="xl">
+              All Shifts
+            </Text>
+            <Text fontSize="sm" color="surface.500">
+              Browse full history grouped by month.
+            </Text>
+          </VStack>
+          <Button
+            size="sm"
+            borderRadius="14px"
+            variant="outline"
+            borderColor="surface.200"
+            leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+            onClick={() => {
+              setShiftView("overview");
+              clearShiftDetails();
+              void loadShiftHistory(7, 0);
+            }}
+          >
+            Back
+          </Button>
+        </HStack>
+      </Box>
+
+      {groupedShiftHistory.map((group) => (
+        <VStack key={group.label} spacing={3} align="stretch">
+          <Text px={1} fontSize="sm" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
+            {group.label}
+          </Text>
+          {group.items.map(renderShiftHistoryCard)}
+        </VStack>
+      ))}
+
+      {shiftHistory.length === 0 ? (
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
+          <Text fontWeight="800">No shift records found</Text>
+          <Text color="surface.500" fontSize="sm">
+            Closed shifts will appear here as you keep working.
+          </Text>
+        </Box>
+      ) : null}
+
+      {shiftHistoryPagination?.hasMore ? (
+        <Button
+          borderRadius="18px"
+          variant="outline"
+          borderColor="surface.200"
+          fontWeight="800"
+          onClick={() => void loadShiftHistory(50, (shiftHistoryPagination.offset ?? 0) + 50)}
+          mt={2}
+        >
+          Load Older Shifts
+        </Button>
+      ) : null}
+    </VStack>
+  );
+
+  const renderShiftDetailsPage = () => (
+    <VStack spacing={4} align="stretch">
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <HStack justify="space-between" align="start">
+          <VStack align="start" spacing={1}>
+            <Text fontWeight="900" fontSize="xl">
+              Shift Report
+            </Text>
+            <Text fontSize="sm" color="surface.500">
+              {shiftDetails?.store?.name ?? storeName}
+            </Text>
+          </VStack>
+          <Button
+            size="sm"
+            borderRadius="14px"
+            variant="outline"
+            borderColor="surface.200"
+            leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+            onClick={() => {
+              clearShiftDetails();
+              setShiftView("history");
+            }}
+          >
+            Back
+          </Button>
+        </HStack>
+      </Box>
+
+      {shiftDetailsLoading ? (
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
+          <Text fontWeight="800">Loading shift details...</Text>
+        </Box>
+      ) : null}
+
+      {!shiftDetailsLoading && !shiftDetails ? (
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
+          <Text fontWeight="800">Shift details unavailable</Text>
+          <Text color="surface.500" fontSize="sm">
+            Try opening the shift again from history.
+          </Text>
+        </Box>
+      ) : null}
+
+      {shiftDetails ? (
+        <>
+          <SimpleGrid columns={2} spacing={3}>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                Started
+              </Text>
+              <Text fontWeight="900" mt={2}>
+                {new Date(shiftDetails.shift.started_at).toLocaleString()}
+              </Text>
+            </Box>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                Ended
+              </Text>
+              <Text fontWeight="900" mt={2}>
+                {shiftDetails.shift.ended_at ? new Date(shiftDetails.shift.ended_at).toLocaleString() : "Ongoing"}
+              </Text>
+            </Box>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                Time Worked
+              </Text>
+              <Text fontWeight="900" fontSize="xl" mt={2}>
+                {formatDuration(shiftDetails.summary.workedSeconds)}
+              </Text>
+            </Box>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                Break Time
+              </Text>
+              <Text fontWeight="900" fontSize="xl" mt={2}>
+                {formatDuration(shiftDetails.summary.pausedSeconds)}
+              </Text>
+            </Box>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                Completed Sales
+              </Text>
+              <Text fontWeight="900" fontSize="xl" mt={2}>
+                {shiftDetails.salesSummary.count}
+              </Text>
+            </Box>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                Revenue
+              </Text>
+              <Text fontWeight="900" fontSize="xl" mt={2}>
+                EUR {shiftDetails.salesSummary.totalRevenue.toFixed(2)}
+              </Text>
+            </Box>
+          </SimpleGrid>
+
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Payment Breakdown
+                </Text>
+                <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
+                  {shiftDetails.shift.status}
+                </Text>
+              </HStack>
+
+              <SimpleGrid columns={2} spacing={3}>
+                <Box bg={innerSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase">
+                    Cash Sales
+                  </Text>
+                  <Text fontWeight="900" mt={1}>
+                    {shiftDetails.salesSummary.cashSalesCount}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    EUR {shiftDetails.salesSummary.cashRevenue.toFixed(2)}
+                  </Text>
+                </Box>
+                <Box bg={innerSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase">
+                    Card Sales
+                  </Text>
+                  <Text fontWeight="900" mt={1}>
+                    {shiftDetails.salesSummary.cardSalesCount}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    EUR {shiftDetails.salesSummary.cardRevenue.toFixed(2)}
+                  </Text>
+                </Box>
+              </SimpleGrid>
+
+              <HStack justify="space-between">
+                <Text color="surface.500" fontWeight="700">
+                  Last Sale
+                </Text>
+                <Text fontWeight="800">
+                  {shiftDetails.salesSummary.lastSaleAt
+                    ? new Date(shiftDetails.salesSummary.lastSaleAt).toLocaleString()
+                    : "No sales"}
+                </Text>
+              </HStack>
+            </VStack>
+          </Box>
+
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <Text fontWeight="900" fontSize="lg">
+                Commission
+              </Text>
+              <HStack justify="space-between">
+                <Text color="surface.500" fontWeight="700">
+                  Rate
+                </Text>
+                <Text fontWeight="800">{shiftDetails.commission.ratePercent}%</Text>
+              </HStack>
+              <HStack justify="space-between">
+                <Text color="surface.500" fontWeight="700">
+                  Amount
+                </Text>
+                <Text fontWeight="900">EUR {shiftDetails.commission.amount.toFixed(2)}</Text>
+              </HStack>
+              <Text fontSize="xs" color="surface.500">
+                Commission rules are prepared for future admin setup. Until a personal rate is assigned, this value stays at 0%.
+              </Text>
+            </VStack>
+          </Box>
+        </>
+      ) : null}
+    </VStack>
+  );
+
+  const renderShiftTab = () => {
+    if (shiftView === "history") {
+      return renderShiftHistoryPage();
+    }
+
+    if (shiftView === "detail") {
+      return renderShiftDetailsPage();
+    }
+
+    return renderShiftOverview();
+  };
 
   const renderOptionsTab = () => (
     <VStack spacing={4} align="stretch">

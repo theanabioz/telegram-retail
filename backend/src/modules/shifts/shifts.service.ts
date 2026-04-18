@@ -2,7 +2,10 @@ import { HttpError } from "../../lib/http-error.js";
 import { findCurrentAssignment, findUserById } from "../users/users.repository.js";
 import {
   createShift,
+  findShiftById,
+  findStoreById,
   findOpenShiftByUserId,
+  listCompletedSalesByShift,
   listShiftsByUserId,
   updateShift,
   type ShiftRecord,
@@ -66,6 +69,61 @@ export async function getShiftHistory(userId: string, limit: number, offset: num
       limit,
       offset,
       hasMore: shifts.length === limit,
+    },
+  };
+}
+
+export async function getShiftDetails(userId: string, shiftId: string) {
+  const shift = await findShiftById(shiftId);
+
+  if (!shift || shift.user_id !== userId) {
+    throw new HttpError(404, "Shift not found");
+  }
+
+  const [store, completedSales] = await Promise.all([
+    findStoreById(shift.store_id),
+    listCompletedSalesByShift(shift.id),
+  ]);
+
+  const totalRevenue = Number(
+    completedSales.reduce((sum, sale) => sum + Number(sale.total_amount), 0).toFixed(2)
+  );
+  const cashSalesCount = completedSales.filter((sale) => sale.payment_method === "cash").length;
+  const cardSalesCount = completedSales.filter((sale) => sale.payment_method === "card").length;
+  const cashRevenue = Number(
+    completedSales
+      .filter((sale) => sale.payment_method === "cash")
+      .reduce((sum, sale) => sum + Number(sale.total_amount), 0)
+      .toFixed(2)
+  );
+  const cardRevenue = Number(
+    completedSales
+      .filter((sale) => sale.payment_method === "card")
+      .reduce((sum, sale) => sum + Number(sale.total_amount), 0)
+      .toFixed(2)
+  );
+
+  return {
+    shift,
+    summary: buildShiftSummary(shift),
+    store: store
+      ? {
+          id: store.id,
+          name: store.name,
+        }
+      : null,
+    salesSummary: {
+      count: completedSales.length,
+      totalRevenue,
+      cashSalesCount,
+      cardSalesCount,
+      cashRevenue,
+      cardRevenue,
+      lastSaleAt: completedSales[0]?.created_at ?? null,
+    },
+    commission: {
+      ratePercent: 0,
+      amount: 0,
     },
   };
 }

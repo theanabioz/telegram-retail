@@ -10,6 +10,7 @@ import type {
   InventoryHistoryResponse,
   SellerCatalogResponse,
   SellerSalesResponse,
+  ShiftDetailsResponse,
   ShiftHistoryResponse,
   ShiftSummary,
   ShiftStateResponse,
@@ -33,6 +34,8 @@ type SellerHomeState = {
   inventoryHistory: InventoryHistoryResponse["items"];
   shiftHistory: ShiftHistoryResponse["items"];
   shiftHistoryPagination: ShiftHistoryResponse["pagination"] | null;
+  shiftDetails: ShiftDetailsResponse | null;
+  shiftDetailsLoading: boolean;
   token: string | null;
   bootstrap: () => Promise<void>;
   startShift: () => Promise<void>;
@@ -55,6 +58,8 @@ type SellerHomeState = {
   restockProduct: (productId: string, quantity: number, reason: string) => Promise<void>;
   writeoffProduct: (productId: string, quantity: number, reason: string) => Promise<void>;
   loadShiftHistory: (limit?: number, offset?: number) => Promise<void>;
+  loadShiftDetails: (shiftId: string) => Promise<void>;
+  clearShiftDetails: () => void;
 };
 
 const TOKEN_KEY = "telegram-retail-token";
@@ -151,6 +156,8 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   inventoryHistory: [],
   shiftHistory: [],
   shiftHistoryPagination: null,
+  shiftDetails: null,
+  shiftDetailsLoading: false,
   token: getStoredToken(),
 
   bootstrap: async () => {
@@ -202,6 +209,8 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         shiftSummary: shiftState.summary,
         shiftHistory: shiftHistory.items,
         shiftHistoryPagination: shiftHistory.pagination,
+        shiftDetails: null,
+        shiftDetailsLoading: false,
       });
 
       if (!shiftState.activeShift || shiftState.activeShift.status !== "active") {
@@ -252,6 +261,8 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         inventoryHistory: [],
         shiftStatus: "inactive",
         shiftSummary: null,
+        shiftDetails: null,
+        shiftDetailsLoading: false,
       });
     }
   },
@@ -758,5 +769,36 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         error: error instanceof Error ? error.message : "Failed to load shift history",
       });
     }
+  },
+
+  loadShiftDetails: async (shiftId: string) => {
+    const token = resolveCurrentToken(get().token);
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ shiftDetailsLoading: true, shiftDetails: null, error: null });
+
+    try {
+      const shiftDetails = await apiGet<ShiftDetailsResponse>(`/shifts/history/${shiftId}`, token);
+      set({
+        shiftDetails,
+        shiftDetailsLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      triggerNotification("error");
+      set({
+        shiftDetails: null,
+        shiftDetailsLoading: false,
+        error: error instanceof Error ? error.message : "Failed to load shift details",
+      });
+    }
+  },
+
+  clearShiftDetails: () => {
+    set({ shiftDetails: null, shiftDetailsLoading: false });
   },
 }));
