@@ -31,6 +31,7 @@ import {
   HiOutlineTrash,
   HiOutlineWifi,
 } from "react-icons/hi2";
+import { LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
@@ -304,30 +305,31 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         motionPreset="slideInBottom"
         isCentered={false}
       >
-        <ModalOverlay bg="rgba(23, 22, 20, 0.24)" backdropFilter="blur(3px)" />
+        <ModalOverlay bg="rgba(14, 12, 10, 0.3)" backdropFilter="blur(8px)" />
         <ModalContent
           mx={3}
           mt="auto"
-          mb={3}
-          borderRadius="30px"
-          bg="rgba(255,255,255,0.96)"
-          boxShadow="0 28px 80px rgba(17,17,17,0.22)"
+          mb={4}
+          borderRadius="32px"
+          bg="white"
+          boxShadow="0 28px 80px rgba(0,0,0,0.22)"
           overflow="hidden"
+          pb={2}
         >
-          <ModalHeader px={4} pt={4} pb={2}>
+          <ModalHeader px={6} pt={6} pb={2}>
             <VStack align="start" spacing={1}>
-              <Text fontSize="xs" color="surface.500" letterSpacing="0.08em" textTransform="uppercase">
-                Discount
+              <Text fontSize="11px" color="brand.500" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase">
+                Adjustment
               </Text>
-              <Text fontSize="lg" fontWeight="900" noOfLines={1}>
+              <Text fontSize="xl" fontWeight="900" noOfLines={1} letterSpacing="-0.01em">
                 {discountModalItem.product_name_snapshot}
               </Text>
             </VStack>
           </ModalHeader>
-          <ModalCloseButton top={4} right={4} borderRadius="14px" />
-          <ModalBody px={4} pb={4}>
-            <VStack align="stretch" spacing={4}>
-              <HStack spacing={2} bg="rgba(241,240,236,0.78)" borderRadius="18px" p={1}>
+          <ModalCloseButton top={6} right={6} borderRadius="full" bg="surface.50" />
+          <ModalBody px={6} pb={6}>
+            <VStack align="stretch" spacing={5}>
+              <HStack spacing={2} bg="surface.50" borderRadius="20px" p={1.5}>
                 {(["amount", "percent"] as const).map((type) => {
                   const isSelected = discountDraft.type === type;
 
@@ -335,95 +337,108 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     <Button
                       key={type}
                       flex="1"
-                      borderRadius="15px"
-                      bg={isSelected ? "brand.500" : "transparent"}
-                      color={isSelected ? "white" : "surface.700"}
-                      _hover={{ bg: isSelected ? "brand.600" : "rgba(255,255,255,0.74)" }}
+                      h="44px"
+                      borderRadius="16px"
+                      bg={isSelected ? "white" : "transparent"}
+                      color={isSelected ? "brand.500" : "surface.500"}
+                      boxShadow={isSelected ? "0 4px 12px rgba(0,0,0,0.06)" : "none"}
+                      _hover={{ bg: isSelected ? "white" : "rgba(255,255,255,0.4)" }}
                       onClick={() => updateDiscountDraft(discountModalItem.id, { type })}
+                      fontSize="sm"
+                      fontWeight="800"
                     >
-                      {type === "amount" ? "EUR" : "%"}
+                      {type === "amount" ? "Fixed EUR" : "Percent %"}
                     </Button>
                   );
                 })}
               </HStack>
 
-              <Box bg="rgba(241,240,236,0.72)" borderRadius="22px" px={4} py={3}>
-                <HStack justify="space-between" align="end">
-                  <VStack align="start" spacing={1}>
-                    <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
-                      Value
+              <Box bg="surface.900" borderRadius="24px" px={5} py={4} color="white">
+                <HStack justify="space-between" align="center">
+                  <VStack align="start" spacing={0}>
+                    <Text fontSize="10px" color="rgba(255,255,255,0.6)" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+                      Discount Value
                     </Text>
-                    <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.04em">
+                    <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.02em">
                       {discountDraft.value || "0"}
-                      <Box as="span" fontSize="lg" color="surface.500" ml={2}>
+                      <Box as="span" fontSize="lg" color="rgba(255,255,255,0.4)" ml={2} fontWeight="700">
                         {discountDraft.type === "amount" ? "EUR" : "%"}
                       </Box>
                     </Text>
                   </VStack>
-                  <VStack align="end" spacing={1}>
-                    <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
-                      New price
+                  <VStack align="end" spacing={0}>
+                    <Text fontSize="10px" color="rgba(255,255,255,0.6)" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+                      Final Price
                     </Text>
-                    <Text fontWeight="900">EUR {previewFinalPrice.toFixed(2)}</Text>
+                    <Text fontSize="xl" fontWeight="900">EUR {previewFinalPrice.toFixed(2)}</Text>
                   </VStack>
                 </HStack>
               </Box>
 
-              <SimpleGrid columns={3} spacing={2}>
+              <SimpleGrid columns={3} spacing={3}>
                 {keypad.map((key) => (
                   <Button
                     key={key}
-                    h="56px"
-                    borderRadius="18px"
-                    bg={key === "backspace" ? "rgba(241,240,236,0.9)" : "white"}
+                    h="64px"
+                    borderRadius="20px"
+                    bg={key === "backspace" ? "surface.50" : "white"}
                     color="surface.900"
-                    fontSize={key === "backspace" ? "lg" : "xl"}
-                    fontWeight="900"
-                    boxShadow="inset 0 0 0 1px rgba(226,224,218,0.8)"
-                    _hover={{ bg: "rgba(245,244,241,0.96)" }}
+                    fontSize={key === "backspace" ? "md" : "2xl"}
+                    fontWeight="800"
+                    border="1px solid"
+                    borderColor="surface.100"
+                    _hover={{ bg: "surface.50" }}
+                    _active={{ transform: "scale(0.92)", bg: "surface.100" }}
                     onClick={() => pressDiscountKey(discountModalItem, key)}
-                    aria-label={key === "backspace" ? "Discount backspace" : `Discount digit ${key}`}
                   >
                     {key === "backspace" ? "Del" : key}
                   </Button>
                 ))}
               </SimpleGrid>
 
-              <HStack spacing={2}>
-                <Button
-                  flex="1"
-                  h="52px"
-                  borderRadius="17px"
-                  variant="outline"
-                  borderColor="var(--app-border)"
-                  onClick={() => pressDiscountKey(discountModalItem, "clear")}
-                >
-                  Clear input
-                </Button>
-                <Button
-                  flex="1"
-                  h="52px"
-                  borderRadius="17px"
-                  bg="surface.900"
-                  color="white"
-                  _hover={{ bg: "surface.800" }}
-                  onClick={() => applyDiscount(discountModalItem)}
-                >
-                  Apply
-                </Button>
-              </HStack>
+              <VStack spacing={3}>
+                <HStack spacing={3} w="full">
+                  <Button
+                    flex="1"
+                    h="56px"
+                    borderRadius="20px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    fontWeight="800"
+                    onClick={() => pressDiscountKey(discountModalItem, "clear")}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    flex="1.5"
+                    h="56px"
+                    borderRadius="20px"
+                    bg="brand.500"
+                    color="white"
+                    fontWeight="800"
+                    _hover={{ bg: "brand.600" }}
+                    _active={{ transform: "scale(0.96)" }}
+                    onClick={() => applyDiscount(discountModalItem)}
+                  >
+                    Apply Discount
+                  </Button>
+                </HStack>
 
-              {discountModalItem.discount_type ? (
-                <Button
-                  h="46px"
-                  borderRadius="16px"
-                  variant="ghost"
-                  color="red.500"
-                  onClick={() => clearDiscount(discountModalItem)}
-                >
-                  Remove discount
-                </Button>
-              ) : null}
+                {discountModalItem.discount_type ? (
+                  <Button
+                    w="full"
+                    h="44px"
+                    borderRadius="16px"
+                    variant="ghost"
+                    color="red.500"
+                    fontSize="sm"
+                    fontWeight="700"
+                    onClick={() => clearDiscount(discountModalItem)}
+                  >
+                    Remove Discount
+                  </Button>
+                ) : null}
+              </VStack>
             </VStack>
           </ModalBody>
         </ModalContent>
@@ -437,128 +452,167 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     return (
-      <VStack align="stretch" spacing={3}>
-        <HStack justify="space-between" pr={9}>
-          <Text fontWeight="900" fontSize="lg">
-            Draft Cart
-          </Text>
-          <Text color="surface.500" fontWeight="700" fontSize="sm">
-            {draft.summary.itemsCount} items
-          </Text>
-        </HStack>
+      <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" spacing={3}>
+          {draft.items.map((item) => (
+            <Box
+              key={item.id}
+              bg="surface.50"
+              borderRadius="24px"
+              p={4}
+              border="1px solid"
+              borderColor="surface.100"
+            >
+              <VStack align="stretch" spacing={3}>
+                <HStack justify="space-between" align="start">
+                  <VStack align="start" spacing={0.5}>
+                    <Text fontWeight="800" fontSize="md" color="surface.900" noOfLines={2}>
+                      {item.product_name_snapshot}
+                    </Text>
+                    <HStack spacing={2}>
+                      <Text fontSize="sm" color="surface.500" fontWeight="600">
+                        EUR {item.final_price.toFixed(2)}
+                      </Text>
+                      {item.discount_type && (
+                        <Box bg="green.50" px={2} py={0.5} borderRadius="6px">
+                          <Text fontSize="10px" color="green.600" fontWeight="800" textTransform="uppercase">
+                            -{item.discount_type === "percent" ? `${item.discount_value}%` : `EUR ${item.discount_value}`}
+                          </Text>
+                        </Box>
+                      )}
+                    </HStack>
+                  </VStack>
+                  <Text fontWeight="900" fontSize="lg" color="surface.900">
+                    EUR {item.line_total.toFixed(2)}
+                  </Text>
+                </HStack>
 
-        {draft.items.map((item) => (
-          <VStack key={item.id} align="stretch" spacing={3}>
-            <HStack justify="space-between" align="start">
-              <VStack align="start" spacing={0}>
-                <Text fontWeight="800">{item.product_name_snapshot}</Text>
-                <Text fontSize="sm" color="surface.500">
-                  Qty {item.quantity} · EUR {item.final_price.toFixed(2)}
-                  {item.discount_type ? " after discount" : ""}
-                </Text>
+                <HStack justify="space-between" align="center">
+                  <HStack 
+                    bg="white" 
+                    borderRadius="16px" 
+                    p={1} 
+                    border="1px solid" 
+                    borderColor="surface.200"
+                    spacing={0}
+                  >
+                    <IconButton
+                      aria-label="Decrease quantity"
+                      icon={<Text fontSize="xl">−</Text>}
+                      size="sm"
+                      w="36px"
+                      h="36px"
+                      borderRadius="12px"
+                      variant="ghost"
+                      onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
+                      isDisabled={item.quantity <= 1 || actionLoading}
+                    />
+                    <Text w="44px" textAlign="center" fontWeight="800" fontSize="md">
+                      {item.quantity}
+                    </Text>
+                    <IconButton
+                      aria-label="Increase quantity"
+                      icon={<Text fontSize="xl">+</Text>}
+                      size="sm"
+                      w="36px"
+                      h="36px"
+                      borderRadius="12px"
+                      variant="ghost"
+                      onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
+                      isLoading={actionLoading}
+                    />
+                  </HStack>
+
+                  <HStack spacing={2}>
+                    <Button
+                      size="sm"
+                      h="38px"
+                      borderRadius="14px"
+                      variant="outline"
+                      borderColor="surface.200"
+                      color="surface.600"
+                      fontSize="xs"
+                      fontWeight="700"
+                      onClick={() => openDiscountModal(item)}
+                      leftIcon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={3.5} />}
+                    >
+                      {item.discount_type ? "Edit Discount" : "Add Discount"}
+                    </Button>
+                    <IconButton
+                      aria-label="Remove item"
+                      icon={<Box as={HiOutlineTrash} boxSize={4} />}
+                      size="sm"
+                      h="38px"
+                      w="38px"
+                      borderRadius="14px"
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={() => void removeDraftItem(item.id)}
+                      isLoading={actionLoading}
+                    />
+                  </HStack>
+                </HStack>
               </VStack>
-              <Text fontWeight="800">EUR {item.line_total.toFixed(2)}</Text>
-            </HStack>
+            </Box>
+          ))}
+        </VStack>
 
-            <HStack justify="space-between" spacing={3}>
-              <Button
-                size="sm"
-                borderRadius="14px"
-                variant="ghost"
-                color="surface.500"
-                px={0}
-                onClick={() => openDiscountModal(item)}
-              >
-                {item.discount_type
-                  ? `Discount ${item.discount_type === "amount" ? "EUR" : "%"} ${item.discount_value}`
-                  : "Add discount"}
-              </Button>
-              {item.discount_type ? (
-                <Button
-                  size="sm"
-                  borderRadius="14px"
-                  variant="ghost"
-                  color="surface.500"
-                  onClick={() => clearDiscount(item)}
-                >
-                  Clear
-                </Button>
-              ) : null}
+        <Box 
+          bg="surface.900" 
+          borderRadius="28px" 
+          p={5} 
+          color="white" 
+          boxShadow="0 10px 30px rgba(0,0,0,0.1)"
+          mt={2}
+        >
+          <VStack align="stretch" spacing={4}>
+            <HStack justify="space-between" opacity={0.8}>
+              <Text fontWeight="700" fontSize="sm">Items Count</Text>
+              <Text fontWeight="800" fontSize="sm">{draft.summary.itemsCount}</Text>
             </HStack>
-
-            <HStack spacing={2}>
+            <HStack justify="space-between">
+              <Text fontWeight="700" fontSize="lg">Total Amount</Text>
+              <Text fontSize="2xl" fontWeight="900" letterSpacing="-0.02em">
+                EUR {draft.summary.totalAmount.toFixed(2)}
+              </Text>
+            </HStack>
+            
+            <HStack spacing={3} pt={2}>
               <Button
-                size="sm"
-                borderRadius="14px"
-                bg="red.500"
+                flex="1"
+                h="56px"
+                borderRadius="20px"
+                bg="rgba(255,255,255,0.12)"
                 color="white"
-                _hover={{ bg: "red.600" }}
-                onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
-                isDisabled={item.quantity <= 1}
+                border="1px solid rgba(255,255,255,0.2)"
+                _hover={{ bg: "rgba(255,255,255,0.18)" }}
+                _active={{ transform: "scale(0.96)" }}
+                onClick={() => void checkout("cash")}
                 isLoading={actionLoading}
+                fontSize="md"
+                fontWeight="800"
               >
-                -1
+                Cash
               </Button>
               <Button
-                size="sm"
-                borderRadius="14px"
+                flex="1"
+                h="56px"
+                borderRadius="20px"
                 bg="brand.500"
                 color="white"
                 _hover={{ bg: "brand.600" }}
-                onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
+                _active={{ transform: "scale(0.96)" }}
+                onClick={() => void checkout("card")}
                 isLoading={actionLoading}
+                fontSize="md"
+                fontWeight="800"
+                boxShadow="0 8px 20px rgba(74, 132, 244, 0.4)"
               >
-                +1
-              </Button>
-              <Button
-                size="sm"
-                borderRadius="14px"
-                variant="ghost"
-                colorScheme="red"
-                leftIcon={<Box as={HiOutlineTrash} boxSize={4} />}
-                onClick={() => void removeDraftItem(item.id)}
-                isLoading={actionLoading}
-              >
-                Remove
+                Card Pay
               </Button>
             </HStack>
           </VStack>
-        ))}
-
-        <Divider />
-
-        <HStack justify="space-between">
-          <Text color="surface.500" fontWeight="700">
-            Total
-          </Text>
-          <Text fontSize="xl" fontWeight="900">
-            EUR {draft.summary.totalAmount.toFixed(2)}
-          </Text>
-        </HStack>
-
-        <HStack spacing={3}>
-          <Button
-            flex="1"
-            borderRadius="16px"
-            variant="outline"
-            borderColor="var(--app-border)"
-            onClick={() => void checkout("cash")}
-            isLoading={actionLoading}
-          >
-            Cash
-          </Button>
-          <Button
-            flex="1"
-            borderRadius="16px"
-            bg="brand.500"
-            color="white"
-            _hover={{ bg: "brand.600" }}
-            onClick={() => void checkout("card")}
-            isLoading={actionLoading}
-          >
-            Card
-          </Button>
-        </HStack>
+        </Box>
       </VStack>
     );
   };
@@ -569,7 +623,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         <Box
           position="absolute"
           inset={0}
-          bg="rgba(23, 22, 20, 0.14)"
+          bg="rgba(14, 12, 10, 0.4)"
+          backdropFilter="blur(8px)"
           onClick={() => setIsDraftCartOpen(false)}
         />
         <Box
@@ -580,27 +635,41 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           left={0}
           right={0}
           bottom={0}
-          maxH="82vh"
+          maxH="88vh"
           bg="white"
-          borderTopRadius="30px"
-          boxShadow="0 28px 80px rgba(17,17,17,0.22)"
-          overflowY="auto"
-          px={4}
-          pt={5}
-          pb={4}
+          borderTopRadius="32px"
+          boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
         >
-          <IconButton
-            aria-label="Close Draft Cart"
-            icon={<Text fontSize="2xl" lineHeight="1">×</Text>}
-            position="absolute"
-            top={4}
-            right={4}
-            size="sm"
-            borderRadius="14px"
-            variant="ghost"
-            onClick={() => setIsDraftCartOpen(false)}
-          />
-          {renderDraftCartContent()}
+          {/* Handle for the sheet */}
+          <Box w="full" py={3} display="flex" justifyContent="center" onClick={() => setIsDraftCartOpen(false)} cursor="pointer">
+            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+          </Box>
+          
+          <Box px={5} pb={6} pt={2} overflowY="auto" flex="1">
+            <HStack justify="space-between" mb={6} align="center">
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
+                  Draft Cart
+                </Text>
+                <Text color="surface.500" fontWeight="700" fontSize="sm">
+                  {draft.summary.itemsCount} products added
+                </Text>
+              </VStack>
+              <IconButton
+                aria-label="Close Draft Cart"
+                icon={<Text fontSize="2xl" lineHeight="1">×</Text>}
+                size="md"
+                borderRadius="full"
+                variant="ghost"
+                bg="surface.50"
+                onClick={() => setIsDraftCartOpen(false)}
+              />
+            </HStack>
+            {renderDraftCartContent()}
+          </Box>
         </Box>
       </Box>
     ) : null
@@ -618,38 +687,52 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         w="100%"
         justify="space-between"
         align="center"
-        bg="rgba(29, 26, 24, 0.98)"
+        bg="brand.500"
         color="white"
-        borderRadius="16px"
-        borderBottomRadius="8px"
-        px={3.5}
-        py={2.25}
-        boxShadow="0 10px 18px rgba(17, 17, 17, 0.12)"
+        borderRadius="20px"
+        px={4}
+        py={3.5}
+        boxShadow="0 12px 24px rgba(74, 132, 244, 0.3)"
         onClick={() => setIsDraftCartOpen(true)}
+        transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+        _active={{ transform: "scale(0.97)", bg: "brand.600" }}
       >
-        <VStack align="start" spacing={0}>
-          <Text fontWeight="900" fontSize="md" lineHeight="1.1">
-            Draft Cart
-          </Text>
-          <Text fontSize="xs" color="rgba(255,255,255,0.72)" fontWeight="700" lineHeight="1.1">
-            {draft.summary.itemsCount} items
-          </Text>
-        </VStack>
         <HStack spacing={3}>
-          <Text fontSize="md" fontWeight="900">
+          <Box
+            w="40px"
+            h="40px"
+            borderRadius="12px"
+            bg="rgba(255,255,255,0.2)"
+            display="grid"
+            placeItems="center"
+          >
+            <Box as={LuShoppingCart} boxSize={5} strokeWidth={2.5} />
+          </Box>
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
+              {draft.summary.itemsCount} Items
+            </Text>
+            <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em">
+              View Cart Details
+            </Text>
+          </VStack>
+        </HStack>
+        
+        <HStack spacing={3}>
+          <Text fontSize="lg" fontWeight="900" letterSpacing="-0.02em">
             EUR {draft.summary.totalAmount.toFixed(2)}
           </Text>
           <Box
-            px={2.5}
-            h="30px"
-            borderRadius="10px"
-            bg="rgba(255,255,255,0.18)"
+            w="32px"
+            h="32px"
+            borderRadius="full"
+            bg="white"
+            color="brand.500"
             display="grid"
             placeItems="center"
             fontWeight="900"
-            fontSize="xs"
           >
-            Open
+            →
           </Box>
         </HStack>
       </HStack>
