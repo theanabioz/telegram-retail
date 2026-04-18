@@ -1419,54 +1419,39 @@ export function AdminDashboardScreen({
                           bg="white"
                           borderColor="rgba(226,224,218,0.95)"
                         />
-                        <HStack spacing={2}>
-                          <Button
-                            flex="1"
-                            size="sm"
-                            borderRadius="14px"
-                            bg={draft.isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
-                            color={draft.isActive ? "white" : "surface.800"}
-                            onClick={() =>
-                              setProductEdits((current) => ({
-                                ...current,
-                                [product.id]: { ...draft, isActive: true },
-                              }))
-                            }
-                          >
-                            Active
-                          </Button>
-                          <Button
-                            flex="1"
-                            size="sm"
-                            borderRadius="14px"
-                            bg={!draft.isActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
-                            color={!draft.isActive ? "red.500" : "surface.800"}
-                            onClick={() =>
-                              setProductEdits((current) => ({
-                                ...current,
-                                [product.id]: { ...draft, isActive: false },
-                              }))
-                            }
-                          >
-                            Inactive
-                          </Button>
-                          <Button
-                            size="sm"
-                            borderRadius="14px"
-                            bg="surface.900"
-                            color="white"
-                            isLoading={mutating}
-                            onClick={() => void handleSaveProduct(product.id)}
-                          >
-                            Save
-                          </Button>
-                        </HStack>
                         <Button
                           size="sm"
                           borderRadius="14px"
-                          bg="rgba(248,113,113,0.14)"
+                          bg={draft.isActive ? "rgba(34,197,94,0.12)" : "rgba(248,113,113,0.14)"}
+                          color={draft.isActive ? "green.600" : "red.500"}
+                          _hover={{
+                            bg: draft.isActive ? "rgba(34,197,94,0.18)" : "rgba(248,113,113,0.2)",
+                          }}
+                          onClick={() =>
+                            setProductEdits((current) => ({
+                              ...current,
+                              [product.id]: { ...draft, isActive: !draft.isActive },
+                            }))
+                          }
+                        >
+                          {draft.isActive ? "Active" : "Inactive"}
+                        </Button>
+                        <Button
+                          borderRadius="16px"
+                          bg="surface.900"
+                          color="white"
+                          _hover={{ bg: "surface.700" }}
+                          isLoading={mutating}
+                          onClick={() => void handleSaveProduct(product.id)}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          borderRadius="14px"
+                          variant="ghost"
                           color="red.500"
-                          _hover={{ bg: "rgba(248,113,113,0.22)" }}
+                          _hover={{ bg: "rgba(248,113,113,0.12)" }}
                           isLoading={mutating}
                           onClick={() => void handleDeleteProduct(product.id, product.name)}
                         >
