@@ -37,7 +37,7 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
       as="nav"
       bg="rgba(255, 255, 255, 0.98)"
       borderTop="1px solid rgba(232, 229, 223, 0.96)"
-      borderTopRadius="30px"
+      borderTopRadius="0"
       px={3}
       pt={2.5}
       pb="max(8px, env(safe-area-inset-bottom, 0px))"

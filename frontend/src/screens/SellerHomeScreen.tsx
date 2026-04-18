@@ -620,10 +620,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         align="center"
         bg="rgba(29, 26, 24, 0.98)"
         color="white"
-        borderRadius="18px"
+        borderRadius="16px"
+        borderBottomRadius="8px"
         px={3.5}
-        py={2.5}
-        boxShadow="0 12px 26px rgba(17, 17, 17, 0.16)"
+        py={2.25}
+        boxShadow="0 10px 18px rgba(17, 17, 17, 0.12)"
         onClick={() => setIsDraftCartOpen(true)}
       >
         <VStack align="start" spacing={0}>
@@ -640,8 +641,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Text>
           <Box
             px={2.5}
-            h="32px"
-            borderRadius="12px"
+            h="30px"
+            borderRadius="10px"
             bg="rgba(255,255,255,0.18)"
             display="grid"
             placeItems="center"
