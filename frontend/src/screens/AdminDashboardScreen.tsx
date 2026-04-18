@@ -449,7 +449,7 @@ export function AdminDashboardScreen({
           </HStack>
 
           {data ? (
-            <HStack align="end" spacing={2} h="180px" px={1}>
+            <HStack align="end" spacing={1.5} h="180px" px={1} overflow="hidden">
               {(() => {
                 const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
                 const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
@@ -457,21 +457,24 @@ export function AdminDashboardScreen({
                 return chartSeries.map((entry, index) => {
                   const height = Math.max(12, (entry.total / maxHourTotal) * 132);
                   const isActiveHour = entry.total > 0;
+                  const isPeakHour = entry.total >= maxHourTotal * 0.72;
+                  const shouldShowTopValue = isPeakHour || (isActiveHour && index % 4 === 0);
                   const shouldShowLabel = index % 3 === 0;
 
                   return (
-                    <VStack key={entry.hour} flex="1" spacing={2} align="center" justify="end" h="full">
+                    <VStack key={entry.hour} flex="1" minW={0} spacing={2} align="center" justify="end" h="full">
                       <Text
                         fontSize="10px"
                         fontWeight="800"
                         color={isActiveHour ? "surface.700" : "surface.400"}
-                        opacity={isActiveHour ? 1 : 0}
+                        opacity={shouldShowTopValue ? 1 : 0}
+                        noOfLines={1}
                       >
-                        {isActiveHour ? entry.total.toFixed(0) : ""}
+                        {shouldShowTopValue ? entry.total.toFixed(0) : ""}
                       </Text>
                       <Box
                         w="full"
-                        maxW="14px"
+                        maxW="12px"
                         h={`${height}px`}
                         borderRadius="999px"
                         bg={
