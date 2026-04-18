@@ -31,7 +31,7 @@ import {
   HiOutlineTrash,
   HiOutlineWifi,
 } from "react-icons/hi2";
-import { LuShoppingCart } from "react-icons/lu";
+import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
@@ -1032,158 +1032,221 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderShiftTab = () => (
-    <VStack spacing={4} align="stretch">
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
-          <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">Shift Control</Text>
-            <Text color="surface.500" fontWeight="700">{shiftLabel}</Text>
+    <VStack spacing={5} align="stretch">
+      <Box 
+        bg="white" 
+        borderRadius="28px" 
+        p={6} 
+        boxShadow="0 10px 30px rgba(0,0,0,0.04)"
+        border="1px solid"
+        borderColor="surface.100"
+      >
+        <VStack align="stretch" spacing={6}>
+          <HStack justify="space-between" align="center">
+            <VStack align="start" spacing={0.5}>
+              <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
+                Shift Control
+              </Text>
+              <HStack spacing={1.5}>
+                <Box 
+                  w="8px" 
+                  h="8px" 
+                  borderRadius="full" 
+                  bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.300"} 
+                />
+                <Text color="surface.500" fontWeight="700" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em">
+                  {shiftLabel}
+                </Text>
+              </HStack>
+            </VStack>
           </HStack>
 
-          <SimpleGrid columns={2} spacing={3}>
-            <Box bg={innerSurface} borderRadius="18px" px={3} py={3}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase">Worked</Text>
-              <Text fontWeight="900" fontSize="xl">
+          <SimpleGrid columns={2} spacing={4}>
+            <VStack align="start" spacing={1} bg="surface.50" p={4} borderRadius="22px" border="1px solid" borderColor="surface.100">
+              <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+                Time Worked
+              </Text>
+              <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.02em">
                 {shiftSummary ? formatDuration(shiftSummary.workedSeconds) : "0h 0m"}
               </Text>
-            </Box>
-            <Box bg={innerSurface} borderRadius="18px" px={3} py={3}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase">Paused</Text>
-              <Text fontWeight="900" fontSize="xl">
+            </VStack>
+            <VStack align="start" spacing={1} bg="surface.50" p={4} borderRadius="22px" border="1px solid" borderColor="surface.100">
+              <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+                On Break
+              </Text>
+              <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.02em">
                 {shiftSummary ? formatDuration(shiftSummary.pausedSeconds) : "0h 0m"}
               </Text>
-            </Box>
+            </VStack>
           </SimpleGrid>
 
-          {!shiftActive && shiftStatus !== "paused" ? (
-            <Button
-              borderRadius="16px"
-              bg="brand.500"
-              color="white"
-              _hover={{ bg: "brand.600" }}
-              isLoading={actionLoading}
-              onClick={() => void startShift()}
-            >
-              Start Shift
-            </Button>
-          ) : null}
-
-          <HStack spacing={3}>
-            <Button
-              flex="1"
-              borderRadius="16px"
-              variant="outline"
-              onClick={() => void pauseShift()}
-              isDisabled={shiftStatus !== "active"}
-              isLoading={actionLoading}
-              leftIcon={<Box as={HiOutlinePause} boxSize={4} />}
-            >
-              Pause
-            </Button>
-            <Button
-              flex="1"
-              borderRadius="16px"
-              variant="outline"
-              onClick={() => void resumeShift()}
-              isDisabled={shiftStatus !== "paused"}
-              isLoading={actionLoading}
-              leftIcon={<Box as={HiOutlinePlay} boxSize={4} />}
-            >
-              Resume
-            </Button>
-          </HStack>
-
-          <Button
-            borderRadius="16px"
-            colorScheme="red"
-            variant="ghost"
-            onClick={() => {
-              if (window.confirm("Stop this shift now?")) {
-                void stopShift();
-              }
-            }}
-            isDisabled={shiftStatus === "inactive" || shiftStatus === "closed"}
-            isLoading={actionLoading}
-            leftIcon={<Box as={HiOutlinePower} boxSize={4} />}
-          >
-            Stop Shift
-          </Button>
+          <VStack spacing={3}>
+            {!shiftActive && shiftStatus !== "paused" ? (
+              <Button
+                w="full"
+                h="56px"
+                borderRadius="20px"
+                bg="brand.500"
+                color="white"
+                fontSize="md"
+                fontWeight="800"
+                _hover={{ bg: "brand.600" }}
+                _active={{ transform: "scale(0.97)" }}
+                boxShadow="0 8px 24px rgba(74, 132, 244, 0.3)"
+                isLoading={actionLoading}
+                onClick={() => void startShift()}
+              >
+                Start New Shift
+              </Button>
+            ) : (
+              <>
+                <HStack spacing={3} w="full">
+                  <Button
+                    flex="1"
+                    h="52px"
+                    borderRadius="18px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    color="surface.700"
+                    fontWeight="800"
+                    onClick={() => void pauseShift()}
+                    isDisabled={shiftStatus !== "active"}
+                    isLoading={actionLoading}
+                    leftIcon={<Box as={HiOutlinePause} boxSize={5} />}
+                    _active={{ bg: "surface.50" }}
+                  >
+                    Pause
+                  </Button>
+                  <Button
+                    flex="1"
+                    h="52px"
+                    borderRadius="18px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    color="surface.700"
+                    fontWeight="800"
+                    onClick={() => void resumeShift()}
+                    isDisabled={shiftStatus !== "paused"}
+                    isLoading={actionLoading}
+                    leftIcon={<Box as={HiOutlinePlay} boxSize={5} />}
+                    _active={{ bg: "surface.50" }}
+                  >
+                    Resume
+                  </Button>
+                </HStack>
+                <Button
+                  w="full"
+                  h="52px"
+                  borderRadius="18px"
+                  variant="ghost"
+                  color="red.500"
+                  fontWeight="800"
+                  onClick={() => {
+                    if (window.confirm("Stop this shift now?")) {
+                      void stopShift();
+                    }
+                  }}
+                  isDisabled={shiftStatus === "inactive" || shiftStatus === "closed"}
+                  isLoading={actionLoading}
+                  leftIcon={<Box as={HiOutlinePower} boxSize={5} />}
+                >
+                  End Shift
+                </Button>
+              </>
+            )}
+          </VStack>
         </VStack>
       </Box>
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">Shift History</Text>
-            <Button
-              size="sm"
-              borderRadius="14px"
-              variant="outline"
-              borderColor="var(--app-border)"
-              onClick={() => {
-                const next = !showFullShiftHistory;
-                setShowFullShiftHistory(next);
-                void loadShiftHistory(next ? 50 : 7, 0);
-              }}
-            >
-              {showFullShiftHistory ? "Last 7" : "Full list"}
-            </Button>
-          </HStack>
+      <VStack align="stretch" spacing={4} mt={2}>
+        <HStack justify="space-between" px={1}>
+          <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">Shift History</Text>
+          <Button
+            size="sm"
+            borderRadius="12px"
+            variant="ghost"
+            color="brand.500"
+            fontWeight="800"
+            onClick={() => {
+              const next = !showFullShiftHistory;
+              setShowFullShiftHistory(next);
+              void loadShiftHistory(next ? 50 : 7, 0);
+            }}
+          >
+            {showFullShiftHistory ? "Show Recent" : "View All"}
+          </Button>
+        </HStack>
 
+        <VStack spacing={3} align="stretch">
           {shiftHistory.map((entry) => (
             <Box
               key={entry.shift.id}
-              bg={innerSurface}
-              borderRadius="18px"
-              px={3}
-              py={3}
-              onClick={() => {
-                if (!showFullShiftHistory) {
-                  setShowFullShiftHistory(true);
-                  void loadShiftHistory(50, 0);
-                }
-              }}
+              bg="rgba(255,255,255,0.6)"
+              p={4}
+              borderRadius="24px"
+              border="1px solid"
+              borderColor="surface.100"
+              transition="all 0.2s ease"
+              _active={{ bg: "white", transform: "scale(0.985)" }}
             >
-              <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="800">
-                    {new Date(entry.shift.started_at).toLocaleDateString()}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {new Date(entry.shift.started_at).toLocaleTimeString()} - {entry.shift.ended_at ? new Date(entry.shift.ended_at).toLocaleTimeString() : "Open"}
-                  </Text>
-                  <Text fontSize="xs" color="surface.500">
-                    {entry.shift.status}
-                  </Text>
-                </VStack>
+              <HStack justify="space-between" align="center">
+                <HStack spacing={4}>
+                  <Box 
+                    w="44px" 
+                    h="44px" 
+                    borderRadius="14px" 
+                    bg="surface.50" 
+                    display="grid" 
+                    placeItems="center"
+                    color="surface.400"
+                  >
+                    <Box as={LuClock3} boxSize={6} />
+                  </Box>
+                  <VStack align="start" spacing={0}>
+                    <Text fontWeight="850" fontSize="sm" color="surface.900">
+                      {new Date(entry.shift.started_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    </Text>
+                    <Text fontSize="xs" color="surface.500" fontWeight="600">
+                      {new Date(entry.shift.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                      {" - "} 
+                      {entry.shift.ended_at 
+                        ? new Date(entry.shift.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : "Ongoing"}
+                    </Text>
+                  </VStack>
+                </HStack>
                 <VStack align="end" spacing={0}>
-                  <Text fontWeight="900">{formatDuration(entry.summary.workedSeconds)}</Text>
-                  <Text fontSize="xs" color="surface.500">
-                    Pause {formatDuration(entry.summary.pausedSeconds)}
+                  <Text fontWeight="900" fontSize="md" color="surface.900">
+                    {formatDuration(entry.summary.workedSeconds)}
+                  </Text>
+                  <Text fontSize="10px" color="surface.400" fontWeight="700" textTransform="uppercase">
+                    {entry.shift.status}
                   </Text>
                 </VStack>
               </HStack>
             </Box>
           ))}
 
-          {shiftHistory.length === 0 ? (
-            <Text color="surface.500" fontSize="sm">
-              No shifts yet.
+          {shiftHistory.length === 0 && (
+            <Text color="surface.400" fontSize="sm" textAlign="center" py={4} fontWeight="600">
+              No shift records found
             </Text>
-          ) : null}
+          )}
 
-          {showFullShiftHistory && shiftHistoryPagination?.hasMore ? (
+          {showFullShiftHistory && shiftHistoryPagination?.hasMore && (
             <Button
-              borderRadius="16px"
+              borderRadius="18px"
               variant="outline"
-              borderColor="var(--app-border)"
+              borderColor="surface.200"
+              fontWeight="800"
               onClick={() => void loadShiftHistory(50, (shiftHistoryPagination.offset ?? 0) + 50)}
+              mt={2}
             >
-              Load More
+              Load Older Shifts
             </Button>
-          ) : null}
+          )}
         </VStack>
-      </Box>
+      </VStack>
     </VStack>
   );
 
