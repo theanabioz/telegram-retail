@@ -61,6 +61,7 @@ type AdminDashboardScreenProps = {
 type SalesLedgerMode = "sales" | "returns";
 type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
+type InventoryMode = "stock" | "products";
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -110,6 +111,17 @@ function buildSalesCacheKey(input: {
     input.dateFrom || "open-from",
     input.dateTo || "open-to",
   ].join("|");
+}
+
+function generateInternalProductCode(name: string) {
+  const slug = name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24);
+
+  return `${slug || "PRODUCT"}-${Date.now().toString(36).toUpperCase()}`;
 }
 
 function formatDateTime(value: string | null) {
@@ -205,6 +217,8 @@ export function AdminDashboardScreen({
   const [salesView, setSalesView] = useState<SalesLedgerSnapshot>({ sales: [], returns: [] });
   const [salesCache, setSalesCache] = useState<Record<string, SalesLedgerSnapshot>>({});
   const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
+  const [inventoryMode, setInventoryMode] = useState<InventoryMode>("stock");
+  const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -336,6 +350,7 @@ export function AdminDashboardScreen({
   useEffect(() => {
     if (selectedInventoryStoreId) {
       void loadInventory(selectedInventoryStoreId);
+      setSelectedInventoryItemId(null);
     }
   }, [loadInventory, selectedInventoryStoreId]);
 
@@ -404,13 +419,13 @@ export function AdminDashboardScreen({
   const handleCreateProduct = async () => {
     const parsedPrice = Number(newProduct.defaultPrice);
 
-    if (!newProduct.name.trim() || !newProduct.sku.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+    if (!newProduct.name.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
       return;
     }
 
     await createProduct({
       name: newProduct.name,
-      sku: newProduct.sku,
+      sku: newProduct.sku.trim() || generateInternalProductCode(newProduct.name),
       defaultPrice: parsedPrice,
       isActive: true,
     });
@@ -425,13 +440,13 @@ export function AdminDashboardScreen({
     const draft = productEdits[productId];
     const parsedPrice = Number(draft?.defaultPrice);
 
-    if (!draft || !draft.name.trim() || !draft.sku.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+    if (!draft || !draft.name.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
       return;
     }
 
     await updateProduct(productId, {
       name: draft.name,
-      sku: draft.sku,
+      sku: draft.sku.trim() || generateInternalProductCode(draft.name),
       defaultPrice: parsedPrice,
       isActive: draft.isActive,
     });
@@ -914,238 +929,95 @@ export function AdminDashboardScreen({
     </VStack>
   );
 
-  const renderInventory = () => (
-    <VStack spacing={4} align="stretch">
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">
-            Global Products
-          </Text>
-          <Text color="surface.500" fontSize="sm">
-            New products are automatically added to every store with zero stock and default pricing.
-          </Text>
-          <Input
-            value={newProduct.name}
-            onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
-            placeholder="Product name"
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          />
-          <SimpleGrid columns={2} spacing={2}>
-            <Input
-              value={newProduct.sku}
-              onChange={(event) => setNewProduct((current) => ({ ...current, sku: event.target.value }))}
-              placeholder="SKU"
-              borderRadius="18px"
-              bg="white"
-              borderColor="rgba(226,224,218,0.95)"
-            />
-            <Input
-              value={newProduct.defaultPrice}
-              onChange={(event) => setNewProduct((current) => ({ ...current, defaultPrice: event.target.value }))}
-              placeholder="Default price"
-              inputMode="decimal"
-              borderRadius="18px"
-              bg="white"
-              borderColor="rgba(226,224,218,0.95)"
-            />
-          </SimpleGrid>
-          <Button
-            alignSelf="flex-start"
-            borderRadius="16px"
-            bg="brand.500"
-            color="white"
-            _hover={{ bg: "brand.600" }}
-            isLoading={mutating}
-            onClick={() => void handleCreateProduct()}
-          >
-            Add Product
-          </Button>
+  const renderInventory = () => {
+    const selectedStore = inventoryStores.find((store) => store.id === selectedInventoryStoreId) ?? null;
+    const selectedItem = selectedInventoryItemId
+      ? inventoryItems.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
+      : null;
+    const totalUnits = inventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
+    const lowStockCount = inventoryItems.filter((item) => item.stockQuantity <= 10).length;
+    const disabledCount = inventoryItems.filter((item) => !item.isEnabled || !item.isProductActive).length;
+    const inventorySummaryCards = [
+      { label: "Total Units", value: String(totalUnits) },
+      { label: "Low Stock", value: String(lowStockCount) },
+      { label: "Disabled", value: String(disabledCount) },
+      { label: "Products", value: String(inventoryItems.length) },
+    ];
 
-          {products.slice(0, 8).map((product) => {
-            const draft = productEdits[product.id] ?? {
-              name: product.name,
-              sku: product.sku,
-              defaultPrice: product.defaultPrice.toFixed(2),
-              isActive: product.isActive,
-            };
+    if (selectedItem) {
+      const draft = inventoryEdits[selectedItem.storeProductId] ?? {
+        price: selectedItem.storePrice.toFixed(2),
+        isEnabled: selectedItem.isEnabled,
+        adjustQuantity: "1",
+        adjustReason: "",
+      };
 
-            return (
-              <Box key={product.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                <VStack align="stretch" spacing={2}>
-                  <HStack justify="space-between">
-                    <Text fontWeight="900">{product.name}</Text>
-                    <StatusPill label={product.isActive ? "Active" : "Inactive"} tone={product.isActive ? "green" : "red"} />
-                  </HStack>
-                  <Input
-                    value={draft.name}
-                    onChange={(event) =>
-                      setProductEdits((current) => ({
-                        ...current,
-                        [product.id]: { ...draft, name: event.target.value },
-                      }))
-                    }
-                    placeholder="Product name"
-                    borderRadius="14px"
-                    bg="white"
-                    borderColor="rgba(226,224,218,0.95)"
-                  />
-                  <SimpleGrid columns={2} spacing={2}>
-                    <Input
-                      value={draft.sku}
-                      onChange={(event) =>
-                        setProductEdits((current) => ({
-                          ...current,
-                          [product.id]: { ...draft, sku: event.target.value },
-                        }))
-                      }
-                      placeholder="SKU"
-                      borderRadius="14px"
-                      bg="white"
-                      borderColor="rgba(226,224,218,0.95)"
-                    />
-                    <Input
-                      value={draft.defaultPrice}
-                      onChange={(event) =>
-                        setProductEdits((current) => ({
-                          ...current,
-                          [product.id]: { ...draft, defaultPrice: event.target.value },
-                        }))
-                      }
-                      placeholder="Default price"
-                      inputMode="decimal"
-                      borderRadius="14px"
-                      bg="white"
-                      borderColor="rgba(226,224,218,0.95)"
-                    />
-                  </SimpleGrid>
-                  <HStack spacing={2}>
-                    <Button
-                      flex="1"
-                      size="sm"
-                      borderRadius="14px"
-                      bg={draft.isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
-                      color={draft.isActive ? "white" : "surface.800"}
-                      onClick={() =>
-                        setProductEdits((current) => ({
-                          ...current,
-                          [product.id]: { ...draft, isActive: true },
-                        }))
-                      }
-                    >
-                      Active
-                    </Button>
-                    <Button
-                      flex="1"
-                      size="sm"
-                      borderRadius="14px"
-                      bg={!draft.isActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
-                      color={!draft.isActive ? "red.500" : "surface.800"}
-                      onClick={() =>
-                        setProductEdits((current) => ({
-                          ...current,
-                          [product.id]: { ...draft, isActive: false },
-                        }))
-                      }
-                    >
-                      Inactive
-                    </Button>
-                    <Button
-                      size="sm"
-                      borderRadius="14px"
-                      bg="surface.900"
-                      color="white"
-                      isLoading={mutating}
-                      onClick={() => void handleSaveProduct(product.id)}
-                    >
-                      Save
-                    </Button>
-                  </HStack>
+      return (
+        <VStack spacing={4} align="stretch">
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={1}>
+                  <Text fontWeight="900" fontSize="xl">
+                    Product Details
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {selectedStore?.name ?? selectedItem.storeName}
+                  </Text>
                 </VStack>
-              </Box>
-            );
-          })}
-        </VStack>
-      </Box>
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => setSelectedInventoryItemId(null)}
+                >
+                  Back
+                </Button>
+              </HStack>
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">
-            Inventory Scope
-          </Text>
-          <Select
-            value={selectedInventoryStoreId}
-            onChange={(event) => setSelectedInventoryStoreId(event.target.value)}
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          >
-            {inventoryStores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </Select>
-        </VStack>
-      </Box>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={1}>
+                  <Text fontWeight="900" fontSize="2xl">
+                    {selectedItem.productName}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    Default EUR {selectedItem.defaultPrice.toFixed(2)}
+                  </Text>
+                </VStack>
+                <StatusPill
+                  label={`${selectedItem.stockQuantity} units`}
+                  tone={selectedItem.stockQuantity <= 10 ? "orange" : "blue"}
+                />
+              </HStack>
 
-      <VStack spacing={3} align="stretch">
-        {inventoryItems.map((item) => {
-          const draft = inventoryEdits[item.storeProductId] ?? {
-            price: item.storePrice.toFixed(2),
-            isEnabled: item.isEnabled,
-            adjustQuantity: "1",
-            adjustReason: "",
-          };
+              <SimpleGrid columns={2} spacing={3}>
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    Store Price
+                  </Text>
+                  <Text fontWeight="900" fontSize="xl">
+                    EUR {selectedItem.storePrice.toFixed(2)}
+                  </Text>
+                </Box>
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    Status
+                  </Text>
+                  <Text fontWeight="900" fontSize="xl">
+                    {draft.isEnabled && selectedItem.isProductActive ? "Active" : "Off"}
+                  </Text>
+                </Box>
+              </SimpleGrid>
 
-          return (
-            <Box key={item.storeProductId} bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
-                <HStack justify="space-between" align="start">
-                  <VStack align="start" spacing={1}>
-                    <HStack spacing={2}>
-                      <Text fontWeight="900" fontSize="lg">
-                        {item.productName}
-                      </Text>
-                      <StatusPill label={draft.isEnabled ? "Enabled" : "Disabled"} tone={draft.isEnabled ? "green" : "red"} />
-                      {!item.isProductActive ? <StatusPill label="Product Off" tone="orange" /> : null}
-                    </HStack>
-                    <Text fontSize="sm" color="surface.500">
-                      {item.sku} · Default EUR {item.defaultPrice.toFixed(2)}
-                    </Text>
-                  </VStack>
-                  <StatusPill
-                    label={`Stock ${item.stockQuantity}`}
-                    tone={item.stockQuantity <= 10 ? "orange" : "blue"}
-                  />
-                </HStack>
-
-                <SimpleGrid columns={2} spacing={3}>
-                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                    <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                      Store Price
-                    </Text>
-                    <Text fontWeight="900" fontSize="xl">
-                      EUR {item.storePrice.toFixed(2)}
-                    </Text>
-                  </Box>
-                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                    <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                      Last Update
-                    </Text>
-                    <Text fontWeight="900" fontSize="sm">
-                      {formatDateTime(item.updatedAt)}
-                    </Text>
-                  </Box>
-                </SimpleGrid>
-
+                <Text fontWeight="900">Price & Status</Text>
                 <Input
                   value={draft.price}
                   onChange={(event) =>
                     setInventoryEdits((current) => ({
                       ...current,
-                      [item.storeProductId]: {
+                      [selectedItem.storeProductId]: {
                         ...draft,
                         price: event.target.value,
                       },
@@ -1157,23 +1029,17 @@ export function AdminDashboardScreen({
                   bg="white"
                   borderColor="rgba(226,224,218,0.95)"
                 />
-
-                <HStack spacing={3}>
+                <HStack spacing={2}>
                   <Button
                     flex="1"
                     borderRadius="16px"
                     bg={draft.isEnabled ? "brand.500" : "rgba(241,240,236,0.95)"}
                     color={draft.isEnabled ? "white" : "surface.800"}
-                    _hover={{
-                      bg: draft.isEnabled ? "brand.600" : "rgba(225,223,218,0.95)",
-                    }}
+                    _hover={{ bg: draft.isEnabled ? "brand.600" : "rgba(225,223,218,0.95)" }}
                     onClick={() =>
                       setInventoryEdits((current) => ({
                         ...current,
-                        [item.storeProductId]: {
-                          ...draft,
-                          isEnabled: true,
-                        },
+                        [selectedItem.storeProductId]: { ...draft, isEnabled: true },
                       }))
                     }
                   >
@@ -1184,150 +1050,417 @@ export function AdminDashboardScreen({
                     borderRadius="16px"
                     bg={!draft.isEnabled ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
                     color={!draft.isEnabled ? "red.500" : "surface.800"}
-                    _hover={{
-                      bg: !draft.isEnabled ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)",
-                    }}
+                    _hover={{ bg: !draft.isEnabled ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)" }}
                     onClick={() =>
                       setInventoryEdits((current) => ({
                         ...current,
-                        [item.storeProductId]: {
-                          ...draft,
-                          isEnabled: false,
-                        },
+                        [selectedItem.storeProductId]: { ...draft, isEnabled: false },
                       }))
                     }
                   >
                     Disabled
                   </Button>
                 </HStack>
-
                 <Button
-                  alignSelf="flex-start"
-                  borderRadius="16px"
+                  borderRadius="18px"
                   bg="surface.900"
                   color="white"
                   _hover={{ bg: "surface.700" }}
                   isLoading={mutating}
-                  onClick={() => void handleSaveStoreProduct(item.storeProductId)}
+                  onClick={() => void handleSaveStoreProduct(selectedItem.storeProductId)}
                 >
                   Save Price & Status
                 </Button>
+              </VStack>
 
-                <Input
-                  value={draft.adjustQuantity}
-                  onChange={(event) =>
-                    setInventoryEdits((current) => ({
-                      ...current,
-                      [item.storeProductId]: {
-                        ...draft,
-                        adjustQuantity: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Adjustment quantity"
-                  inputMode="decimal"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
-                <Input
-                  value={draft.adjustReason}
-                  onChange={(event) =>
-                    setInventoryEdits((current) => ({
-                      ...current,
-                      [item.storeProductId]: {
-                        ...draft,
-                        adjustReason: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Reason for stock change"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
+              <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
 
+              <VStack align="stretch" spacing={3}>
+                <Text fontWeight="900">Stock Movement</Text>
+                <SimpleGrid columns={2} spacing={2}>
+                  <Input
+                    value={draft.adjustQuantity}
+                    onChange={(event) =>
+                      setInventoryEdits((current) => ({
+                        ...current,
+                        [selectedItem.storeProductId]: {
+                          ...draft,
+                          adjustQuantity: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="Quantity"
+                    inputMode="decimal"
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
+                  />
+                  <Input
+                    value={draft.adjustReason}
+                    onChange={(event) =>
+                      setInventoryEdits((current) => ({
+                        ...current,
+                        [selectedItem.storeProductId]: {
+                          ...draft,
+                          adjustReason: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="Reason"
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
+                  />
+                </SimpleGrid>
                 <SimpleGrid columns={3} spacing={2}>
                   <Button
-                    size="sm"
-                    borderRadius="14px"
+                    borderRadius="16px"
                     variant="outline"
                     borderColor="var(--app-border)"
                     isLoading={mutating}
-                    onClick={() => void handleInventoryAdjustment(item.storeProductId, "manual_adjustment")}
+                    onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, "manual_adjustment")}
                   >
                     Adjust
                   </Button>
                   <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="var(--app-border)"
+                    borderRadius="16px"
+                    bg="brand.500"
+                    color="white"
+                    _hover={{ bg: "brand.600" }}
                     isLoading={mutating}
-                    onClick={() => void handleInventoryAdjustment(item.storeProductId, "restock")}
+                    onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, "restock")}
                   >
                     Restock
                   </Button>
                   <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="rgba(248,113,113,0.35)"
+                    borderRadius="16px"
+                    bg="rgba(248,113,113,0.14)"
                     color="red.500"
+                    _hover={{ bg: "rgba(248,113,113,0.2)" }}
                     isLoading={mutating}
-                    onClick={() => void handleInventoryAdjustment(item.storeProductId, "writeoff")}
+                    onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, "writeoff")}
                   >
                     Writeoff
                   </Button>
                 </SimpleGrid>
               </VStack>
-            </Box>
-          );
-        })}
-      </VStack>
+            </VStack>
+          </Box>
+        </VStack>
+      );
+    }
 
-      {inventoryHistory.length > 0 ? (
+    return (
+      <VStack spacing={4} align="stretch">
+        <SimpleGrid columns={2} spacing={3}>
+          {inventorySummaryCards.map((card) => (
+            <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
+                {card.label}
+              </Text>
+              <Text fontSize="2xl" fontWeight="900" mt={2}>
+                {card.value}
+              </Text>
+            </Box>
+          ))}
+        </SimpleGrid>
+
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
           <VStack align="stretch" spacing={3}>
             <HStack justify="space-between">
-              <Text fontWeight="900" fontSize="lg">
-                Inventory History
-              </Text>
-              <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {inventoryHistory.length} entries
-              </Text>
-            </HStack>
-
-            {inventoryHistory.map((entry) => (
-              <HStack key={entry.id} justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="700">{entry.product?.name ?? "Unknown product"}</Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {entry.movementType} · balance {entry.balanceAfter}
-                  </Text>
-                  <Text fontSize="xs" color="surface.500">
-                    {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
-                  </Text>
-                  {entry.reason ? (
-                    <Text fontSize="xs" color="surface.500">
-                      {entry.reason}
-                    </Text>
-                  ) : null}
-                </VStack>
-                <Text
-                  fontWeight="800"
-                  color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}
-                >
-                  {entry.quantityDelta >= 0 ? "+" : ""}
-                  {entry.quantityDelta}
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="900" fontSize="lg">
+                  Store Inventory
                 </Text>
-              </HStack>
-            ))}
+                <Text fontSize="sm" color="surface.500">
+                  {selectedStore?.name ?? "Select store"}
+                </Text>
+              </VStack>
+              {loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
+            </HStack>
+            <HStack spacing={2} overflowX="auto" pb={1}>
+              {inventoryStores.map((store) => {
+                const isActive = selectedInventoryStoreId === store.id;
+
+                return (
+                  <Button
+                    key={store.id}
+                    size="sm"
+                    flexShrink={0}
+                    borderRadius="999px"
+                    bg={isActive ? "brand.500" : panelMutedSurface}
+                    color={isActive ? "white" : "surface.700"}
+                    _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
+                    onClick={() => setSelectedInventoryStoreId(store.id)}
+                  >
+                    {store.name}
+                  </Button>
+                );
+              })}
+            </HStack>
           </VStack>
         </Box>
-      ) : null}
-    </VStack>
-  );
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+          <HStack spacing={2}>
+            {(["stock", "products"] as InventoryMode[]).map((mode) => {
+              const isActive = inventoryMode === mode;
+
+              return (
+                <Button
+                  key={mode}
+                  flex="1"
+                  size="sm"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onClick={() => setInventoryMode(mode)}
+                >
+                  {mode === "stock" ? `Stock · ${inventoryItems.length}` : `Products · ${products.length}`}
+                </Button>
+              );
+            })}
+          </HStack>
+        </Box>
+
+        {inventoryMode === "stock" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Stock List
+                </Text>
+                <Text color="surface.500" fontWeight="700" fontSize="sm">
+                  {inventoryItems.length} items
+                </Text>
+              </HStack>
+
+              {inventoryItems.map((item) => (
+                <Box
+                  key={item.storeProductId}
+                  as="button"
+                  type="button"
+                  textAlign="left"
+                  bg={panelMutedSurface}
+                  borderRadius="18px"
+                  px={3}
+                  py={3}
+                  onClick={() => setSelectedInventoryItemId(item.storeProductId)}
+                >
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" spacing={1} minW={0}>
+                      <HStack spacing={2}>
+                        <Text fontWeight="900">{item.productName}</Text>
+                        {!item.isProductActive ? <StatusPill label="Product Off" tone="orange" /> : null}
+                      </HStack>
+                      <Text fontSize="sm" color="surface.600" fontWeight="700">
+                        EUR {item.storePrice.toFixed(2)}
+                      </Text>
+                      <Text fontSize="xs" color="surface.500">
+                        Default EUR {item.defaultPrice.toFixed(2)} · Updated {formatShortDate(item.updatedAt)}
+                      </Text>
+                    </VStack>
+                    <VStack align="end" spacing={1}>
+                      <Text fontWeight="900" fontSize="lg">
+                        {item.stockQuantity}
+                      </Text>
+                      <StatusPill
+                        label={item.isEnabled ? "Enabled" : "Disabled"}
+                        tone={item.isEnabled ? (item.stockQuantity <= 10 ? "orange" : "green") : "red"}
+                      />
+                    </VStack>
+                  </HStack>
+                </Box>
+              ))}
+            </VStack>
+          </Box>
+        ) : (
+          <VStack spacing={4} align="stretch">
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="lg">
+                    Add Product
+                  </Text>
+                  <Text color="surface.500" fontSize="sm">
+                    New products appear in every store with zero stock.
+                  </Text>
+                </VStack>
+                <Input
+                  value={newProduct.name}
+                  onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
+                  placeholder="Product name"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+                <Input
+                  value={newProduct.defaultPrice}
+                  onChange={(event) => setNewProduct((current) => ({ ...current, defaultPrice: event.target.value }))}
+                  placeholder="Default price"
+                  inputMode="decimal"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+                <Button
+                  borderRadius="18px"
+                  bg="brand.500"
+                  color="white"
+                  _hover={{ bg: "brand.600" }}
+                  isLoading={mutating}
+                  onClick={() => void handleCreateProduct()}
+                >
+                  Add Product
+                </Button>
+              </VStack>
+            </Box>
+
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <HStack justify="space-between">
+                  <Text fontWeight="900" fontSize="lg">
+                    Product Catalog
+                  </Text>
+                  <Text color="surface.500" fontWeight="700" fontSize="sm">
+                    {products.length} items
+                  </Text>
+                </HStack>
+
+                {products.map((product) => {
+                  const draft = productEdits[product.id] ?? {
+                    name: product.name,
+                    sku: product.sku,
+                    defaultPrice: product.defaultPrice.toFixed(2),
+                    isActive: product.isActive,
+                  };
+
+                  return (
+                    <Box key={product.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <VStack align="stretch" spacing={3}>
+                        <HStack justify="space-between">
+                          <VStack align="start" spacing={0}>
+                            <Text fontWeight="900">{product.name}</Text>
+                            <Text fontSize="sm" color="surface.500">
+                              Default EUR {product.defaultPrice.toFixed(2)}
+                            </Text>
+                          </VStack>
+                          <StatusPill label={product.isActive ? "Active" : "Inactive"} tone={product.isActive ? "green" : "red"} />
+                        </HStack>
+                        <Input
+                          value={draft.name}
+                          onChange={(event) =>
+                            setProductEdits((current) => ({
+                              ...current,
+                              [product.id]: { ...draft, name: event.target.value },
+                            }))
+                          }
+                          placeholder="Product name"
+                          borderRadius="14px"
+                          bg="white"
+                          borderColor="rgba(226,224,218,0.95)"
+                        />
+                        <Input
+                          value={draft.defaultPrice}
+                          onChange={(event) =>
+                            setProductEdits((current) => ({
+                              ...current,
+                              [product.id]: { ...draft, defaultPrice: event.target.value },
+                            }))
+                          }
+                          placeholder="Default price"
+                          inputMode="decimal"
+                          borderRadius="14px"
+                          bg="white"
+                          borderColor="rgba(226,224,218,0.95)"
+                        />
+                        <HStack spacing={2}>
+                          <Button
+                            flex="1"
+                            size="sm"
+                            borderRadius="14px"
+                            bg={draft.isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
+                            color={draft.isActive ? "white" : "surface.800"}
+                            onClick={() =>
+                              setProductEdits((current) => ({
+                                ...current,
+                                [product.id]: { ...draft, isActive: true },
+                              }))
+                            }
+                          >
+                            Active
+                          </Button>
+                          <Button
+                            flex="1"
+                            size="sm"
+                            borderRadius="14px"
+                            bg={!draft.isActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
+                            color={!draft.isActive ? "red.500" : "surface.800"}
+                            onClick={() =>
+                              setProductEdits((current) => ({
+                                ...current,
+                                [product.id]: { ...draft, isActive: false },
+                              }))
+                            }
+                          >
+                            Inactive
+                          </Button>
+                          <Button
+                            size="sm"
+                            borderRadius="14px"
+                            bg="surface.900"
+                            color="white"
+                            isLoading={mutating}
+                            onClick={() => void handleSaveProduct(product.id)}
+                          >
+                            Save
+                          </Button>
+                        </HStack>
+                      </VStack>
+                    </Box>
+                  );
+                })}
+              </VStack>
+            </Box>
+          </VStack>
+        )}
+
+        {inventoryMode === "stock" && inventoryHistory.length > 0 ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Recent Movements
+                </Text>
+                <Text color="surface.500" fontWeight="700" fontSize="sm">
+                  {inventoryHistory.length} entries
+                </Text>
+              </HStack>
+
+              {inventoryHistory.slice(0, 6).map((entry) => (
+                <HStack key={entry.id} justify="space-between" align="start">
+                  <VStack align="start" spacing={0}>
+                    <Text fontWeight="800">{entry.product?.name ?? "Unknown product"}</Text>
+                    <Text fontSize="sm" color="surface.500">
+                      {entry.movementType} · balance {entry.balanceAfter}
+                    </Text>
+                    <Text fontSize="xs" color="surface.500">
+                      {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
+                    </Text>
+                  </VStack>
+                  <Text fontWeight="900" color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}>
+                    {entry.quantityDelta >= 0 ? "+" : ""}
+                    {entry.quantityDelta}
+                  </Text>
+                </HStack>
+              ))}
+            </VStack>
+          </Box>
+        ) : null}
+      </VStack>
+    );
+  };
 
   const renderSales = () => {
     const visibleSales = salesView.sales;
@@ -1407,7 +1540,7 @@ export function AdminDashboardScreen({
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      {item.skuSnapshot} · Qty {item.quantity} x EUR {item.finalPrice.toFixed(2)}
+                      Qty {item.quantity} x EUR {item.finalPrice.toFixed(2)}
                     </Text>
                     {item.discountType ? (
                       <Text fontSize="xs" color="surface.500">
@@ -1506,7 +1639,7 @@ export function AdminDashboardScreen({
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      {item.skuSnapshot} · Qty {item.quantity} x EUR {item.returnedPrice.toFixed(2)}
+                      Qty {item.quantity} x EUR {item.returnedPrice.toFixed(2)}
                     </Text>
                   </VStack>
                   <Text fontWeight="900">EUR {item.lineTotal.toFixed(2)}</Text>

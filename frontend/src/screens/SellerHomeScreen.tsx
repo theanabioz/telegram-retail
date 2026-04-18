@@ -892,7 +892,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="800">{item.product_name_snapshot}</Text>
                   <Text fontSize="sm" color="surface.500">
-                    {item.sku_snapshot} · Qty {item.quantity} x EUR {item.final_price.toFixed(2)}
+                    Qty {item.quantity} x EUR {item.final_price.toFixed(2)}
                   </Text>
                   {item.discount_type ? (
                     <Text fontSize="xs" color="surface.500">
