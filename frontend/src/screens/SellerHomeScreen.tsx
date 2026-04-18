@@ -1278,91 +1278,89 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     >
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
-          <Box
-            bg="rgba(255, 255, 255, 0.78)"
-            border="1px solid rgba(255, 255, 255, 0.86)"
-            borderRadius="28px"
-            px={3}
-            py={3}
-            boxShadow="0 18px 44px rgba(41, 36, 26, 0.055)"
-            backdropFilter="blur(12px)"
-          >
-            <VStack align="stretch" spacing={3}>
-              <HStack justify="space-between" align="start" spacing={3}>
-                <VStack align="start" spacing={0} minW={0} flex="1">
-                  <Text
-                    fontSize="xs"
-                    color="surface.500"
-                    fontWeight="800"
-                    letterSpacing="0.08em"
-                    textTransform="uppercase"
-                  >
-                    Current Store
-                  </Text>
-                  <Text
-                    fontSize="2xl"
-                    lineHeight="1.08"
-                    fontWeight="900"
-                    letterSpacing="-0.035em"
-                    color="surface.900"
-                    noOfLines={1}
-                    w="100%"
-                  >
-                    {storeName}
-                  </Text>
-                </VStack>
-
-                <HStack
-                  spacing={2}
-                  bg="rgba(255,255,255,0.92)"
-                  border="1px solid rgba(226,224,218,0.72)"
-                  borderRadius="999px"
-                  px={2}
-                  py={1.5}
-                  boxShadow="0 10px 24px rgba(17, 17, 17, 0.05)"
-                  maxW="48%"
-                  minW={0}
-                >
-                  <Avatar size="xs" name={operatorName} bg="surface.200" color="surface.800" />
-                  <Text fontWeight="850" fontSize="sm" noOfLines={1} minW={0}>
-                    {operatorName}
-                  </Text>
-                </HStack>
+        <VStack spacing={6} align="stretch" pt={2} mb={2}>
+          <HStack justify="space-between" align="center" px={1}>
+            <VStack align="start" spacing={0}>
+              <Text
+                fontSize="3xl"
+                fontWeight="900"
+                letterSpacing="-0.04em"
+                color="surface.900"
+                lineHeight="1"
+              >
+                {storeName}
+              </Text>
+              <HStack spacing={1.5} mt={1}>
+                <Box w="6px" h="6px" borderRadius="full" bg="green.500" />
+                <Text fontSize="xs" fontWeight="700" color="surface.500" textTransform="uppercase" letterSpacing="0.05em">
+                  Live Terminal
+                </Text>
               </HStack>
-
-              <InputGroup size="md">
-                <InputLeftElement pointerEvents="none" color="surface.500" h="50px">
-                  <Box as={HiOutlineMagnifyingGlass} boxSize={5} />
-                </InputLeftElement>
-                <Input
-                  placeholder="Search product..."
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  borderRadius="18px"
-                  borderColor="rgba(226,224,218,0.92)"
-                  bg="rgba(255,255,255,0.94)"
-                  h="50px"
-                  fontWeight="700"
-                  _placeholder={{ color: "surface.500", fontWeight: 600 }}
-                  _focusVisible={{
-                    borderColor: "brand.400",
-                    boxShadow: "0 0 0 1px rgba(90,145,251,0.35)",
-                  }}
-                />
-                <InputRightElement w="58px" h="50px">
-                  <IconButton
-                    aria-label="Filters"
-                    icon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={5} />}
-                    size="sm"
-                    borderRadius="14px"
-                    bg="brand.50"
-                    color="brand.600"
-                    _hover={{ bg: "brand.100" }}
-                  />
-                </InputRightElement>
-              </InputGroup>
             </VStack>
-          </Box>
+
+            <HStack 
+              spacing={2.5} 
+              bg="rgba(255,255,255,0.6)" 
+              backdropFilter="blur(10px)"
+              pl={1.5} 
+              pr={3.5} 
+              py={1.5} 
+              borderRadius="full" 
+              border="1px solid"
+              borderColor="rgba(255,255,255,0.8)"
+              boxShadow="0 4px 12px rgba(0,0,0,0.03)"
+            >
+              <Avatar 
+                size="xs" 
+                name={operatorName} 
+                bg="brand.500" 
+                color="white" 
+                fontWeight="800"
+                fontSize="10px"
+              />
+              <Text fontWeight="800" fontSize="sm" color="surface.700" letterSpacing="-0.01em">
+                {operatorName.split(' ')[0]}
+              </Text>
+            </HStack>
+          </HStack>
+
+          <InputGroup size="md">
+            <InputLeftElement pointerEvents="none" color="surface.500" h="54px" pl={2}>
+              <Box as={HiOutlineMagnifyingGlass} boxSize={5} strokeWidth={2.5} />
+            </InputLeftElement>
+            <Input
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              borderRadius="20px"
+              border="1px solid"
+              borderColor="rgba(0, 0, 0, 0.06)"
+              bg="white"
+              h="54px"
+              fontSize="md"
+              fontWeight="650"
+              px={5}
+              boxShadow="0 4px 12px rgba(0, 0, 0, 0.03)"
+              _placeholder={{ color: "surface.400", fontWeight: 600 }}
+              _focusVisible={{
+                borderColor: "brand.300",
+                boxShadow: "0 8px 24px rgba(74, 132, 244, 0.12)",
+              }}
+              transition="all 0.2s ease"
+            />
+            <InputRightElement w="62px" h="54px" pr={1}>
+              <IconButton
+                aria-label="Filters"
+                icon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={5} strokeWidth={2} />}
+                size="sm"
+                borderRadius="14px"
+                bg="surface.50"
+                color="surface.600"
+                _hover={{ bg: "brand.50", color: "brand.600" }}
+              />
+            </InputRightElement>
+          </InputGroup>
+        </VStack>
 
           {renderActiveTab()}
 
