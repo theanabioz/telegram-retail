@@ -64,6 +64,7 @@ type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">
 type InventoryMode = "stock" | "products";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
+type TeamMode = "staff" | "stores";
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -226,6 +227,7 @@ export function AdminDashboardScreen({
   const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>({});
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
+  const [teamMode, setTeamMode] = useState<TeamMode>("staff");
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -781,9 +783,16 @@ export function AdminDashboardScreen({
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">
-            Create Store
-          </Text>
+          <HStack justify="space-between">
+            <VStack align="start" spacing={0}>
+              <Text fontWeight="900" fontSize="lg">
+                Add Store
+              </Text>
+              <Text color="surface.500" fontSize="sm">
+                Create a new sales location.
+              </Text>
+            </VStack>
+          </HStack>
           <Input
             value={newStoreName}
             onChange={(event) => setNewStoreName(event.target.value)}
@@ -801,8 +810,7 @@ export function AdminDashboardScreen({
             borderColor="rgba(226,224,218,0.95)"
           />
           <Button
-            alignSelf="flex-start"
-            borderRadius="16px"
+            borderRadius="18px"
             bg="brand.500"
             color="white"
             _hover={{ bg: "brand.600" }}
@@ -814,162 +822,109 @@ export function AdminDashboardScreen({
         </VStack>
       </Box>
 
-      <VStack spacing={3} align="stretch">
-        {stores.map((store) => {
-          const draft = storeEdits[store.id] ?? {
-            name: store.name,
-            address: store.address ?? "",
-            isActive: store.isActive,
-          };
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={3}>
+          <HStack justify="space-between">
+            <Text fontWeight="900" fontSize="lg">
+              Store Directory
+            </Text>
+            <Text color="surface.500" fontWeight="700" fontSize="sm">
+              {stores.length} locations
+            </Text>
+          </HStack>
 
-          return (
-            <Box key={store.id} bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <HStack justify="space-between" align="start">
-                  <VStack align="start" spacing={1}>
-                    <HStack spacing={2}>
-                      <Text fontWeight="900" fontSize="lg">
-                        {store.name}
+          {stores.map((store) => {
+            const draft = storeEdits[store.id] ?? {
+              name: store.name,
+              address: store.address ?? "",
+              isActive: store.isActive,
+            };
+
+            return (
+              <Box key={store.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                <VStack align="stretch" spacing={3}>
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="900">{store.name}</Text>
+                      <Text fontSize="sm" color="surface.500">
+                        {store.address || `Created ${formatShortDate(store.createdAt)}`}
                       </Text>
-                      <StatusPill label={store.isActive ? "Active" : "Inactive"} tone={store.isActive ? "green" : "red"} />
-                    </HStack>
-                    <Text fontSize="sm" color="surface.500">
-                      Created {formatShortDate(store.createdAt)}
-                    </Text>
-                  </VStack>
-                  <StatusPill
-                    label={`${store.activeShiftCount} shifts live`}
-                    tone={store.activeShiftCount > 0 ? "blue" : "gray"}
+                    </VStack>
+                    <StatusPill label={store.isActive ? "Active" : "Inactive"} tone={store.isActive ? "green" : "red"} />
+                  </HStack>
+
+                  <SimpleGrid columns={2} spacing={2}>
+                    <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
+                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                        Sellers
+                      </Text>
+                      <Text fontWeight="900">{store.sellerCount}</Text>
+                    </Box>
+                    <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
+                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                        Today
+                      </Text>
+                      <Text fontWeight="900">EUR {store.revenueToday.toFixed(2)}</Text>
+                    </Box>
+                  </SimpleGrid>
+
+                  <Input
+                    value={draft.name}
+                    onChange={(event) =>
+                      setStoreEdits((current) => ({
+                        ...current,
+                        [store.id]: { ...draft, name: event.target.value },
+                      }))
+                    }
+                    placeholder="Store name"
+                    borderRadius="14px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
                   />
-                </HStack>
-
-                <SimpleGrid columns={2} spacing={3}>
-                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                    <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                      Sellers
-                    </Text>
-                    <Text fontWeight="900" fontSize="xl">
-                      {store.sellerCount}
-                    </Text>
-                  </Box>
-                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                    <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                      Stock Units
-                    </Text>
-                    <Text fontWeight="900" fontSize="xl">
-                      {store.stockUnits}
-                    </Text>
-                  </Box>
-                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                    <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                      Revenue Today
-                    </Text>
-                    <Text fontWeight="900" fontSize="xl">
-                      EUR {store.revenueToday.toFixed(2)}
-                    </Text>
-                  </Box>
-                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                    <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                      Low Stock
-                    </Text>
-                    <Text fontWeight="900" fontSize="xl">
-                      {store.lowStockCount}
-                    </Text>
-                  </Box>
-                </SimpleGrid>
-
-                <Input
-                  value={draft.name}
-                  onChange={(event) =>
-                    setStoreEdits((current) => ({
-                      ...current,
-                      [store.id]: {
-                        ...draft,
-                        name: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Store name"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
-                <Input
-                  value={draft.address}
-                  onChange={(event) =>
-                    setStoreEdits((current) => ({
-                      ...current,
-                      [store.id]: {
-                        ...draft,
-                        address: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Store address"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
-
-                <HStack spacing={3}>
+                  <Input
+                    value={draft.address}
+                    onChange={(event) =>
+                      setStoreEdits((current) => ({
+                        ...current,
+                        [store.id]: { ...draft, address: event.target.value },
+                      }))
+                    }
+                    placeholder="Store address"
+                    borderRadius="14px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
+                  />
                   <Button
-                    flex="1"
-                    borderRadius="16px"
-                    bg={draft.isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
-                    color={draft.isActive ? "white" : "surface.800"}
-                    _hover={{
-                      bg: draft.isActive ? "brand.600" : "rgba(225,223,218,0.95)",
-                    }}
+                    size="sm"
+                    borderRadius="14px"
+                    bg={draft.isActive ? "rgba(34,197,94,0.12)" : "rgba(248,113,113,0.14)"}
+                    color={draft.isActive ? "green.600" : "red.500"}
+                    _hover={{ bg: draft.isActive ? "rgba(34,197,94,0.18)" : "rgba(248,113,113,0.2)" }}
                     onClick={() =>
                       setStoreEdits((current) => ({
                         ...current,
-                        [store.id]: {
-                          ...draft,
-                          isActive: true,
-                        },
+                        [store.id]: { ...draft, isActive: !draft.isActive },
                       }))
                     }
                   >
-                    Active
+                    {draft.isActive ? "Active" : "Inactive"}
                   </Button>
                   <Button
-                    flex="1"
                     borderRadius="16px"
-                    bg={!draft.isActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
-                    color={!draft.isActive ? "red.500" : "surface.800"}
-                    _hover={{
-                      bg: !draft.isActive ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)",
-                    }}
-                    onClick={() =>
-                      setStoreEdits((current) => ({
-                        ...current,
-                        [store.id]: {
-                          ...draft,
-                          isActive: false,
-                        },
-                      }))
-                    }
+                    bg="surface.900"
+                    color="white"
+                    _hover={{ bg: "surface.700" }}
+                    isLoading={mutating}
+                    onClick={() => void handleSaveStore(store.id)}
                   >
-                    Inactive
+                    Save Store
                   </Button>
-                </HStack>
-
-                <Button
-                  alignSelf="flex-start"
-                  borderRadius="16px"
-                  bg="surface.900"
-                  color="white"
-                  _hover={{ bg: "surface.700" }}
-                  isLoading={mutating}
-                  onClick={() => void handleSaveStore(store.id)}
-                >
-                  Save Store
-                </Button>
-              </VStack>
-            </Box>
-          );
-        })}
-      </VStack>
+                </VStack>
+              </Box>
+            );
+          })}
+        </VStack>
+      </Box>
     </VStack>
   );
 
@@ -2033,80 +1988,77 @@ export function AdminDashboardScreen({
   };
 
   const renderStaffSection = () => (
-    <VStack spacing={3} align="stretch">
-      {staff.map((seller) => (
-        <Box key={seller.id} bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={3}>
-            <HStack justify="space-between" align="start">
-              <VStack align="start" spacing={1}>
-                <HStack spacing={2}>
-                  <Text fontWeight="900" fontSize="lg">
-                    {seller.fullName}
+    <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+      <VStack align="stretch" spacing={3}>
+        <HStack justify="space-between">
+          <Text fontWeight="900" fontSize="lg">
+            Staff Directory
+          </Text>
+          <Text color="surface.500" fontWeight="700" fontSize="sm">
+            {staff.length} sellers
+          </Text>
+        </HStack>
+
+        {staff.map((seller) => (
+          <Box key={seller.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900">{seller.fullName}</Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {seller.currentAssignment?.storeName ?? "Unassigned"}
                   </Text>
+                </VStack>
+                {seller.activeShift ? (
+                  <StatusPill
+                    label={seller.activeShift.status === "paused" ? "Paused" : "On Shift"}
+                    tone={seller.activeShift.status === "paused" ? "orange" : "blue"}
+                  />
+                ) : (
                   <StatusPill label={seller.isActive ? "Active" : "Inactive"} tone={seller.isActive ? "green" : "red"} />
-                </HStack>
-                <Text fontSize="sm" color="surface.500">
-                  Telegram ID {seller.telegramId}
-                </Text>
-              </VStack>
-              {seller.activeShift ? (
-                <StatusPill
-                  label={`${seller.activeShift.storeName} · ${seller.activeShift.status}`}
-                  tone={seller.activeShift.status === "paused" ? "orange" : "blue"}
-                />
-              ) : (
-                <StatusPill label="No open shift" tone="gray" />
-              )}
-            </HStack>
+                )}
+              </HStack>
 
-            <SimpleGrid columns={2} spacing={3}>
-              <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                  Current Store
-                </Text>
-                <Text fontWeight="900">{seller.currentAssignment?.storeName ?? "Unassigned"}</Text>
-                <Text fontSize="xs" color="surface.500" mt={1}>
-                  Since {seller.currentAssignment ? formatDateTime(seller.currentAssignment.startedAt) : "Not assigned"}
-                </Text>
-              </Box>
-              <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase">
-                  Sales Performance
-                </Text>
-                <Text fontWeight="900">{seller.salesCount} sales</Text>
-                <Text fontSize="xs" color="surface.500" mt={1}>
-                  EUR {seller.revenue.toFixed(2)} · Last {formatDateTime(seller.lastSaleAt)}
-                </Text>
-              </Box>
-            </SimpleGrid>
+              <SimpleGrid columns={2} spacing={2}>
+                <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    Sales
+                  </Text>
+                  <Text fontWeight="900">{seller.salesCount}</Text>
+                </Box>
+                <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    Revenue
+                  </Text>
+                  <Text fontWeight="900">EUR {seller.revenue.toFixed(2)}</Text>
+                </Box>
+              </SimpleGrid>
 
-            <Select
-              value={staffAssignments[seller.id] ?? ""}
-              onChange={(event) =>
-                setStaffAssignments((current) => ({
-                  ...current,
-                  [seller.id]: event.target.value,
-                }))
-              }
-              borderRadius="18px"
-              bg="white"
-              borderColor="rgba(226,224,218,0.95)"
-            >
-              <option value="" disabled>
-                Select assigned store
-              </option>
-              {stores
-                .filter((store) => store.isActive)
-                .map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-            </Select>
+              <Select
+                value={staffAssignments[seller.id] ?? ""}
+                onChange={(event) =>
+                  setStaffAssignments((current) => ({
+                    ...current,
+                    [seller.id]: event.target.value,
+                  }))
+                }
+                borderRadius="16px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+              >
+                <option value="" disabled>
+                  Select assigned store
+                </option>
+                {stores
+                  .filter((store) => store.isActive)
+                  .map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+              </Select>
 
-            <HStack spacing={3}>
               <Button
-                flex="1"
                 borderRadius="16px"
                 bg="brand.500"
                 color="white"
@@ -2118,73 +2070,77 @@ export function AdminDashboardScreen({
                 Reassign Seller
               </Button>
               <Button
-                flex="1"
-                borderRadius="16px"
-                bg="rgba(241,240,236,0.95)"
-                color="surface.800"
-                _hover={{ bg: "rgba(225,223,218,0.95)" }}
+                size="sm"
+                borderRadius="14px"
+                variant="ghost"
+                color="surface.700"
+                _hover={{ bg: "rgba(255,255,255,0.65)" }}
                 isDisabled={!seller.currentAssignment || !seller.isActive}
                 onClick={() => void onViewAsSeller(seller.id)}
               >
                 View as Seller
               </Button>
-            </HStack>
-          </VStack>
-        </Box>
-      ))}
-    </VStack>
+            </VStack>
+          </Box>
+        ))}
+      </VStack>
+    </Box>
   );
 
-  const renderTeam = () => (
-    <VStack spacing={4} align="stretch">
-      <SimpleGrid columns={2} spacing={3}>
-        <Box bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-          <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
-            Active Stores
-          </Text>
-          <Text fontSize="2xl" fontWeight="900" mt={2}>
-            {stores.filter((store) => store.isActive).length}
-          </Text>
-        </Box>
-        <Box bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-          <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
-            Sellers
-          </Text>
-          <Text fontSize="2xl" fontWeight="900" mt={2}>
-            {staff.length}
-          </Text>
-        </Box>
-      </SimpleGrid>
+  const renderTeam = () => {
+    const activeStores = stores.filter((store) => store.isActive).length;
+    const liveShifts = stores.reduce((total, store) => total + store.activeShiftCount, 0);
+    const unassignedSellers = staff.filter((seller) => !seller.currentAssignment).length;
+    const activeSellers = staff.filter((seller) => seller.isActive).length;
+    const teamSummaryCards = [
+      { label: "Active Stores", value: String(activeStores) },
+      { label: "Sellers", value: String(activeSellers) },
+      { label: "Live Shifts", value: String(liveShifts) },
+      { label: "Unassigned", value: String(unassignedSellers) },
+    ];
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
-          <HStack justify="space-between" align="center">
-            <Text fontWeight="900" fontSize="lg">
-              Stores
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {stores.length} locations
-            </Text>
-          </HStack>
-          {renderStoresSection()}
-        </VStack>
-      </Box>
+    return (
+      <VStack spacing={4} align="stretch">
+        <SimpleGrid columns={2} spacing={3}>
+          {teamSummaryCards.map((card) => (
+            <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+              <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
+                {card.label}
+              </Text>
+              <Text fontSize="2xl" fontWeight="900" mt={2}>
+                {card.value}
+              </Text>
+            </Box>
+          ))}
+        </SimpleGrid>
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
-          <HStack justify="space-between" align="center">
-            <Text fontWeight="900" fontSize="lg">
-              Staff
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {staff.length} sellers
-            </Text>
+        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+          <HStack spacing={2}>
+            {(["staff", "stores"] as TeamMode[]).map((mode) => {
+              const isActive = teamMode === mode;
+
+              return (
+                <Button
+                  key={mode}
+                  flex="1"
+                  size="sm"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onClick={() => setTeamMode(mode)}
+                >
+                  {mode === "staff" ? `Staff · ${staff.length}` : `Stores · ${stores.length}`}
+                </Button>
+              );
+            })}
           </HStack>
-          {renderStaffSection()}
-        </VStack>
-      </Box>
-    </VStack>
-  );
+        </Box>
+
+        {teamMode === "staff" ? renderStaffSection() : renderStoresSection()}
+      </VStack>
+    );
+  };
 
   const renderPlaceholder = (title: string, description: string) => (
     <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
