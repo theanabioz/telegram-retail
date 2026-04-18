@@ -47,6 +47,10 @@ function formatShortDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
 
+function formatHourLabel(hour: number) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
 function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "blue" | "orange" | "gray" }) {
   const styles = {
     green: { bg: "rgba(34, 197, 94, 0.12)", color: "green.600" },
@@ -393,6 +397,71 @@ export function AdminDashboardScreen({
           </Box>
         ))}
       </SimpleGrid>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <HStack justify="space-between" align="center">
+            <VStack align="start" spacing={0}>
+              <Text fontWeight="900" fontSize="lg">
+                Today Profit Flow
+              </Text>
+              <Text color="surface.500" fontSize="sm">
+                Revenue by hour across today
+              </Text>
+            </VStack>
+            <Text color="surface.500" fontWeight="800" fontSize="sm">
+              EUR {data?.summary.totalRevenueToday.toFixed(2) ?? "0.00"}
+            </Text>
+          </HStack>
+
+          {data ? (
+            <HStack align="end" spacing={2} h="180px" px={1}>
+              {(() => {
+                const maxHourTotal = Math.max(...data.hourlyRevenueToday.map((entry) => entry.total), 1);
+
+                return data.hourlyRevenueToday.map((entry, index) => {
+                  const height = Math.max(12, (entry.total / maxHourTotal) * 132);
+                  const isActiveHour = entry.total > 0;
+                  const shouldShowLabel = index % 3 === 0;
+
+                  return (
+                    <VStack key={entry.hour} flex="1" spacing={2} align="center" justify="end" h="full">
+                      <Text
+                        fontSize="10px"
+                        fontWeight="800"
+                        color={isActiveHour ? "surface.700" : "surface.400"}
+                        opacity={isActiveHour ? 1 : 0}
+                      >
+                        {isActiveHour ? entry.total.toFixed(0) : ""}
+                      </Text>
+                      <Box
+                        w="full"
+                        maxW="14px"
+                        h={`${height}px`}
+                        borderRadius="999px"
+                        bg={
+                          isActiveHour
+                            ? "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
+                            : "rgba(226,224,218,0.8)"
+                        }
+                        boxShadow={isActiveHour ? "0 8px 18px rgba(82,129,236,0.18)" : "none"}
+                      />
+                      <Text
+                        fontSize="10px"
+                        color="surface.500"
+                        fontWeight="700"
+                        opacity={shouldShowLabel ? 1 : 0}
+                      >
+                        {shouldShowLabel ? formatHourLabel(entry.hour).slice(0, 2) : " "}
+                      </Text>
+                    </VStack>
+                  );
+                });
+              })()}
+            </HStack>
+          ) : null}
+        </VStack>
+      </Box>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>

@@ -38,9 +38,10 @@ export async function getAdminDashboard(input: {
   recentSalesLimit: number;
   lowStockLimit: number;
 }) {
+  const dashboardSalesFetchLimit = Math.max(input.recentSalesLimit, 500);
   const [sales, stores, users, assignments, openShifts, inventoryRows, products] =
     await Promise.all([
-      listAdminSales(input.recentSalesLimit),
+      listAdminSales(dashboardSalesFetchLimit),
       listAdminStores(),
       listAdminUsers(),
       listCurrentAssignments(),
@@ -66,6 +67,16 @@ export async function getAdminDashboard(input: {
   const totalRevenueAllTime = Number(
     completedSales.reduce((sum, sale) => sum + sale.total_amount, 0).toFixed(2)
   );
+  const hourlyRevenueToday = Array.from({ length: 24 }, (_, hour) => {
+    const total = todaySales
+      .filter((sale) => new Date(sale.created_at).getHours() === hour)
+      .reduce((sum, sale) => sum + sale.total_amount, 0);
+
+    return {
+      hour,
+      total: Number(total.toFixed(2)),
+    };
+  });
 
   const inventoryByStore = inventoryRows.reduce<Map<string, number>>((map, row) => {
     map.set(row.store_id, (map.get(row.store_id) ?? 0) + Number(row.quantity));
@@ -94,7 +105,7 @@ export async function getAdminDashboard(input: {
         : null,
     }));
 
-  const recentSales = sales.map((sale) => ({
+  const recentSales = sales.slice(0, input.recentSalesLimit).map((sale) => ({
     id: sale.id,
     totalAmount: sale.total_amount,
     paymentMethod: sale.payment_method,
@@ -157,6 +168,7 @@ export async function getAdminDashboard(input: {
       activeShifts: openShifts.length,
       lowStockCount: lowStockItems.length,
     },
+    hourlyRevenueToday,
     recentSales,
     activeShifts,
     lowStockItems,

@@ -8,6 +8,10 @@ export type AdminDashboardResponse = {
     activeShifts: number;
     lowStockCount: number;
   };
+  hourlyRevenueToday: Array<{
+    hour: number;
+    total: number;
+  }>;
   recentSales: Array<{
     id: string;
     totalAmount: number;
