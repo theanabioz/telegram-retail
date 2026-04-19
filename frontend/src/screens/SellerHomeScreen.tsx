@@ -655,122 +655,138 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     );
   };
 
-  const renderDraftCartContent = () => {
+  const renderDraftCartItems = () => {
     if (!draft || draft.items.length === 0) {
       return null;
     }
 
     return (
-      <VStack align="stretch" spacing={4}>
-        <VStack align="stretch" spacing={3}>
-          {draft.items.map((item) => (
-            <Box
-              key={item.id}
-              bg="surface.50"
-              borderRadius="24px"
-              p={4}
-              border="1px solid"
-              borderColor="surface.100"
-            >
-              <VStack align="stretch" spacing={3}>
-                <HStack justify="space-between" align="start">
-                  <VStack align="start" spacing={0.5}>
-                    <Text fontWeight="800" fontSize="md" color="surface.900" noOfLines={2}>
-                      {item.product_name_snapshot}
-                    </Text>
-                    <HStack spacing={2}>
-                      <Text
-                        fontSize="sm"
-                        color={item.discount_type ? "surface.400" : "surface.500"}
-                        fontWeight="600"
-                        textDecoration={item.discount_type ? "line-through" : "none"}
-                      >
-                        EUR {item.base_price.toFixed(2)}
-                      </Text>
-                      {item.discount_type && (
-                        <Box bg="green.50" px={2} py={0.5} borderRadius="6px">
-                          <Text fontSize="10px" color="green.600" fontWeight="800" textTransform="uppercase">
-                            -{item.discount_type === "percent" ? `${item.discount_value}%` : `EUR ${item.discount_value}`}
-                          </Text>
-                        </Box>
-                      )}
-                    </HStack>
-                  </VStack>
-                  <Text fontWeight="900" fontSize="lg" color="surface.900">
-                    EUR {item.line_total.toFixed(2)}
+      <VStack align="stretch" spacing={3}>
+        {draft.items.map((item) => (
+          <Box
+            key={item.id}
+            bg="surface.50"
+            borderRadius="24px"
+            p={4}
+            border="1px solid"
+            borderColor="surface.100"
+          >
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={0.5}>
+                  <Text fontWeight="800" fontSize="md" color="surface.900" noOfLines={2}>
+                    {item.product_name_snapshot}
                   </Text>
-                </HStack>
-
-                <HStack justify="space-between" align="center">
-                  <HStack 
-                    bg="white" 
-                    borderRadius="16px" 
-                    p={1} 
-                    border="1px solid" 
-                    borderColor="surface.200"
-                    spacing={0}
-                  >
-                    <IconButton
-                      aria-label="Decrease quantity"
-                      icon={<Text fontSize="xl">−</Text>}
-                      size="sm"
-                      w="36px"
-                      h="36px"
-                      borderRadius="12px"
-                      variant="ghost"
-                      onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
-                      isDisabled={item.quantity <= 1 || actionLoading}
-                    />
-                    <Text w="44px" textAlign="center" fontWeight="800" fontSize="md">
-                      {item.quantity}
-                    </Text>
-                    <IconButton
-                      aria-label="Increase quantity"
-                      icon={<Text fontSize="xl">+</Text>}
-                      size="sm"
-                      w="36px"
-                      h="36px"
-                      borderRadius="12px"
-                      variant="ghost"
-                      onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
-                      isLoading={actionLoading}
-                    />
-                  </HStack>
-
                   <HStack spacing={2}>
-                    <Button
-                      size="sm"
-                      h="38px"
-                      borderRadius="14px"
-                      variant="outline"
-                      borderColor="surface.200"
-                      color="surface.600"
-                      fontSize="xs"
-                      fontWeight="700"
-                      onClick={() => openDiscountModal(item)}
-                      leftIcon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={3.5} />}
+                    <Text
+                      fontSize="sm"
+                      color={item.discount_type ? "surface.400" : "surface.500"}
+                      fontWeight="600"
+                      textDecoration={item.discount_type ? "line-through" : "none"}
                     >
-                      {item.discount_type ? "Edit Discount" : "Add Discount"}
-                    </Button>
-                    <IconButton
-                      aria-label="Remove item"
-                      icon={<Box as={HiOutlineTrash} boxSize={4} />}
-                      size="sm"
-                      h="38px"
-                      w="38px"
-                      borderRadius="14px"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => void removeDraftItem(item.id)}
-                      isLoading={actionLoading}
-                    />
+                      EUR {item.base_price.toFixed(2)}
+                    </Text>
+                    {item.discount_type && (
+                      <Box bg="green.50" px={2} py={0.5} borderRadius="6px">
+                        <Text fontSize="10px" color="green.600" fontWeight="800" textTransform="uppercase">
+                          -{item.discount_type === "percent" ? `${item.discount_value}%` : `EUR ${item.discount_value}`}
+                        </Text>
+                      </Box>
+                    )}
                   </HStack>
-                </HStack>
-              </VStack>
-            </Box>
-          ))}
-        </VStack>
+                </VStack>
+                <Text fontWeight="900" fontSize="lg" color="surface.900">
+                  EUR {item.line_total.toFixed(2)}
+                </Text>
+              </HStack>
 
+              <HStack justify="space-between" align="center">
+                <HStack
+                  bg="white"
+                  borderRadius="16px"
+                  p={1}
+                  border="1px solid"
+                  borderColor="surface.200"
+                  spacing={0}
+                >
+                  <IconButton
+                    aria-label="Decrease quantity"
+                    icon={<Text fontSize="xl">−</Text>}
+                    size="sm"
+                    w="36px"
+                    h="36px"
+                    borderRadius="12px"
+                    variant="ghost"
+                    onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
+                    isDisabled={item.quantity <= 1 || actionLoading}
+                  />
+                  <Text w="44px" textAlign="center" fontWeight="800" fontSize="md">
+                    {item.quantity}
+                  </Text>
+                  <IconButton
+                    aria-label="Increase quantity"
+                    icon={<Text fontSize="xl">+</Text>}
+                    size="sm"
+                    w="36px"
+                    h="36px"
+                    borderRadius="12px"
+                    variant="ghost"
+                    onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
+                    isLoading={actionLoading}
+                  />
+                </HStack>
+
+                <HStack spacing={2}>
+                  <Button
+                    size="sm"
+                    h="38px"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    color="surface.600"
+                    fontSize="xs"
+                    fontWeight="700"
+                    onClick={() => openDiscountModal(item)}
+                    leftIcon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={3.5} />}
+                  >
+                    {item.discount_type ? "Edit Discount" : "Add Discount"}
+                  </Button>
+                  <IconButton
+                    aria-label="Remove item"
+                    icon={<Box as={HiOutlineTrash} boxSize={4} />}
+                    size="sm"
+                    h="38px"
+                    w="38px"
+                    borderRadius="14px"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={() => void removeDraftItem(item.id)}
+                    isLoading={actionLoading}
+                  />
+                </HStack>
+              </HStack>
+            </VStack>
+          </Box>
+        ))}
+      </VStack>
+    );
+  };
+
+  const renderDraftCartFooter = () => {
+    if (!draft || draft.items.length === 0) {
+      return null;
+    }
+
+    return (
+      <Box
+        bg="rgba(255,255,255,0.94)"
+        borderTop="1px solid"
+        borderColor="rgba(232,229,223,0.96)"
+        px={5}
+        pt={4}
+        pb="calc(24px + env(safe-area-inset-bottom, 0px))"
+        boxShadow="0 -12px 30px rgba(20, 20, 20, 0.05)"
+      >
         <Box
           bg="rgba(246,244,239,0.96)"
           borderRadius="24px"
@@ -778,7 +794,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           border="1px solid"
           borderColor="rgba(223,219,210,0.78)"
           boxShadow="0 10px 24px rgba(20, 20, 20, 0.05)"
-          mt={2}
         >
           <VStack align="stretch" spacing={3}>
             <Box
@@ -834,7 +849,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </HStack>
           </VStack>
         </Box>
-      </VStack>
+      </Box>
     );
   };
 
@@ -871,7 +886,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
           </Box>
           
-          <Box px={5} pb={6} pt={2} overflowY="auto" flex="1" overscrollBehavior="contain">
+          <Box px={5} pt={2} overflowY="auto" flex="1" overscrollBehavior="contain">
             <HStack justify="space-between" mb={6} align="center">
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
@@ -891,8 +906,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 onClick={() => setIsDraftCartOpen(false)}
               />
             </HStack>
-            {renderDraftCartContent()}
+            {renderDraftCartItems()}
           </Box>
+          {renderDraftCartFooter()}
         </Box>
       </Box>
     ) : null
