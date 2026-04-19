@@ -107,6 +107,13 @@ function formatTimeLabel(value: string | null) {
   });
 }
 
+function formatHeaderDate(value: Date) {
+  return value.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
@@ -289,6 +296,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       : shiftStatus === "paused"
         ? "Sales are paused"
         : "Open a shift to start selling";
+  const shiftContextLabel =
+    shiftStatus === "active" ? "Shift active" : shiftStatus === "paused" ? "Shift paused" : "Shift inactive";
 
   const activeTabTitle: Record<SellerTab, string> = {
     checkout: "Checkout",
@@ -1964,45 +1973,62 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     >
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
-        <VStack spacing={6} align="stretch" pt={2} mb={2}>
-          <HStack justify="space-between" align="center" px={1}>
-            <VStack align="start" spacing={0}>
-              <Text
-                fontSize="3xl"
-                fontWeight="900"
-                letterSpacing="-0.04em"
-                color="surface.900"
-                lineHeight="1"
-              >
-                {activeTabTitle[activeTab]}
-              </Text>
-            </VStack>
+          <VStack spacing={6} align="stretch" pt={4} mb={2}>
+            <VStack align="stretch" spacing={3} px={1}>
+              <HStack justify="space-between" align="center">
+                <Text
+                  fontSize="xs"
+                  fontWeight="800"
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  color="surface.400"
+                >
+                  {storeName || "Current store"} · {shiftContextLabel}
+                </Text>
+                <Text fontSize="xs" color="surface.400" fontWeight="700">
+                  Today · {formatHeaderDate(new Date())}
+                </Text>
+              </HStack>
 
-            <HStack 
-              spacing={2.5} 
-              bg="rgba(255,255,255,0.6)" 
-              backdropFilter="blur(10px)"
-              pl={1.5} 
-              pr={3.5} 
-              py={1.5} 
-              borderRadius="full" 
-              border="1px solid"
-              borderColor="rgba(255,255,255,0.8)"
-              boxShadow="0 4px 12px rgba(0,0,0,0.03)"
-            >
-              <Avatar 
-                size="xs" 
-                name={operatorName} 
-                bg="brand.500" 
-                color="white" 
-                fontWeight="800"
-                fontSize="10px"
-              />
-              <Text fontWeight="800" fontSize="sm" color="surface.700" letterSpacing="-0.01em">
-                {operatorName.split(' ')[0]}
-              </Text>
-            </HStack>
-          </HStack>
+              <HStack justify="space-between" align="center">
+                <VStack align="start" spacing={0}>
+                  <Text
+                    fontSize="3xl"
+                    fontWeight="900"
+                    letterSpacing="-0.04em"
+                    color="surface.900"
+                    lineHeight="1"
+                  >
+                    {activeTabTitle[activeTab]}
+                  </Text>
+                </VStack>
+
+                <HStack
+                  spacing={2.5}
+                  bg="rgba(255,255,255,0.6)"
+                  backdropFilter="blur(10px)"
+                  pl={1.5}
+                  pr={3.5}
+                  py={1.5}
+                  borderRadius="full"
+                  border="1px solid"
+                  borderColor="rgba(255,255,255,0.8)"
+                  boxShadow="0 4px 12px rgba(0,0,0,0.03)"
+                >
+                  <Avatar
+                    size="xs"
+                    name={operatorName}
+                    bg="brand.500"
+                    color="white"
+                    fontWeight="800"
+                    fontSize="10px"
+                  />
+                  <Text fontWeight="800" fontSize="sm" color="surface.700" letterSpacing="-0.01em">
+                    {operatorName.split(" ")[0]}
+                  </Text>
+                </HStack>
+              </HStack>
+            </VStack>
 
           {activeTab === "checkout" ? (
             <InputGroup size="md">

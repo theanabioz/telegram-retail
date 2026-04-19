@@ -192,6 +192,13 @@ function formatShortDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
 
+function formatHeaderDate(value: Date) {
+  return value.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function withOverviewChartMockLayer(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
   if (!ADMIN_OVERVIEW_CHART_MOCK_LAYER) {
     return hourlyRevenueToday;
@@ -335,6 +342,16 @@ export function AdminDashboardScreen({
     Record<string, { name: string; sku: string; defaultPrice: string; isActive: boolean }>
   >({});
   const supportsTelegramBackButton = canUseTelegramBackButton();
+  const headerContextLabel =
+    activeTab === "overview"
+      ? "Live dashboard"
+      : activeTab === "sales"
+        ? "Revenue and returns"
+        : activeTab === "inventory"
+          ? "Stock across stores"
+          : activeTab === "team"
+            ? "Stores and staff"
+            : "Workspace settings";
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
     if (tab === "overview") {
@@ -2453,36 +2470,53 @@ export function AdminDashboardScreen({
     <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
-          <HStack justify="space-between" align="center" px={1} pt={2} mb={2}>
-            <Text
-              fontSize="3xl"
-              fontWeight="900"
-              letterSpacing="-0.04em"
-              color="surface.900"
-              lineHeight="1"
-            >
-              {adminTabTitle[activeTab]}
-            </Text>
-
-            <HStack
-              spacing={3}
-              bg="rgba(255,255,255,0.9)"
-              borderRadius="18px"
-              px={3}
-              py={2}
-              boxShadow="0 12px 30px rgba(17, 17, 17, 0.06)"
-            >
-              <Avatar size="sm" name={operatorName} bg="surface.200" color="surface.800" />
-              <VStack align="start" spacing={0}>
-                <Text fontWeight="800" lineHeight="1">
-                  {operatorName}
-                </Text>
-                <Text fontSize="xs" color="surface.500" fontWeight="700" lineHeight="1.1">
-                  Admin
-                </Text>
-              </VStack>
+          <VStack align="stretch" spacing={3} px={1} pt={4} mb={2}>
+            <HStack justify="space-between" align="center">
+              <Text
+                fontSize="xs"
+                fontWeight="800"
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                color="surface.400"
+              >
+                {headerContextLabel}
+              </Text>
+              <Text fontSize="xs" color="surface.400" fontWeight="700">
+                Today · {formatHeaderDate(new Date())}
+              </Text>
             </HStack>
-          </HStack>
+
+            <HStack justify="space-between" align="center">
+              <Text
+                fontSize="3xl"
+                fontWeight="900"
+                letterSpacing="-0.04em"
+                color="surface.900"
+                lineHeight="1"
+              >
+                {adminTabTitle[activeTab]}
+              </Text>
+
+              <HStack
+                spacing={3}
+                bg="rgba(255,255,255,0.9)"
+                borderRadius="18px"
+                px={3}
+                py={2}
+                boxShadow="0 12px 30px rgba(17, 17, 17, 0.06)"
+              >
+                <Avatar size="sm" name={operatorName} bg="surface.200" color="surface.800" />
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="800" lineHeight="1">
+                    {operatorName}
+                  </Text>
+                  <Text fontSize="xs" color="surface.500" fontWeight="700" lineHeight="1.1">
+                    Admin
+                  </Text>
+                </VStack>
+              </HStack>
+            </HStack>
+          </VStack>
 
           {loading || loadingStores || loadingStaff ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
