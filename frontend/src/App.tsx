@@ -4,7 +4,7 @@ import WebApp from "@twa-dev/sdk";
 import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
-import { lockPortraitOrientation } from "./lib/orientation";
+import { attachPortraitOrientationLock } from "./lib/orientation";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
@@ -138,7 +138,7 @@ export function App() {
       // Local browser mode is expected before Telegram integration is wired.
     }
 
-    void lockPortraitOrientation();
+    return attachPortraitOrientationLock();
   }, []);
 
   useEffect(() => attachTelegramViewportSafety(), []);

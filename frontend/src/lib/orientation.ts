@@ -1,35 +1,28 @@
-import WebApp from "@twa-dev/sdk";
-
 type SupportedOrientationLock = "portrait" | "portrait-primary";
 
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: SupportedOrientationLock) => Promise<void>;
-  unlock?: () => void;
 };
 
-type TelegramWebAppOrientation = typeof WebApp & {
+type TelegramWebAppNative = {
   requestFullscreen?: () => void;
   lockOrientation?: () => void;
   isVersionAtLeast?: (version: string) => boolean;
+  onEvent?: (eventType: string, callback: () => void) => void;
+  offEvent?: (eventType: string, callback: () => void) => void;
 };
 
-export async function lockPortraitOrientation() {
+function getTelegramWebApp(): TelegramWebAppNative | null {
   if (typeof window === "undefined") {
-    return;
+    return null;
   }
 
-  const webApp = WebApp as TelegramWebAppOrientation;
+  return (
+    (window as typeof window & { Telegram?: { WebApp?: TelegramWebAppNative } }).Telegram?.WebApp ?? null
+  );
+}
 
-  if (webApp.isVersionAtLeast?.("8.0") && webApp.lockOrientation) {
-    try {
-      webApp.requestFullscreen?.();
-      webApp.lockOrientation();
-      return;
-    } catch {
-      // Fall through to the browser API fallback.
-    }
-  }
-
+async function lockBrowserPortrait() {
   if (typeof screen === "undefined") {
     return;
   }
@@ -46,7 +39,54 @@ export async function lockPortraitOrientation() {
     try {
       await orientation.lock("portrait");
     } catch {
-      // Some mobile webviews, especially on iOS, may ignore orientation locking.
+      // Some mobile browsers and webviews ignore the browser orientation API.
     }
   }
+}
+
+export function attachPortraitOrientationLock() {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const webApp = getTelegramWebApp();
+  let retryTimeouts: number[] = [];
+
+  const runLock = async () => {
+    if (webApp?.isVersionAtLeast?.("8.0") && webApp.lockOrientation) {
+      try {
+        webApp.lockOrientation();
+        return;
+      } catch {
+        // Fall through to browser API fallback.
+      }
+    }
+
+    await lockBrowserPortrait();
+  };
+
+  const scheduleLockSequence = () => {
+    void runLock();
+
+    retryTimeouts = [80, 240, 700].map((delay) =>
+      window.setTimeout(() => {
+        void runLock();
+      }, delay)
+    );
+  };
+
+  const handleViewportChange = () => {
+    scheduleLockSequence();
+  };
+
+  scheduleLockSequence();
+
+  webApp?.onEvent?.("viewportChanged", handleViewportChange);
+  webApp?.onEvent?.("fullscreenChanged", handleViewportChange);
+
+  return () => {
+    retryTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    webApp?.offEvent?.("viewportChanged", handleViewportChange);
+    webApp?.offEvent?.("fullscreenChanged", handleViewportChange);
+  };
 }
