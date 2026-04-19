@@ -12,11 +12,17 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
+import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
-import type { AdminDashboardResponse, AdminInventoryResponse, AdminSalesOverviewResponse } from "../types/admin";
+import type {
+  AdminDashboardResponse,
+  AdminInventoryResponse,
+  AdminSalesOverviewResponse,
+  AdminStartupResponse,
+} from "../types/admin";
 
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelMutedSurface = "rgba(241,240,236,0.82)";
@@ -45,6 +51,7 @@ const ADMIN_OVERVIEW_CHART_MOCK_TOTALS: Record<number, number> = {
   22: 54,
   23: 37,
 };
+const TOKEN_KEY = "telegram-retail-token";
 const adminTabTitle: Record<AdminTab, string> = {
   overview: "Overview",
   sales: "Sales",
@@ -191,7 +198,7 @@ export function AdminDashboardScreen({
   onSwitchPanel,
   onViewAsSeller,
 }: AdminDashboardScreenProps) {
-  const { data, error, loading, load } = useAdminDashboardStore();
+  const { data, error, loading, load, hydrate: hydrateDashboard } = useAdminDashboardStore();
   const {
     stores,
     staff,
@@ -206,6 +213,7 @@ export function AdminDashboardScreen({
     loadInventory,
     loadProducts,
     loadSalesOverview,
+    hydrateStartup,
     createStore,
     updateStore,
     assignSeller,
@@ -323,19 +331,49 @@ export function AdminDashboardScreen({
   };
 
   useEffect(() => {
-    void load();
-    void loadStores();
-    void loadStaff();
-    void loadInventory();
-    void loadProducts();
-    const today = getSalesPeriodRange("today");
-    void loadSalesOverview({
-      saleStatus: "all",
-      dateFrom: new Date(`${today.from}T00:00:00`).toISOString(),
-      dateTo: new Date(`${today.to}T23:59:59`).toISOString(),
-      limit: 20,
-    });
-  }, [load, loadStaff, loadStores, loadInventory, loadProducts, loadSalesOverview]);
+    const loadInitialAdminSnapshot = async () => {
+      const token = window.localStorage.getItem(TOKEN_KEY);
+
+      if (!token) {
+        void load();
+        void loadStores();
+        void loadStaff();
+        void loadInventory();
+        void loadProducts();
+        return;
+      }
+
+      try {
+        const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
+        hydrateDashboard(startup.dashboard);
+        hydrateStartup(startup);
+      } catch {
+        void load();
+        void loadStores();
+        void loadStaff();
+        void loadInventory();
+        void loadProducts();
+        const today = getSalesPeriodRange("today");
+        void loadSalesOverview({
+          saleStatus: "all",
+          dateFrom: new Date(`${today.from}T00:00:00`).toISOString(),
+          dateTo: new Date(`${today.to}T23:59:59`).toISOString(),
+          limit: 20,
+        });
+      }
+    };
+
+    void loadInitialAdminSnapshot();
+  }, [
+    hydrateDashboard,
+    hydrateStartup,
+    load,
+    loadStaff,
+    loadStores,
+    loadInventory,
+    loadProducts,
+    loadSalesOverview,
+  ]);
 
   useEffect(() => {
     setStoreEdits((current) => {

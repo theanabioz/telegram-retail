@@ -249,3 +249,19 @@ export type AdminSalesOverviewResponse = {
     }>;
   }>;
 };
+
+export type AdminStartupResponse = {
+  me: {
+    user: {
+      id: string;
+      full_name: string;
+      role: "admin" | "seller";
+    };
+    assignment: null;
+  };
+  dashboard: AdminDashboardResponse;
+  stores: AdminStoresResponse;
+  staff: AdminStaffResponse;
+  inventory: AdminInventoryResponse;
+  sales: AdminSalesOverviewResponse;
+};

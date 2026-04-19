@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../lib/async-handler.js";
 import { requireAuth, requireRole } from "../middleware/auth.middleware.js";
+import { getCurrentSessionUser } from "../modules/auth/auth.service.js";
 import {
   getSellerInventoryHistory,
   runManualInventoryAdjustment,
@@ -32,10 +33,53 @@ import {
   removeDraftSaleItem,
   updateDraftSaleItem,
 } from "../modules/seller/seller.service.js";
+import { getShiftHistory, getShiftState } from "../modules/shifts/shifts.service.js";
 
 export const sellerRouter = Router();
 
 sellerRouter.use(requireAuth, requireRole("seller"));
+
+sellerRouter.get(
+  "/startup",
+  asyncHandler(async (req, res) => {
+    const userId = req.auth!.app_user_id;
+    const [me, shiftState, shiftHistory] = await Promise.all([
+      getCurrentSessionUser(userId),
+      getShiftState(userId),
+      getShiftHistory(userId, 7, 0),
+    ]);
+
+    if (!shiftState.activeShift || shiftState.activeShift.status !== "active") {
+      res.json({
+        me,
+        shiftState,
+        shiftHistory,
+        catalog: null,
+        draft: null,
+        sales: null,
+        inventoryHistory: null,
+      });
+      return;
+    }
+
+    const [catalog, draft, sales, inventoryHistory] = await Promise.all([
+      getSellerHomeCatalog(userId),
+      getSellerDraft(userId),
+      listRecentSales(userId, 12),
+      getSellerInventoryHistory(userId, 20),
+    ]);
+
+    res.json({
+      me,
+      shiftState,
+      shiftHistory,
+      catalog,
+      draft,
+      sales,
+      inventoryHistory,
+    });
+  })
+);
 
 sellerRouter.get(
   "/catalog",

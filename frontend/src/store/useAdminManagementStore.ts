@@ -11,6 +11,7 @@ import type {
   AdminStaffResponse,
   AdminStoreMutationResponse,
   AdminStoresResponse,
+  AdminStartupResponse,
 } from "../types/admin";
 
 const TOKEN_KEY = "telegram-retail-token";
@@ -82,6 +83,7 @@ type AdminManagementState = {
     }
   ) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
+  hydrateStartup: (startup: AdminStartupResponse) => void;
 };
 
 export const useAdminManagementStore = create<AdminManagementState>((set, get) => ({
@@ -102,6 +104,27 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
   salesSellers: [],
   salesOverview: [],
   returnsOverview: [],
+
+  hydrateStartup: (startup) => {
+    set({
+      loadingStores: false,
+      loadingStaff: false,
+      loadingInventory: false,
+      loadingSales: false,
+      error: null,
+      stores: startup.stores.stores,
+      staff: startup.staff.sellers,
+      inventoryStores: startup.inventory.stores,
+      products: startup.inventory.products,
+      inventoryItems: startup.inventory.items,
+      inventoryHistory: startup.inventory.history,
+      salesFilters: startup.sales.filters,
+      salesStores: startup.sales.stores,
+      salesSellers: startup.sales.sellers,
+      salesOverview: startup.sales.sales,
+      returnsOverview: startup.sales.returns,
+    });
+  },
 
   loadStores: async () => {
     const token = getStoredToken();

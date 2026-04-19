@@ -12,6 +12,7 @@ type AdminDashboardState = {
   loading: boolean;
   error: string | null;
   data: AdminDashboardResponse | null;
+  hydrate: (data: AdminDashboardResponse) => void;
   load: () => Promise<void>;
 };
 
@@ -19,6 +20,9 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   loading: false,
   error: null,
   data: null,
+  hydrate: (data) => {
+    set({ loading: false, error: null, data });
+  },
   load: async () => {
     const token = getStoredToken();
 

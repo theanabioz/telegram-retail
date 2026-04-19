@@ -185,3 +185,22 @@ export type CheckoutResponse = {
   items: DraftItem[];
   summary: DraftResponse["summary"];
 };
+
+export type SellerStartupResponse = {
+  me: {
+    user: {
+      id: string;
+      full_name: string;
+    };
+    assignment: {
+      store_id: string;
+      store_name: string;
+    } | null;
+  };
+  shiftState: ShiftStateResponse;
+  shiftHistory: ShiftHistoryResponse;
+  catalog: SellerCatalogResponse | null;
+  draft: DraftResponse | null;
+  sales: SellerSalesResponse | null;
+  inventoryHistory: InventoryHistoryResponse | null;
+};

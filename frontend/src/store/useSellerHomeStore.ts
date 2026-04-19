@@ -10,6 +10,7 @@ import type {
   InventoryHistoryResponse,
   SellerCatalogResponse,
   SellerSalesResponse,
+  SellerStartupResponse,
   ShiftDetailsResponse,
   ShiftHistoryResponse,
   ShiftSummary,
@@ -65,7 +66,13 @@ type SellerHomeState = {
 };
 
 const TOKEN_KEY = "telegram-retail-token";
+const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 let draftMutationVersion = 0;
+
+type SellerStartupCache = {
+  token: string;
+  startup: SellerStartupResponse;
+};
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -136,12 +143,78 @@ function setStoredToken(token: string) {
   window.localStorage.setItem(TOKEN_KEY, token);
 }
 
+function readSellerStartupCache(token: string) {
+  try {
+    const raw = window.localStorage.getItem(SELLER_STARTUP_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw) as SellerStartupCache;
+    return cached.token === token ? cached.startup : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSellerStartupCache(token: string, startup: SellerStartupResponse) {
+  try {
+    window.localStorage.setItem(SELLER_STARTUP_CACHE_KEY, JSON.stringify({ token, startup }));
+  } catch {
+    // Cache is a UX optimization only; storage failures should never block the POS.
+  }
+}
+
+function mapCatalogProducts(catalog: SellerCatalogResponse) {
+  return catalog.products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    price: product.storePrice,
+    stock: product.stock,
+  }));
+}
+
 function resolveCurrentToken(stateToken: string | null) {
   return getStoredToken() ?? stateToken;
 }
 
 async function fetchShiftDetailsById(token: string, shiftId: string) {
   return apiGet<ShiftDetailsResponse>(`/shifts/history/${shiftId}`, token);
+}
+
+function buildSellerStartupState(startup: SellerStartupResponse, token: string) {
+  const isLive = Boolean(
+    startup.shiftState.activeShift &&
+      startup.shiftState.activeShift.status === "active" &&
+      startup.catalog &&
+      startup.draft &&
+      startup.sales &&
+      startup.inventoryHistory
+  );
+
+  return {
+    mode: isLive ? ("live" as const) : ("demo" as const),
+    loading: false,
+    error: null,
+    token,
+    operatorName: startup.me.user.full_name,
+    storeId: startup.me.assignment?.store_id ?? startup.catalog?.store.store_id ?? null,
+    storeName:
+      startup.catalog?.store.store_name ??
+      startup.me.assignment?.store_name ??
+      sellerHomeMock.storeName,
+    shiftActive: Boolean(startup.shiftState.activeShift && startup.shiftState.activeShift.status === "active"),
+    shiftStatus: startup.shiftState.activeShift?.status ?? ("inactive" as const),
+    shiftSummary: startup.shiftState.summary,
+    shiftHistory: startup.shiftHistory.items,
+    shiftHistoryPagination: startup.shiftHistory.pagination,
+    shiftDetails: null,
+    shiftDetailsLoading: false,
+    products: isLive && startup.catalog ? mapCatalogProducts(startup.catalog) : sellerHomeMock.products,
+    draft: isLive ? startup.draft : null,
+    sales: isLive && startup.sales ? startup.sales.sales : [],
+    inventoryHistory: isLive && startup.inventoryHistory ? startup.inventoryHistory.items : [],
+  };
 }
 
 export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
@@ -168,12 +241,14 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   token: getStoredToken(),
 
   bootstrap: async () => {
-    set({ loading: true, error: null });
+    set({ error: null });
+    let usedCachedStartup = false;
 
     try {
       let token = resolveCurrentToken(get().token);
 
       if (!token) {
+        set({ loading: true });
         const session = await apiPost<AuthSessionResponse>("/auth/dev-login", {
           telegramId: config.devTelegramId,
         });
@@ -191,37 +266,20 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         set({ token });
       }
 
-      const [me, shiftState, shiftHistory] = await Promise.all([
-        apiGet<{
-          user: {
-            id: string;
-            full_name: string;
-          };
-          assignment: {
-            store_id: string;
-            store_name: string;
-          } | null;
-        }>("/auth/me", token),
-        apiGet<ShiftStateResponse>("/shifts/current", token),
-        apiGet<ShiftHistoryResponse>("/shifts/history?limit=7&offset=0", token),
-      ]);
+      const cachedStartup = readSellerStartupCache(token);
+      if (cachedStartup) {
+        usedCachedStartup = true;
+        set(buildSellerStartupState(cachedStartup, token));
+      } else {
+        set({ loading: true });
+      }
 
-      set({
-        token,
-        operatorName: me.user.full_name,
-        storeId: me.assignment?.store_id ?? null,
-        storeName: me.assignment?.store_name ?? sellerHomeMock.storeName,
-        shiftActive: Boolean(shiftState.activeShift && shiftState.activeShift.status === "active"),
-        shiftStatus: shiftState.activeShift?.status ?? "inactive",
-        shiftSummary: shiftState.summary,
-        shiftHistory: shiftHistory.items,
-        shiftHistoryPagination: shiftHistory.pagination,
-        shiftDetails: null,
-        shiftDetailsLoading: false,
-      });
+      const startup = await apiGet<SellerStartupResponse>("/seller/startup", token);
+      writeSellerStartupCache(token, startup);
+      set(buildSellerStartupState(startup, token));
 
       void Promise.allSettled(
-        shiftHistory.items.slice(0, 7).map(async (entry) => {
+        startup.shiftHistory.items.slice(0, 7).map(async (entry) => {
           const shiftDetails = await fetchShiftDetailsById(token, entry.shift.id);
           set((current) => ({
             shiftDetailsById: {
@@ -231,45 +289,15 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           }));
         })
       );
-
-      if (!shiftState.activeShift || shiftState.activeShift.status !== "active") {
+    } catch (error) {
+      if (usedCachedStartup) {
         set({
-          mode: "demo",
           loading: false,
-          products: sellerHomeMock.products,
-          draft: null,
-          sales: [],
-          inventoryHistory: [],
+          error: error instanceof Error ? error.message : "Failed to refresh seller home",
         });
         return;
       }
 
-      const [catalog, draft, sales, inventoryHistory] = await Promise.all([
-        apiGet<SellerCatalogResponse>("/seller/catalog", token),
-        apiGet<DraftResponse>("/seller/draft", token),
-        apiGet<SellerSalesResponse>("/seller/sales?limit=12", token),
-        apiGet<InventoryHistoryResponse>("/seller/inventory/history?limit=20", token),
-      ]);
-
-      set({
-        mode: "live",
-        loading: false,
-        error: null,
-        shiftActive: true,
-        shiftStatus: catalog.shift.status,
-        storeId: catalog.store.store_id,
-        storeName: catalog.store.store_name,
-        products: catalog.products.map((product) => ({
-          id: product.id,
-          name: product.name,
-          price: product.storePrice,
-          stock: product.stock,
-        })),
-        draft,
-        sales: sales.sales,
-        inventoryHistory: inventoryHistory.items,
-      });
-    } catch (error) {
       set({
         mode: "demo",
         loading: false,

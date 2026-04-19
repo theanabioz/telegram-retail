@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../lib/async-handler.js";
 import { requireAuth, requireRole } from "../middleware/auth.middleware.js";
+import { getCurrentSessionUser } from "../modules/auth/auth.service.js";
 import {
   adminInventoryAdjustmentBodySchema,
   adminInventoryQuerySchema,
@@ -37,6 +38,46 @@ import {
 export const adminRouter = Router();
 
 adminRouter.use(requireAuth, requireRole("admin"));
+
+function todaySalesRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  return {
+    dateFrom: start.toISOString(),
+    dateTo: end.toISOString(),
+  };
+}
+
+adminRouter.get(
+  "/startup",
+  asyncHandler(async (req, res) => {
+    const today = todaySalesRange();
+    const [me, dashboard, stores, staff, inventory, sales] = await Promise.all([
+      getCurrentSessionUser(req.auth!.app_user_id),
+      getAdminDashboard({ recentSalesLimit: 12, lowStockLimit: 12 }),
+      getAdminStores(),
+      getAdminStaff(),
+      getAdminInventory({ historyLimit: 20 }),
+      getAdminSalesOverview({
+        saleStatus: "all",
+        dateFrom: today.dateFrom,
+        dateTo: today.dateTo,
+        limit: 20,
+      }),
+    ]);
+
+    res.json({
+      me,
+      dashboard,
+      stores,
+      staff,
+      inventory,
+      sales,
+    });
+  })
+);
 
 adminRouter.get(
   "/dashboard",
