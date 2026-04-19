@@ -1,9 +1,7 @@
 import { HttpError } from "../../lib/http-error.js";
 import { applyInventoryMovement } from "../inventory/inventory.service.js";
-import { getSellerInventoryHistory } from "../inventory/inventory.service.js";
-import { getShiftHistory, getShiftState } from "../shifts/shifts.service.js";
 import { findOpenShiftByUserId } from "../shifts/shifts.repository.js";
-import { findCurrentAssignment, findUserById } from "../users/users.repository.js";
+import { findCurrentAssignment } from "../users/users.repository.js";
 import {
   createReturn,
   createDraftSale,
@@ -138,64 +136,6 @@ export async function getSellerHomeCatalog(userId: string) {
       isEnabled: row.is_enabled,
       isActive: row.product.is_active,
     })),
-  };
-}
-
-export async function getSellerBootstrap(userId: string) {
-  const [user, assignment, shiftState, shiftHistory] = await Promise.all([
-    findUserById(userId),
-    findCurrentAssignment(userId),
-    getShiftState(userId),
-    getShiftHistory(userId, 7, 0),
-  ]);
-
-  if (!user) {
-    throw new HttpError(404, "Seller not found");
-  }
-
-  if (!assignment) {
-    throw new HttpError(403, "Seller has no active store assignment");
-  }
-
-  const basePayload = {
-    operator: {
-      id: user.id,
-      full_name: user.full_name,
-    },
-    assignment: {
-      id: assignment.id,
-      store_id: assignment.store_id,
-      store_name: assignment.store_name,
-    },
-    shiftState,
-    shiftHistory,
-  };
-
-  if (!shiftState.activeShift || shiftState.activeShift.status !== "active") {
-    return {
-      ...basePayload,
-      mode: "demo" as const,
-      catalog: null,
-      draft: null,
-      sales: null,
-      inventoryHistory: null,
-    };
-  }
-
-  const [catalog, draft, sales, inventoryHistory] = await Promise.all([
-    getSellerHomeCatalog(userId),
-    getSellerDraft(userId),
-    listRecentSales(userId, 12),
-    getSellerInventoryHistory(userId, 20),
-  ]);
-
-  return {
-    ...basePayload,
-    mode: "live" as const,
-    catalog,
-    draft,
-    sales,
-    inventoryHistory,
   };
 }
 

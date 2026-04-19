@@ -26,7 +26,6 @@ import {
   checkoutDraft,
   createSaleReturn,
   deleteCompletedSale,
-  getSellerBootstrap,
   getSellerDraft,
   getSellerHomeCatalog,
   listRecentSales,
@@ -37,14 +36,6 @@ import {
 export const sellerRouter = Router();
 
 sellerRouter.use(requireAuth, requireRole("seller"));
-
-sellerRouter.get(
-  "/bootstrap",
-  asyncHandler(async (req, res) => {
-    const result = await getSellerBootstrap(req.auth!.app_user_id);
-    res.json(result);
-  })
-);
 
 sellerRouter.get(
   "/catalog",
