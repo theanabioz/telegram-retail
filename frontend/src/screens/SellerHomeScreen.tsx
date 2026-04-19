@@ -63,8 +63,8 @@ function formatShiftDateRange(startedAt: string, endedAt: string | null) {
   const start = new Date(startedAt);
   const end = endedAt ? new Date(endedAt) : null;
 
-  return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${
-    end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Ongoing"
+  return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} - ${
+    end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "Ongoing"
   }`;
 }
 
@@ -83,6 +83,7 @@ function formatDateTimeLabel(value: string | null) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -102,6 +103,7 @@ function formatTimeLabel(value: string | null) {
   return new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -1046,7 +1048,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   Receipt
                 </Text>
                 <Text fontSize="sm" color="surface.500">
-                  {new Date(selectedSale.created_at).toLocaleString()}
+                  {formatDateTimeLabel(selectedSale.created_at)}
                 </Text>
                 <Text fontSize="sm" color="surface.500">
                   {selectedSale.payment_method.toUpperCase()} · {selectedSale.status}
@@ -1145,10 +1147,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {new Date(sale.created_at).toLocaleDateString()}
               </Text>
               <Text fontSize="sm" color="surface.500">
-                {new Date(sale.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })} · {sale.payment_method.toUpperCase()}
+                {formatTimeLabel(sale.created_at)} · {sale.payment_method.toUpperCase()}
               </Text>
             </VStack>
 

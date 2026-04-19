@@ -128,7 +128,7 @@ function getSalesPeriodRange(period: Exclude<SalesPeriod, "custom">) {
 }
 
 function formatSalesTime(value: string) {
-  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function buildSalesCacheKey(input: {
@@ -178,7 +178,14 @@ function formatDateTime(value: string | null) {
     return "No activity yet";
   }
 
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 function formatShortDate(value: string) {
@@ -963,7 +970,7 @@ export function AdminDashboardScreen({
                   {sale.seller?.fullName ?? "Unknown seller"} · {sale.paymentMethod.toUpperCase()}
                 </Text>
                 <Text fontSize="xs" color="surface.500">
-                  {new Date(sale.createdAt).toLocaleString()}
+                  {formatDateTime(sale.createdAt)}
                 </Text>
               </VStack>
               <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
