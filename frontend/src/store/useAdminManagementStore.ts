@@ -56,7 +56,7 @@ type AdminManagementState = {
   returnsOverview: AdminSalesOverviewResponse["returns"];
   loadStores: () => Promise<void>;
   loadStaff: () => Promise<void>;
-  loadInventory: (storeId?: string) => Promise<void>;
+  loadInventory: (storeId?: string, options?: { silent?: boolean }) => Promise<void>;
   loadProducts: () => Promise<void>;
   loadSalesOverview: (filters?: {
     storeId?: string;
@@ -65,7 +65,7 @@ type AdminManagementState = {
     dateFrom?: string;
     dateTo?: string;
     limit?: number;
-  }) => Promise<void>;
+  }, options?: { silent?: boolean }) => Promise<void>;
   createStore: (input: { name: string; address?: string | null; isActive?: boolean }) => Promise<void>;
   updateStore: (
     storeId: string,
@@ -186,7 +186,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     }
   },
 
-  loadInventory: async (storeId) => {
+  loadInventory: async (storeId, options) => {
     const token = getStoredToken();
 
     if (!token) {
@@ -194,7 +194,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       return;
     }
 
-    set({ loadingInventory: true, error: null });
+    if (!options?.silent) {
+      set({ loadingInventory: true, error: null });
+    } else {
+      set({ error: null });
+    }
 
     try {
       const query = storeId ? `?storeId=${encodeURIComponent(storeId)}&historyLimit=20` : "?historyLimit=20";
@@ -233,7 +237,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     }
   },
 
-  loadSalesOverview: async (filters) => {
+  loadSalesOverview: async (filters, options) => {
     const token = getStoredToken();
 
     if (!token) {
@@ -241,7 +245,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       return;
     }
 
-    set({ loadingSales: true, error: null });
+    if (!options?.silent) {
+      set({ loadingSales: true, error: null });
+    } else {
+      set({ error: null });
+    }
 
     try {
       const params = new URLSearchParams();

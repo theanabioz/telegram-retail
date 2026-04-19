@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import {
   Avatar,
   Box,
@@ -30,6 +30,7 @@ const panelMutedSurface = "rgba(241,240,236,0.82)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const bottomNavReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
+const ADMIN_SOFT_POLLING_INTERVAL_MS = 30000;
 const ADMIN_OVERVIEW_CHART_MOCK_LAYER = true;
 const ADMIN_OVERVIEW_CHART_MOCK_TOTALS: Record<number, number> = {
   0: 18,
@@ -344,6 +345,7 @@ export function AdminDashboardScreen({
   >({});
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
+  const softRefreshInFlightRef = useRef(false);
   const headerContextLabel =
     activeTab === "overview"
       ? "Live dashboard"
@@ -410,6 +412,88 @@ export function AdminDashboardScreen({
       window.removeEventListener("appfullscreenchange", syncFullscreenState);
     };
   }, []);
+
+  const refreshActiveAdminTab = useCallback(async () => {
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+
+    if (softRefreshInFlightRef.current || mutating) {
+      return;
+    }
+
+    softRefreshInFlightRef.current = true;
+
+    try {
+      if (activeTab === "overview") {
+        await load({ silent: true });
+        return;
+      }
+
+      if (activeTab === "sales") {
+        setSalesSoftRefreshing(true);
+        await loadSalesOverview(
+          {
+            storeId: salesStoreFilter || undefined,
+            sellerId: salesSellerFilter || undefined,
+            saleStatus: salesStatusFilter,
+            dateFrom: new Date(`${salesDateFrom}T00:00:00`).toISOString(),
+            dateTo: new Date(`${salesDateTo}T23:59:59`).toISOString(),
+            limit: 20,
+          },
+          { silent: true }
+        );
+        return;
+      }
+
+      if (activeTab === "inventory" && selectedInventoryStoreId) {
+        setInventorySoftRefreshing(true);
+        await loadInventory(selectedInventoryStoreId, { silent: true });
+      }
+    } finally {
+      setSalesSoftRefreshing(false);
+      setInventorySoftRefreshing(false);
+      softRefreshInFlightRef.current = false;
+    }
+  }, [
+    activeTab,
+    load,
+    loadInventory,
+    loadSalesOverview,
+    mutating,
+    salesDateFrom,
+    salesDateTo,
+    salesSellerFilter,
+    salesStatusFilter,
+    salesStoreFilter,
+    selectedInventoryStoreId,
+  ]);
+
+  useEffect(() => {
+    if (activeTab !== "overview" && activeTab !== "sales" && activeTab !== "inventory") {
+      return;
+    }
+
+    const triggerRefresh = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      void refreshActiveAdminTab();
+    };
+
+    triggerRefresh();
+
+    const intervalId = window.setInterval(triggerRefresh, ADMIN_SOFT_POLLING_INTERVAL_MS);
+    window.addEventListener("focus", triggerRefresh);
+    document.addEventListener("visibilitychange", triggerRefresh);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", triggerRefresh);
+      document.removeEventListener("visibilitychange", triggerRefresh);
+    };
+  }, [activeTab, refreshActiveAdminTab]);
 
   const handleOverviewChartPointer = (event: PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();

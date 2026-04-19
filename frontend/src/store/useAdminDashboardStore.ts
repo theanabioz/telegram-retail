@@ -29,7 +29,7 @@ type AdminDashboardState = {
   error: string | null;
   data: AdminDashboardResponse | null;
   hydrate: (data: AdminDashboardResponse) => void;
-  load: () => Promise<void>;
+  load: (options?: { silent?: boolean }) => Promise<void>;
 };
 
 const cachedDashboard = readCachedDashboard();
@@ -41,7 +41,7 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   hydrate: (data) => {
     set({ loading: false, error: null, data });
   },
-  load: async () => {
+  load: async (options) => {
     const token = getStoredToken();
 
     if (!token) {
@@ -53,7 +53,11 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
       return;
     }
 
-    set({ loading: true, error: null });
+    if (!options?.silent) {
+      set({ loading: true, error: null });
+    } else {
+      set({ error: null });
+    }
 
     try {
       const data = await apiGet<AdminDashboardResponse>("/admin/dashboard", token);
