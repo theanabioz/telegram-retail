@@ -458,15 +458,20 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       >
         <ModalOverlay bg="rgba(14, 12, 10, 0.3)" />
         <ModalContent
-          mx={3}
+          mx={0}
           mt="auto"
-          mb={4}
+          mb={0}
+          maxW="100vw"
+          w="100vw"
           borderRadius="32px"
           bg="white"
           boxShadow="0 28px 80px rgba(0,0,0,0.22)"
           overflow="hidden"
           pb={2}
         >
+          <Box w="full" py={3} display="flex" justifyContent="center">
+            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+          </Box>
           <ModalHeader px={6} pt={6} pb={2}>
             <VStack align="start" spacing={1}>
               <Text fontSize="11px" color="brand.500" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase">
@@ -504,26 +509,49 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 })}
               </HStack>
 
-              <Box bg="surface.900" borderRadius="24px" px={5} py={4} color="white">
-                <HStack justify="space-between" align="center">
-                  <VStack align="start" spacing={0}>
-                    <Text fontSize="10px" color="rgba(255,255,255,0.6)" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+              <Box
+                bg="rgba(246,244,239,0.96)"
+                borderRadius="24px"
+                px={4}
+                py={4}
+                border="1px solid"
+                borderColor="rgba(223,219,210,0.78)"
+              >
+                <SimpleGrid columns={2} spacing={3}>
+                  <Box
+                    bg="white"
+                    borderRadius="18px"
+                    px={4}
+                    py={3}
+                    border="1px solid"
+                    borderColor="rgba(232,229,223,0.9)"
+                  >
+                    <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
                       Discount Value
                     </Text>
-                    <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.02em">
+                    <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
                       {discountDraft.value || "0"}
-                      <Box as="span" fontSize="lg" color="rgba(255,255,255,0.4)" ml={2} fontWeight="700">
+                      <Box as="span" fontSize="lg" color="surface.400" ml={2} fontWeight="700">
                         {discountDraft.type === "amount" ? "EUR" : "%"}
                       </Box>
                     </Text>
-                  </VStack>
-                  <VStack align="end" spacing={0}>
-                    <Text fontSize="10px" color="rgba(255,255,255,0.6)" fontWeight="800" textTransform="uppercase" letterSpacing="0.04em">
+                  </Box>
+                  <Box
+                    bg="rgba(82, 129, 236, 0.08)"
+                    borderRadius="18px"
+                    px={4}
+                    py={3}
+                    border="1px solid"
+                    borderColor="rgba(82, 129, 236, 0.16)"
+                  >
+                    <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
                       Final Price
                     </Text>
-                    <Text fontSize="xl" fontWeight="900">EUR {previewFinalPrice.toFixed(2)}</Text>
-                  </VStack>
-                </HStack>
+                    <Text fontSize="xl" fontWeight="900" color="surface.900">
+                      EUR {previewFinalPrice.toFixed(2)}
+                    </Text>
+                  </Box>
+                </SimpleGrid>
               </Box>
 
               <SimpleGrid columns={3} spacing={3}>
@@ -708,35 +736,59 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           ))}
         </VStack>
 
-        <Box 
-          bg="surface.900" 
-          borderRadius="24px" 
-          p={4} 
-          color="white" 
-          boxShadow="0 10px 30px rgba(0,0,0,0.1)"
+        <Box
+          bg="rgba(246,244,239,0.96)"
+          borderRadius="24px"
+          p={4}
+          border="1px solid"
+          borderColor="rgba(223,219,210,0.78)"
+          boxShadow="0 10px 24px rgba(20, 20, 20, 0.05)"
           mt={2}
         >
           <VStack align="stretch" spacing={3}>
-            <HStack justify="space-between" opacity={0.8}>
-              <Text fontWeight="700" fontSize="sm">Items Count</Text>
-              <Text fontWeight="800" fontSize="sm">{draft.summary.itemsCount}</Text>
-            </HStack>
-            <HStack justify="space-between">
-              <Text fontWeight="700" fontSize="md">Total Amount</Text>
-              <Text fontSize="xl" fontWeight="900" letterSpacing="-0.02em">
-                EUR {draft.summary.totalAmount.toFixed(2)}
-              </Text>
-            </HStack>
-            
+            <SimpleGrid columns={2} spacing={3}>
+              <Box
+                bg="white"
+                borderRadius="18px"
+                px={4}
+                py={3}
+                border="1px solid"
+                borderColor="rgba(232,229,223,0.9)"
+              >
+                <Text fontWeight="800" fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.06em">
+                  Items Count
+                </Text>
+                <Text fontWeight="900" fontSize="2xl" color="surface.900">
+                  {draft.summary.itemsCount}
+                </Text>
+              </Box>
+              <Box
+                bg="rgba(82, 129, 236, 0.08)"
+                borderRadius="18px"
+                px={4}
+                py={3}
+                border="1px solid"
+                borderColor="rgba(82, 129, 236, 0.16)"
+              >
+                <Text fontWeight="800" fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.06em">
+                  Total Amount
+                </Text>
+                <Text fontSize="xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
+                  EUR {draft.summary.totalAmount.toFixed(2)}
+                </Text>
+              </Box>
+            </SimpleGrid>
+
             <HStack spacing={3} pt={1}>
               <Button
                 flex="1"
                 h="52px"
                 borderRadius="18px"
-                bg="rgba(255,255,255,0.12)"
-                color="white"
-                border="1px solid rgba(255,255,255,0.2)"
-                _hover={{ bg: "rgba(255,255,255,0.18)" }}
+                bg="white"
+                color="surface.800"
+                border="1px solid"
+                borderColor="surface.200"
+                _hover={{ bg: "surface.50" }}
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("cash")}
                 isLoading={actionLoading}
@@ -757,7 +809,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 isLoading={actionLoading}
                 fontSize="sm"
                 fontWeight="800"
-                boxShadow="0 8px 20px rgba(74, 132, 244, 0.4)"
+                boxShadow="0 10px 22px rgba(74, 132, 244, 0.24)"
               >
                 Card Pay
               </Button>
