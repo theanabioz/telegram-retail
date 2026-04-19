@@ -13,6 +13,8 @@ type TelegramUpdate = {
 const LOW_STOCK_THRESHOLD = 10;
 const TARGET_CACHE_TTL_MS = 60_000;
 const ALERT_TIME_ZONE = "Europe/Lisbon";
+const QUIET_HOURS_START = 22;
+const QUIET_HOURS_END = 8;
 
 let cachedChatIds: string[] = [];
 let cachedAt = 0;
@@ -52,6 +54,22 @@ function formatDuration(seconds: number) {
   const minutes = totalMinutes % 60;
 
   return `${hours}ч ${minutes}м`;
+}
+
+function getCurrentAlertHour() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ALERT_TIME_ZONE,
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const hourPart = parts.find((part) => part.type === "hour")?.value ?? "00";
+  return Number.parseInt(hourPart, 10);
+}
+
+function shouldSendSilently() {
+  const hour = getCurrentAlertHour();
+  return hour >= QUIET_HOURS_START || hour < QUIET_HOURS_END;
 }
 
 function buildLine(label: string, value: string) {
@@ -172,6 +190,7 @@ async function sendTelegramAlert(title: string, lines: string[]) {
     }
 
     const text = buildText(title, lines);
+    const disableNotification = shouldSendSilently();
 
     await Promise.allSettled(
       chatIds.map((chatId) =>
@@ -180,6 +199,7 @@ async function sendTelegramAlert(title: string, lines: string[]) {
           text,
           parse_mode: "HTML",
           disable_web_page_preview: true,
+          disable_notification: disableNotification,
         })
       )
     );
