@@ -651,7 +651,14 @@ export function AdminDashboardScreen({
 
           {data ? (
             <VStack align="stretch" spacing={2}>
-              <HStack align="end" spacing={1.5} h="164px" px={1} overflow="hidden">
+              <Box
+                display="grid"
+                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
+                columnGap={1.5}
+                h="164px"
+                px={1}
+                overflow="hidden"
+              >
                 {(() => {
                   const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
                   const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
@@ -662,7 +669,7 @@ export function AdminDashboardScreen({
                     const isSelected = selectedOverviewHour === entry.hour;
 
                     return (
-                      <VStack key={entry.hour} flex="1" minW={0} spacing={2} align="center" justify="end" h="full">
+                      <VStack key={entry.hour} minW={0} spacing={2} align="center" justify="end" h="full">
                         <Text
                           fontSize="10px"
                           fontWeight="900"
@@ -707,15 +714,25 @@ export function AdminDashboardScreen({
                     );
                   });
                 })()}
-              </HStack>
+              </Box>
 
-              <HStack justify="space-between" px={1}>
+              <Box position="relative" h="12px" px={1}>
                 {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => (
-                  <Text key={hour} fontSize="10px" color="surface.500" fontWeight="700">
+                  <Text
+                    key={hour}
+                    position="absolute"
+                    left={`${(hour / 24) * 100}%`}
+                    transform={hour === 0 ? "none" : hour === 24 ? "translateX(-100%)" : "translateX(-50%)"}
+                    fontSize="10px"
+                    color="surface.500"
+                    fontWeight="700"
+                    lineHeight="12px"
+                    whiteSpace="nowrap"
+                  >
                     {hour === 24 ? "00" : String(hour).padStart(2, "0")}
                   </Text>
                 ))}
-              </HStack>
+              </Box>
             </VStack>
           ) : null}
         </VStack>
