@@ -716,20 +716,25 @@ export function AdminDashboardScreen({
                 })()}
               </Box>
 
-              <Box position="relative" h="12px" px={1}>
-                {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => (
+              <Box
+                display="grid"
+                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
+                columnGap={1.5}
+                h="12px"
+                px={1}
+              >
+                {[0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => (
                   <Text
                     key={hour}
-                    position="absolute"
-                    left={`${(hour / 24) * 100}%`}
-                    transform={hour === 0 ? "none" : hour === 24 ? "translateX(-100%)" : "translateX(-50%)"}
+                    gridColumn={`${hour + 1}`}
                     fontSize="10px"
                     color="surface.500"
                     fontWeight="700"
                     lineHeight="12px"
+                    textAlign="center"
                     whiteSpace="nowrap"
                   >
-                    {hour === 24 ? "00" : String(hour).padStart(2, "0")}
+                    {hour === 23 ? "00" : String(hour).padStart(2, "0")}
                   </Text>
                 ))}
               </Box>
