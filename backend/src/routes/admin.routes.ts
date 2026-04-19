@@ -54,12 +54,11 @@ adminRouter.get(
   "/startup",
   asyncHandler(async (req, res) => {
     const today = todaySalesRange();
-    const [me, dashboard, stores, staff, inventory, sales] = await Promise.all([
+    const [me, dashboard, stores, staff, sales] = await Promise.all([
       getCurrentSessionUser(req.auth!.app_user_id),
       getAdminDashboard({ recentSalesLimit: 12, lowStockLimit: 12 }),
       getAdminStores(),
       getAdminStaff(),
-      getAdminInventory({ historyLimit: 20 }),
       getAdminSalesOverview({
         saleStatus: "all",
         dateFrom: today.dateFrom,
@@ -67,6 +66,8 @@ adminRouter.get(
         limit: 20,
       }),
     ]);
+    const defaultStore = stores.stores.find((store) => store.isActive) ?? stores.stores[0];
+    const inventory = await getAdminInventory({ storeId: defaultStore?.id, historyLimit: 20 });
 
     res.json({
       me,

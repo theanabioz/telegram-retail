@@ -52,6 +52,7 @@ const ADMIN_OVERVIEW_CHART_MOCK_TOTALS: Record<number, number> = {
   23: 37,
 };
 const TOKEN_KEY = "telegram-retail-token";
+const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const adminTabTitle: Record<AdminTab, string> = {
   overview: "Overview",
   sales: "Sales",
@@ -131,6 +132,28 @@ function buildSalesCacheKey(input: {
     input.dateFrom || "open-from",
     input.dateTo || "open-to",
   ].join("|");
+}
+
+function readAdminStartupCache(token: string) {
+  try {
+    const raw = window.localStorage.getItem(ADMIN_STARTUP_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
+    return cached.token === token ? cached.startup : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeAdminStartupCache(token: string, startup: AdminStartupResponse) {
+  try {
+    window.localStorage.setItem(ADMIN_STARTUP_CACHE_KEY, JSON.stringify({ token, startup }));
+  } catch {
+    // Startup cache only improves perceived loading; storage failures are safe to ignore.
+  }
 }
 
 function generateInternalProductCode(name: string) {
@@ -343,11 +366,39 @@ export function AdminDashboardScreen({
         return;
       }
 
-      try {
-        const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
+      const hydrateAdminStartup = (startup: AdminStartupResponse) => {
         hydrateDashboard(startup.dashboard);
         hydrateStartup(startup);
+        if (startup.inventory.selectedStoreId) {
+          setSelectedInventoryStoreId(startup.inventory.selectedStoreId);
+          setInventoryView({
+            items: startup.inventory.items,
+            history: startup.inventory.history,
+          });
+          setInventoryCache((current) => ({
+            ...current,
+            [startup.inventory.selectedStoreId ?? "all"]: {
+              items: startup.inventory.items,
+              history: startup.inventory.history,
+            },
+          }));
+        }
+      };
+
+      const cachedStartup = readAdminStartupCache(token);
+      if (cachedStartup) {
+        hydrateAdminStartup(cachedStartup);
+      }
+
+      try {
+        const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
+        writeAdminStartupCache(token, startup);
+        hydrateAdminStartup(startup);
       } catch {
+        if (cachedStartup) {
+          return;
+        }
+
         void load();
         void loadStores();
         void loadStaff();
@@ -482,6 +533,13 @@ export function AdminDashboardScreen({
   useEffect(() => {
     if (selectedInventoryStoreId) {
       const cachedSnapshot = inventoryCache[selectedInventoryStoreId];
+      const currentSnapshotStoreId = inventoryItems[0]?.storeId ?? null;
+
+      if (currentSnapshotStoreId === selectedInventoryStoreId) {
+        setInventoryView({ items: inventoryItems, history: inventoryHistory });
+        setInventorySoftRefreshing(false);
+        return;
+      }
 
       if (cachedSnapshot) {
         setInventoryView(cachedSnapshot);
@@ -491,7 +549,7 @@ export function AdminDashboardScreen({
       setSelectedInventoryItemId(null);
       void loadInventory(selectedInventoryStoreId).finally(() => setInventorySoftRefreshing(false));
     }
-  }, [loadInventory, selectedInventoryStoreId]);
+  }, [inventoryCache, inventoryHistory, inventoryItems, loadInventory, selectedInventoryStoreId]);
 
   const managementStatus = managementError ?? error;
 
