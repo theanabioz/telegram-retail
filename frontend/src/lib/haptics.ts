@@ -57,6 +57,8 @@ export function attachGlobalHaptics() {
     return () => undefined;
   }
 
+  const supportsPointerEvents = typeof window.PointerEvent !== "undefined";
+
   let lastScrollTop = window.scrollY;
   let lastScrollFeedbackAt = 0;
   let accumulatedScrollDistance = 0;
@@ -107,15 +109,21 @@ export function attachGlobalHaptics() {
     triggerSelection();
   };
 
-  document.addEventListener("pointerdown", handlePointer, true);
-  document.addEventListener("touchstart", handlePointer, true);
-  document.addEventListener("click", handlePointer, true);
+  if (supportsPointerEvents) {
+    document.addEventListener("pointerdown", handlePointer, true);
+  } else {
+    document.addEventListener("touchstart", handlePointer, true);
+    document.addEventListener("click", handlePointer, true);
+  }
   window.addEventListener("scroll", handleScroll, { passive: true });
 
   return () => {
-    document.removeEventListener("pointerdown", handlePointer, true);
-    document.removeEventListener("touchstart", handlePointer, true);
-    document.removeEventListener("click", handlePointer, true);
+    if (supportsPointerEvents) {
+      document.removeEventListener("pointerdown", handlePointer, true);
+    } else {
+      document.removeEventListener("touchstart", handlePointer, true);
+      document.removeEventListener("click", handlePointer, true);
+    }
     window.removeEventListener("scroll", handleScroll);
   };
 }
