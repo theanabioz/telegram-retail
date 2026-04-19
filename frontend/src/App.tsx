@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Box, Text } from "@chakra-ui/react";
+import { Box, Button, Text, VStack } from "@chakra-ui/react";
 import WebApp from "@twa-dev/sdk";
 import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
@@ -21,6 +21,41 @@ type AppSession = {
 
 const TOKEN_KEY = "telegram-retail-token";
 const PANEL_KEY = "telegram-retail-dev-panel";
+
+function AppBootState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <Box minH="var(--app-viewport-height, 100vh)" px={5} pt="var(--app-screen-pt)" display="grid" placeItems="center">
+      <VStack spacing={4} textAlign="center" bg="rgba(255,255,255,0.86)" borderRadius="28px" px={6} py={7} boxShadow="0 18px 36px rgba(18, 18, 18, 0.06)">
+        <Box w="42px" h="42px" borderRadius="16px" bg="brand.500" color="white" display="grid" placeItems="center" fontWeight="900">
+          CS
+        </Box>
+        <VStack spacing={1}>
+          <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
+            {title}
+          </Text>
+          <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px">
+            {description}
+          </Text>
+        </VStack>
+        {actionLabel && onAction ? (
+          <Button borderRadius="18px" bg="surface.900" color="white" _hover={{ bg: "surface.800" }} onClick={onAction}>
+            {actionLabel}
+          </Button>
+        ) : null}
+      </VStack>
+    </Box>
+  );
+}
 
 export function App() {
   const [currentPanel, setCurrentPanel] = useState<DevPanel>(() => {
@@ -166,14 +201,22 @@ export function App() {
   };
 
   if (session.loading) {
-    return null;
+    return (
+      <AppBootState
+        title="Opening retail app"
+        description="Preparing your Telegram session and live workspace."
+      />
+    );
   }
 
   if (session.error) {
     return (
-      <Box p={6}>
-        <Text>{session.error}</Text>
-      </Box>
+      <AppBootState
+        title="Could not open app"
+        description={session.error}
+        actionLabel="Try again"
+        onAction={() => void bootstrap(currentPanel, true)}
+      />
     );
   }
 
