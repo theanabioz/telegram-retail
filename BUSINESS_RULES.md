@@ -120,3 +120,25 @@
 - Manual stock adjustments with reasons
 - Admin dashboard with real-time sales
 - CRUD for stores, products, and sellers
+
+## Deferred Features
+
+### HTML PDF Reports
+- End-of-day reports are intentionally postponed until after the core product is fully stabilized.
+- When implemented, reports should be rendered as beautiful HTML-first documents and then exported to PDF.
+- Reports should be suitable for sending through the Telegram bot to admins.
+- Preferred direction:
+  - HTML template with strong visual design
+  - server-side PDF generation from HTML
+  - scheduled delivery at the end of the business day
+
+### Admin Telegram Notifications
+- Telegram bot notifications should support admin-only operational alerts.
+- Sellers may use the same bot, but they must not see admin operational alerts.
+- Notifications to add later:
+  - seller started shift
+  - seller ended shift
+  - low stock for a product in a specific store
+  - other critical operational alerts as needed
+- Admin notifications should be delivered only to explicitly approved admin Telegram accounts or chats.
+- Notification routing must be separated from seller-facing bot interactions.

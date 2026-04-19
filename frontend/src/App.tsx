@@ -10,7 +10,10 @@ import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
 import { SellerHomeScreen } from "./screens/SellerHomeScreen";
+import { useAdminDashboardStore } from "./store/useAdminDashboardStore";
+import { useAdminManagementStore } from "./store/useAdminManagementStore";
 import type { AuthSessionResponse } from "./types/seller";
+import type { AdminStartupResponse } from "./types/admin";
 
 type DevPanel = "admin" | "seller";
 
@@ -25,6 +28,14 @@ const TOKEN_KEY = "telegram-retail-token";
 const PANEL_KEY = "telegram-retail-dev-panel";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
+
+function writeStartupCache(cacheKey: string, token: string, startup: unknown) {
+  try {
+    window.localStorage.setItem(cacheKey, JSON.stringify({ token, startup }));
+  } catch {
+    // Startup cache only improves perceived loading.
+  }
+}
 
 function readCachedOperator(panel: DevPanel, token: string | null) {
   if (!token) {
@@ -144,6 +155,13 @@ export function App() {
         window.localStorage.setItem(TOKEN_KEY, token);
         window.localStorage.setItem(PANEL_KEY, desiredPanel);
 
+        if (desiredPanel === "admin") {
+          const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
+          writeStartupCache(ADMIN_STARTUP_CACHE_KEY, token, startup);
+          useAdminDashboardStore.getState().hydrate(startup.dashboard);
+          useAdminManagementStore.getState().hydrateStartup(startup);
+        }
+
         setSession({
           role: authSession.user.app_role,
           operatorName: authSession.user.full_name,
@@ -159,6 +177,13 @@ export function App() {
           full_name: string;
         };
       }>("/auth/me", token);
+
+      if (desiredPanel === "admin") {
+        const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
+        writeStartupCache(ADMIN_STARTUP_CACHE_KEY, token, startup);
+        useAdminDashboardStore.getState().hydrate(startup.dashboard);
+        useAdminManagementStore.getState().hydrateStartup(startup);
+      }
 
       setSession({
         role: me.auth.app_role,

@@ -16,6 +16,7 @@ import {
   insertDraftItem,
   insertReturnItems,
   insertSaleItems,
+  listReturnedQuantitiesBySaleItemIds,
   listSalesByStore,
   listSaleItems,
   listDraftSaleItems,
@@ -397,6 +398,8 @@ export async function createSaleReturn(
 
   const saleItems = await listSaleItems(sale.id);
   const saleItemMap = new Map<string, SaleItemRecord>(saleItems.map((item) => [item.id, item]));
+  const returnedQuantities = await listReturnedQuantitiesBySaleItemIds(saleItems.map((item) => item.id));
+  const returnedQuantityMap = new Map(returnedQuantities.map((item) => [item.sale_item_id, item.returned_quantity]));
 
   const normalizedItems = input.items.map((requested) => {
     const original = saleItemMap.get(requested.saleItemId);
@@ -407,6 +410,20 @@ export async function createSaleReturn(
 
     if (requested.quantity > original.quantity) {
       throw new HttpError(409, `Return quantity exceeds sold quantity for ${original.product_name_snapshot}`);
+    }
+
+    const alreadyReturnedQuantity = returnedQuantityMap.get(original.id) ?? 0;
+    const remainingQuantity = Number((original.quantity - alreadyReturnedQuantity).toFixed(3));
+
+    if (remainingQuantity <= 0) {
+      throw new HttpError(409, `No remaining quantity can be returned for ${original.product_name_snapshot}`);
+    }
+
+    if (requested.quantity > remainingQuantity) {
+      throw new HttpError(
+        409,
+        `Return quantity exceeds remaining quantity for ${original.product_name_snapshot}`
+      );
     }
 
     return {

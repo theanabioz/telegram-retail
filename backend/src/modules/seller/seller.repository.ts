@@ -67,6 +67,11 @@ export type SaleItemRecord = {
   line_total: number;
 };
 
+export type ReturnedSaleItemAggregate = {
+  sale_item_id: string;
+  returned_quantity: number;
+};
+
 export type SaleWithItemsRecord = SaleRecord & {
   items: SaleItemRecord[];
 };
@@ -371,6 +376,37 @@ export async function listSaleItems(saleId: string) {
   }
 
   return (data ?? []) as SaleItemRecord[];
+}
+
+export async function listReturnedQuantitiesBySaleItemIds(saleItemIds: string[]) {
+  if (saleItemIds.length === 0) {
+    return [] as ReturnedSaleItemAggregate[];
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("return_items")
+    .select("sale_item_id, quantity")
+    .in("sale_item_id", saleItemIds);
+
+  if (error) {
+    throw new HttpError(500, `Failed to load existing return items: ${error.message}`);
+  }
+
+  const totals = new Map();
+
+  for (const row of data ?? []) {
+    const saleItemId = row.sale_item_id;
+    if (!saleItemId) {
+      continue;
+    }
+
+    totals.set(saleItemId, Number(((totals.get(saleItemId) ?? 0) + Number(row.quantity ?? 0)).toFixed(3)));
+  }
+
+  return Array.from(totals.entries()).map(([sale_item_id, returned_quantity]) => ({
+    sale_item_id,
+    returned_quantity,
+  }));
 }
 
 export async function listSalesByStore(storeId: string, limit: number) {

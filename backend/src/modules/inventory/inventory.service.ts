@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "../../lib/supabase.js";
 import { HttpError } from "../../lib/http-error.js";
+import { notifyLowStockIfNeeded } from "../../lib/telegram-notifications.js";
 import { findCurrentAssignment } from "../users/users.repository.js";
 import { findOpenShiftByUserId } from "../shifts/shifts.repository.js";
 import { listInventoryHistory } from "./inventory.repository.js";
@@ -84,6 +85,13 @@ export async function applyInventoryMovement(input: ApplyInventoryMovementInput)
   if (movementError) {
     throw new HttpError(500, `Failed to log inventory movement: ${movementError.message}`);
   }
+
+  void notifyLowStockIfNeeded({
+    storeId: input.storeId,
+    productId: input.productId,
+    previousQuantity: currentQuantity,
+    nextQuantity: balanceAfter,
+  });
 
   return movement;
 }

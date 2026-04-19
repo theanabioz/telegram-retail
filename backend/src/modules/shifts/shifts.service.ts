@@ -1,4 +1,5 @@
 import { HttpError } from "../../lib/http-error.js";
+import { notifyShiftEnded, notifyShiftStarted } from "../../lib/telegram-notifications.js";
 import { findCurrentAssignment, findUserById } from "../users/users.repository.js";
 import {
   createShift,
@@ -147,6 +148,11 @@ export async function startShift(userId: string, storeId: string) {
     startedAt: new Date().toISOString(),
   });
 
+  void notifyShiftStarted({
+    sellerUserId: userId,
+    storeId,
+  });
+
   return {
     shift,
     summary: buildShiftSummary(shift),
@@ -225,8 +231,17 @@ export async function stopShift(userId: string) {
     current_pause_started_at: null,
   });
 
+  const summary = buildShiftSummary(updated);
+
+  void notifyShiftEnded({
+    sellerUserId: userId,
+    storeId: updated.store_id,
+    workedSeconds: summary.workedSeconds,
+    pausedSeconds: summary.pausedSeconds,
+  });
+
   return {
     shift: updated,
-    summary: buildShiftSummary(updated),
+    summary,
   };
 }

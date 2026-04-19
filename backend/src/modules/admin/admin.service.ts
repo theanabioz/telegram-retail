@@ -29,6 +29,7 @@ import { HttpError } from "../../lib/http-error.js";
 import { findCurrentAssignment, findUserById } from "../users/users.repository.js";
 import { listInventoryHistory } from "../inventory/inventory.repository.js";
 import { runAdminInventoryAdjustment } from "../inventory/inventory.service.js";
+import { findOpenShiftByUserId } from "../shifts/shifts.repository.js";
 
 function startOfTodayIso() {
   const now = new Date();
@@ -354,10 +355,11 @@ export async function assignSellerToStore(input: {
   sellerUserId: string;
   storeId: string;
 }) {
-  const [seller, store, currentAssignment] = await Promise.all([
+  const [seller, store, currentAssignment, openShift] = await Promise.all([
     findUserById(input.sellerUserId),
     findAdminStoreById(input.storeId),
     findCurrentAssignment(input.sellerUserId),
+    findOpenShiftByUserId(input.sellerUserId),
   ]);
 
   if (!seller || seller.role !== "seller") {
@@ -374,6 +376,10 @@ export async function assignSellerToStore(input: {
 
   if (!store.is_active) {
     throw new HttpError(409, "Seller can only be assigned to an active store");
+  }
+
+  if (openShift) {
+    throw new HttpError(409, "Seller cannot be reassigned while an active shift is open");
   }
 
   if (currentAssignment?.store_id === input.storeId) {
