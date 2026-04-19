@@ -35,6 +35,7 @@ import {
 import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
+import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
 import type { DraftResponse, ShiftHistoryItem } from "../types/seller";
 
@@ -148,6 +149,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [isDraftCartOpen, setIsDraftCartOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
+  const supportsTelegramBackButton = canUseTelegramBackButton();
 
   useEffect(() => {
     void bootstrap();
@@ -171,6 +173,42 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const discountModalItem = discountModalItemId
     ? draft?.items.find((item) => item.id === discountModalItemId) ?? null
     : null;
+
+  useTelegramBackButton(
+    Boolean(
+      discountModalItemId ||
+      isDraftCartOpen ||
+      selectedSaleId ||
+      (activeTab === "shift" && shiftView !== "overview")
+    ),
+    () => {
+      if (discountModalItemId) {
+        setDiscountModalItemId(null);
+        return;
+      }
+
+      if (isDraftCartOpen) {
+        setIsDraftCartOpen(false);
+        return;
+      }
+
+      if (selectedSaleId) {
+        setSelectedSaleId(null);
+        return;
+      }
+
+      if (activeTab === "shift" && shiftView === "detail") {
+        clearShiftDetails();
+        setShiftView("history");
+        return;
+      }
+
+      if (activeTab === "shift" && shiftView === "history") {
+        clearShiftDetails();
+        setShiftView("overview");
+      }
+    }
+  );
 
   const shiftStatusLabel =
     shiftStatus === "active"
@@ -882,15 +920,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   {selectedSale.payment_method.toUpperCase()} · {selectedSale.status}
                 </Text>
               </VStack>
-              <Button
-                size="sm"
-                borderRadius="14px"
-                variant="outline"
-                borderColor="var(--app-border)"
-                onClick={() => setSelectedSaleId(null)}
-              >
-                Back
-              </Button>
+              {!supportsTelegramBackButton ? (
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => setSelectedSaleId(null)}
+                >
+                  Back
+                </Button>
+              ) : null}
             </HStack>
 
             <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
@@ -1362,20 +1402,22 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               Browse full history grouped by month.
             </Text>
           </VStack>
-          <Button
-            size="sm"
-            borderRadius="14px"
-            variant="outline"
-            borderColor="surface.200"
-            leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
-            onClick={() => {
-              setShiftView("overview");
-              clearShiftDetails();
-              void loadShiftHistory(7, 0);
-            }}
-          >
-            Back
-          </Button>
+          {!supportsTelegramBackButton ? (
+            <Button
+              size="sm"
+              borderRadius="14px"
+              variant="outline"
+              borderColor="surface.200"
+              leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+              onClick={() => {
+                setShiftView("overview");
+                clearShiftDetails();
+                void loadShiftHistory(7, 0);
+              }}
+            >
+              Back
+            </Button>
+          ) : null}
         </HStack>
       </Box>
 
@@ -1432,19 +1474,21 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               {renderSkeletonLine("150px", "20px")}
               {renderSkeletonLine("108px", "14px")}
             </VStack>
-            <Button
-              size="sm"
-              borderRadius="14px"
-              variant="outline"
-              borderColor="surface.200"
-              leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
-              onClick={() => {
-                clearShiftDetails();
-                setShiftView("history");
-              }}
-            >
-              Back
-            </Button>
+            {!supportsTelegramBackButton ? (
+              <Button
+                size="sm"
+                borderRadius="14px"
+                variant="outline"
+                borderColor="surface.200"
+                leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+                onClick={() => {
+                  clearShiftDetails();
+                  setShiftView("history");
+                }}
+              >
+                Back
+              </Button>
+            ) : null}
           </HStack>
 
           <SimpleGrid columns={2} spacing={3}>
@@ -1533,19 +1577,21 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       {shiftDetails.shift.status}
                     </Text>
                   </Box>
-                  <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="surface.200"
-                    leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
-                    onClick={() => {
-                      clearShiftDetails();
-                      setShiftView("history");
-                    }}
-                  >
-                    Back
-                  </Button>
+                  {!supportsTelegramBackButton ? (
+                    <Button
+                      size="sm"
+                      borderRadius="14px"
+                      variant="outline"
+                      borderColor="surface.200"
+                      leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+                      onClick={() => {
+                        clearShiftDetails();
+                        setShiftView("history");
+                      }}
+                    >
+                      Back
+                    </Button>
+                  ) : null}
                 </HStack>
               </HStack>
 
