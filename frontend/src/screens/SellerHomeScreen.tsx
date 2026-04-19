@@ -1128,13 +1128,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       transition="all 0.2s ease"
       _active={{ bg: panelSurface, transform: "scale(0.985)" }}
       onClick={() => {
-        showShiftDetails({
-          shift: entry.shift,
-          summary: entry.summary,
-          store: entry.store,
-          salesSummary: entry.salesSummary,
-          commission: entry.commission,
-        });
+        if (entry.salesSummary && entry.commission) {
+          showShiftDetails({
+            shift: entry.shift,
+            summary: entry.summary,
+            store: entry.store,
+            salesSummary: entry.salesSummary,
+            commission: entry.commission,
+          });
+        } else {
+          clearShiftDetails();
+        }
         setShiftView("detail");
         void loadShiftDetails(entry.shift.id);
       }}

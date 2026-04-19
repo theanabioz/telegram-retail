@@ -82,8 +82,8 @@ export type ShiftHistoryResponse = {
       id: string;
       name: string;
     } | null;
-    salesSummary: ShiftSalesSummary;
-    commission: ShiftCommission;
+    salesSummary?: ShiftSalesSummary;
+    commission?: ShiftCommission;
   }>;
   pagination: {
     limit: number;
