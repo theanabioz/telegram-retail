@@ -958,7 +958,7 @@ export function AdminDashboardScreen({
           <HStack justify="space-between" align="center">
             <VStack align="start" spacing={0}>
               <Text fontWeight="900" fontSize="lg">
-                Today Profit Flow
+                Today Revenue Flow
               </Text>
               <Text color="surface.500" fontSize="sm">
                 Revenue by hour across today
