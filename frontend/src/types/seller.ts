@@ -185,3 +185,22 @@ export type CheckoutResponse = {
   items: DraftItem[];
   summary: DraftResponse["summary"];
 };
+
+export type SellerBootstrapResponse = {
+  mode: "demo" | "live";
+  operator: {
+    id: string;
+    full_name: string;
+  };
+  assignment: {
+    id: string;
+    store_id: string;
+    store_name: string;
+  };
+  shiftState: ShiftStateResponse;
+  shiftHistory: ShiftHistoryResponse;
+  catalog: SellerCatalogResponse | null;
+  draft: DraftResponse | null;
+  sales: SellerSalesResponse | null;
+  inventoryHistory: InventoryHistoryResponse | null;
+};

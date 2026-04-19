@@ -8,6 +8,7 @@ import type {
   CheckoutResponse,
   DraftResponse,
   InventoryHistoryResponse,
+  SellerBootstrapResponse,
   SellerCatalogResponse,
   SellerSalesResponse,
   ShiftDetailsResponse,
@@ -191,37 +192,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         set({ token });
       }
 
-      const [me, shiftState, shiftHistory] = await Promise.all([
-        apiGet<{
-          user: {
-            id: string;
-            full_name: string;
-          };
-          assignment: {
-            store_id: string;
-            store_name: string;
-          } | null;
-        }>("/auth/me", token),
-        apiGet<ShiftStateResponse>("/shifts/current", token),
-        apiGet<ShiftHistoryResponse>("/shifts/history?limit=7&offset=0", token),
-      ]);
-
-      set({
-        token,
-        operatorName: me.user.full_name,
-        storeId: me.assignment?.store_id ?? null,
-        storeName: me.assignment?.store_name ?? sellerHomeMock.storeName,
-        shiftActive: Boolean(shiftState.activeShift && shiftState.activeShift.status === "active"),
-        shiftStatus: shiftState.activeShift?.status ?? "inactive",
-        shiftSummary: shiftState.summary,
-        shiftHistory: shiftHistory.items,
-        shiftHistoryPagination: shiftHistory.pagination,
-        shiftDetails: null,
-        shiftDetailsLoading: false,
-      });
+      const bootstrapData = await apiGet<SellerBootstrapResponse>("/seller/bootstrap", token);
 
       void Promise.allSettled(
-        shiftHistory.items.slice(0, 7).map(async (entry) => {
+        bootstrapData.shiftHistory.items.slice(0, 7).map(async (entry) => {
           const shiftDetails = await fetchShiftDetailsById(token, entry.shift.id);
           set((current) => ({
             shiftDetailsById: {
@@ -232,10 +206,23 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         })
       );
 
-      if (!shiftState.activeShift || shiftState.activeShift.status !== "active") {
+      if (bootstrapData.mode !== "live" || !bootstrapData.catalog || !bootstrapData.sales || !bootstrapData.inventoryHistory) {
         set({
+          token,
           mode: "demo",
           loading: false,
+          error: null,
+          operatorName: bootstrapData.operator.full_name,
+          storeId: bootstrapData.assignment.store_id,
+          storeName: bootstrapData.assignment.store_name,
+          shiftActive: false,
+          shiftStatus: bootstrapData.shiftState.activeShift?.status ?? "inactive",
+          shiftSummary: bootstrapData.shiftState.summary,
+          shiftHistory: bootstrapData.shiftHistory.items,
+          shiftHistoryPagination: bootstrapData.shiftHistory.pagination,
+          shiftDetails: null,
+          shiftDetailsLoading: false,
+          shiftDetailsById: {},
           products: sellerHomeMock.products,
           draft: null,
           sales: [],
@@ -244,30 +231,31 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         return;
       }
 
-      const [catalog, draft, sales, inventoryHistory] = await Promise.all([
-        apiGet<SellerCatalogResponse>("/seller/catalog", token),
-        apiGet<DraftResponse>("/seller/draft", token),
-        apiGet<SellerSalesResponse>("/seller/sales?limit=12", token),
-        apiGet<InventoryHistoryResponse>("/seller/inventory/history?limit=20", token),
-      ]);
-
       set({
+        token,
         mode: "live",
         loading: false,
         error: null,
         shiftActive: true,
-        shiftStatus: catalog.shift.status,
-        storeId: catalog.store.store_id,
-        storeName: catalog.store.store_name,
-        products: catalog.products.map((product) => ({
+        operatorName: bootstrapData.operator.full_name,
+        shiftStatus: bootstrapData.catalog.shift.status,
+        shiftSummary: bootstrapData.shiftState.summary,
+        shiftHistory: bootstrapData.shiftHistory.items,
+        shiftHistoryPagination: bootstrapData.shiftHistory.pagination,
+        shiftDetails: null,
+        shiftDetailsLoading: false,
+        shiftDetailsById: {},
+        storeId: bootstrapData.catalog.store.store_id,
+        storeName: bootstrapData.catalog.store.store_name,
+        products: bootstrapData.catalog.products.map((product) => ({
           id: product.id,
           name: product.name,
           price: product.storePrice,
           stock: product.stock,
         })),
-        draft,
-        sales: sales.sales,
-        inventoryHistory: inventoryHistory.items,
+        draft: bootstrapData.draft,
+        sales: bootstrapData.sales.sales,
+        inventoryHistory: bootstrapData.inventoryHistory.items,
       });
     } catch (error) {
       set({
