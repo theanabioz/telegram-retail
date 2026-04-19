@@ -22,9 +22,10 @@ const CLICKABLE_SELECTOR = [
 
 const SCROLL_STEP_PX = 72;
 const SCROLL_FEEDBACK_INTERVAL_MS = 140;
+const POINTER_FEEDBACK_INTERVAL_MS = 100;
 
 function canUseHaptics() {
-  return typeof window !== "undefined" && typeof getTelegramWebApp()?.HapticFeedback !== "undefined";
+  return typeof getTelegramWebApp()?.HapticFeedback !== "undefined";
 }
 
 export function triggerImpact(style: ImpactStyle = "light") {
@@ -52,15 +53,16 @@ export function triggerSelection() {
 }
 
 export function attachGlobalHaptics() {
-  if (!canUseHaptics()) {
+  if (typeof window === "undefined") {
     return () => undefined;
   }
 
   let lastScrollTop = window.scrollY;
   let lastScrollFeedbackAt = 0;
   let accumulatedScrollDistance = 0;
+  let lastPointerFeedbackAt = 0;
 
-  const handleClick = (event: Event) => {
+  const handlePointer = (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
@@ -70,10 +72,24 @@ export function attachGlobalHaptics() {
       return;
     }
 
+    if (!canUseHaptics()) {
+      return;
+    }
+
+    const now = window.performance.now();
+    if (now - lastPointerFeedbackAt < POINTER_FEEDBACK_INTERVAL_MS) {
+      return;
+    }
+
+    lastPointerFeedbackAt = now;
     triggerImpact("light");
   };
 
   const handleScroll = () => {
+    if (!canUseHaptics()) {
+      return;
+    }
+
     const currentScrollTop = window.scrollY;
     accumulatedScrollDistance += Math.abs(currentScrollTop - lastScrollTop);
     lastScrollTop = currentScrollTop;
@@ -91,11 +107,15 @@ export function attachGlobalHaptics() {
     triggerSelection();
   };
 
-  document.addEventListener("click", handleClick, true);
+  document.addEventListener("pointerdown", handlePointer, true);
+  document.addEventListener("touchstart", handlePointer, true);
+  document.addEventListener("click", handlePointer, true);
   window.addEventListener("scroll", handleScroll, { passive: true });
 
   return () => {
-    document.removeEventListener("click", handleClick, true);
+    document.removeEventListener("pointerdown", handlePointer, true);
+    document.removeEventListener("touchstart", handlePointer, true);
+    document.removeEventListener("click", handlePointer, true);
     window.removeEventListener("scroll", handleScroll);
   };
 }

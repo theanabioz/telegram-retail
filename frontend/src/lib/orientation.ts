@@ -12,8 +12,20 @@ function isMobileTelegramPlatform() {
   return platform === "ios" || platform === "android" || platform === "android_x";
 }
 
+function isTouchDevice() {
+  return typeof window !== "undefined" && (
+    "ontouchstart" in window ||
+    navigator.maxTouchPoints > 0 ||
+    ((window.matchMedia?.("(pointer: coarse)").matches) ?? false)
+  );
+}
+
+function shouldUseForcedPortraitFallback() {
+  return isMobileTelegramPlatform() || isTouchDevice();
+}
+
 function applyForcedPortraitFallback() {
-  if (typeof document === "undefined" || !isMobileTelegramPlatform()) {
+  if (typeof document === "undefined" || !shouldUseForcedPortraitFallback()) {
     return;
   }
 
@@ -63,6 +75,7 @@ export function attachPortraitOrientationLock() {
 
   const webApp = getTelegramWebApp();
   let retryTimeouts: number[] = [];
+  const landscapeMediaQuery = window.matchMedia?.("(orientation: landscape)");
 
   const runLock = async () => {
     if (webApp?.isVersionAtLeast?.("8.0") && webApp.lockOrientation) {
@@ -97,15 +110,19 @@ export function attachPortraitOrientationLock() {
 
   webApp?.onEvent?.("viewportChanged", handleViewportChange);
   webApp?.onEvent?.("fullscreenChanged", handleViewportChange);
+  window.addEventListener("orientationchange", handleViewportChange);
   window.addEventListener("resize", applyForcedPortraitFallback);
   window.visualViewport?.addEventListener("resize", applyForcedPortraitFallback);
+  landscapeMediaQuery?.addEventListener?.("change", handleViewportChange);
 
   return () => {
     retryTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
     webApp?.offEvent?.("viewportChanged", handleViewportChange);
     webApp?.offEvent?.("fullscreenChanged", handleViewportChange);
+    window.removeEventListener("orientationchange", handleViewportChange);
     window.removeEventListener("resize", applyForcedPortraitFallback);
     window.visualViewport?.removeEventListener("resize", applyForcedPortraitFallback);
+    landscapeMediaQuery?.removeEventListener?.("change", handleViewportChange);
     document.documentElement.classList.remove("app-force-portrait");
     document.documentElement.style.removeProperty("--app-force-portrait-width");
     document.documentElement.style.removeProperty("--app-force-portrait-height");
