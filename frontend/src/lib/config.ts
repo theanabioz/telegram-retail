@@ -4,6 +4,7 @@ function resolveDefaultApiBaseUrl() {
   }
 
   const { protocol, hostname } = window.location;
+  const productionApiOrigin = "https://telegram-retail-api.vercel.app";
 
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return `${protocol}//${hostname}:4000`;
@@ -30,6 +31,10 @@ function resolveDefaultApiBaseUrl() {
     hostname.startsWith("172.31.")
   ) {
     return `${protocol}//${hostname}:4000`;
+  }
+
+  if (hostname === "telegram-retail.vercel.app" || hostname.endsWith("-arsen-abdullaev.vercel.app")) {
+    return productionApiOrigin;
   }
 
   return `${protocol}//${hostname}`;
