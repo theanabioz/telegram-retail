@@ -170,12 +170,18 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     ? draft?.items.find((item) => item.id === discountModalItemId) ?? null
     : null;
 
-  const shiftLabel =
+  const shiftStatusLabel =
     shiftStatus === "active"
-      ? "Shift Active"
+      ? "Active"
       : shiftStatus === "paused"
-        ? "Shift Paused"
-        : "Shift Not Started";
+        ? "Paused"
+        : "Not started";
+  const shiftStatusCopy =
+    shiftStatus === "active"
+      ? "Live sales unlocked"
+      : shiftStatus === "paused"
+        ? "Sales are paused"
+        : "Open a shift to start selling";
 
   const activeTabTitle: Record<SellerTab, string> = {
     checkout: "Checkout",
@@ -1166,22 +1172,31 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={6}>
           <HStack justify="space-between" align="center">
-            <VStack align="start" spacing={0.5}>
-              <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                Shift Control
+            <VStack align="start" spacing={1}>
+              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                Current Shift
               </Text>
-              <HStack spacing={1.5}>
-                <Box
-                  w="8px"
-                  h="8px"
-                  borderRadius="full"
-                  bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.300"}
-                />
-                <Text color="surface.500" fontWeight="700" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em">
-                  {shiftLabel}
-                </Text>
-              </HStack>
+              <Text fontWeight="900" fontSize="lg" letterSpacing="-0.02em" color="surface.900">
+                {shiftStatusCopy}
+              </Text>
             </VStack>
+            <HStack
+              spacing={1.5}
+              px={3}
+              py={2}
+              borderRadius="999px"
+              bg={shiftStatus === "active" ? "rgba(34,197,94,0.12)" : shiftStatus === "paused" ? "rgba(251,146,60,0.14)" : "surface.100"}
+            >
+              <Box
+                w="8px"
+                h="8px"
+                borderRadius="full"
+                bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.400"}
+              />
+              <Text color="surface.700" fontWeight="900" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em">
+                {shiftStatusLabel}
+              </Text>
+            </HStack>
           </HStack>
 
           <SimpleGrid columns={2} spacing={4}>
