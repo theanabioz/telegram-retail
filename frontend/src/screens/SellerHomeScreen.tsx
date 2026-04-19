@@ -780,13 +780,21 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     return (
       <Box
         bg="rgba(255,255,255,0.94)"
-        borderTop="1px solid"
-        borderColor="rgba(232,229,223,0.96)"
         px={5}
         pt={4}
         pb="calc(24px + env(safe-area-inset-bottom, 0px))"
-        boxShadow="0 -12px 30px rgba(20, 20, 20, 0.05)"
+        boxShadow="0 -14px 28px rgba(20, 20, 20, 0.04)"
+        position="relative"
       >
+        <Box
+          position="absolute"
+          left={0}
+          right={0}
+          top="-18px"
+          h="18px"
+          pointerEvents="none"
+          bgGradient="linear(to-b, rgba(255,255,255,0), rgba(255,255,255,0.94))"
+        />
         <Box
           bg="rgba(246,244,239,0.96)"
           borderRadius="24px"
