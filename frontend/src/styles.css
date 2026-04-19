@@ -34,6 +34,25 @@ input {
   min-height: var(--app-viewport-height, 100vh);
 }
 
+html.app-force-portrait,
+html.app-force-portrait body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+html.app-force-portrait #root {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: var(--app-force-portrait-width, 100vh);
+  height: var(--app-force-portrait-height, 100vw);
+  min-height: 0;
+  overflow: hidden;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+}
+
 @keyframes appSkeletonPulse {
   0% {
     background-position: 120% 0;

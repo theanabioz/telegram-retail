@@ -1,8 +1,5 @@
 import {
   expandViewport,
-  hapticFeedbackImpactOccurred,
-  hapticFeedbackNotificationOccurred,
-  hapticFeedbackSelectionChanged,
   init,
   isBackButtonMounted,
   isMiniAppMounted,
@@ -173,17 +170,6 @@ export function onTelegramBackButtonClick(callback: () => void) {
 }
 
 export function triggerTelegramImpact(style: "light" | "medium" | "heavy" | "rigid" | "soft") {
-  ensureSdkInitialized();
-
-  try {
-    if (hapticFeedbackImpactOccurred.isAvailable()) {
-      hapticFeedbackImpactOccurred(style);
-      return true;
-    }
-  } catch {
-    // Fall through to the native object fallback below.
-  }
-
   try {
     getTelegramWebApp()?.HapticFeedback?.impactOccurred(style);
     return true;
@@ -193,17 +179,6 @@ export function triggerTelegramImpact(style: "light" | "medium" | "heavy" | "rig
 }
 
 export function triggerTelegramNotification(type: "error" | "success" | "warning") {
-  ensureSdkInitialized();
-
-  try {
-    if (hapticFeedbackNotificationOccurred.isAvailable()) {
-      hapticFeedbackNotificationOccurred(type);
-      return true;
-    }
-  } catch {
-    // Fall through to the native object fallback below.
-  }
-
   try {
     getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type);
     return true;
@@ -213,17 +188,6 @@ export function triggerTelegramNotification(type: "error" | "success" | "warning
 }
 
 export function triggerTelegramSelection() {
-  ensureSdkInitialized();
-
-  try {
-    if (hapticFeedbackSelectionChanged.isAvailable()) {
-      hapticFeedbackSelectionChanged();
-      return true;
-    }
-  } catch {
-    // Fall through to the native object fallback below.
-  }
-
   try {
     getTelegramWebApp()?.HapticFeedback?.selectionChanged();
     return true;

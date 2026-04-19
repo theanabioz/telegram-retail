@@ -3,6 +3,7 @@ import {
   triggerTelegramNotification,
   triggerTelegramSelection,
 } from "./telegramSdk";
+import { getTelegramWebApp } from "./telegramWebApp";
 
 type ImpactStyle = "light" | "medium" | "heavy" | "rigid" | "soft";
 type NotificationType = "error" | "success" | "warning";
@@ -23,7 +24,7 @@ const SCROLL_STEP_PX = 72;
 const SCROLL_FEEDBACK_INTERVAL_MS = 140;
 
 function canUseHaptics() {
-  return typeof window !== "undefined";
+  return typeof window !== "undefined" && typeof getTelegramWebApp()?.HapticFeedback !== "undefined";
 }
 
 export function triggerImpact(style: ImpactStyle = "light") {

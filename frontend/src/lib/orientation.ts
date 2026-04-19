@@ -6,6 +6,34 @@ type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: SupportedOrientationLock) => Promise<void>;
 };
 
+function isMobileTelegramPlatform() {
+  const platform = String(getTelegramWebApp()?.platform ?? "").toLowerCase();
+
+  return platform === "ios" || platform === "android" || platform === "android_x";
+}
+
+function applyForcedPortraitFallback() {
+  if (typeof document === "undefined" || !isMobileTelegramPlatform()) {
+    return;
+  }
+
+  const root = document.documentElement;
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  const isLandscape = viewportWidth > viewportHeight;
+
+  if (!isLandscape) {
+    root.classList.remove("app-force-portrait");
+    root.style.removeProperty("--app-force-portrait-width");
+    root.style.removeProperty("--app-force-portrait-height");
+    return;
+  }
+
+  root.classList.add("app-force-portrait");
+  root.style.setProperty("--app-force-portrait-width", `${viewportHeight}px`);
+  root.style.setProperty("--app-force-portrait-height", `${viewportWidth}px`);
+}
+
 async function lockBrowserPortrait() {
   if (typeof screen === "undefined") {
     return;
@@ -61,16 +89,25 @@ export function attachPortraitOrientationLock() {
 
   const handleViewportChange = () => {
     scheduleLockSequence();
+    applyForcedPortraitFallback();
   };
 
   scheduleLockSequence();
+  applyForcedPortraitFallback();
 
   webApp?.onEvent?.("viewportChanged", handleViewportChange);
   webApp?.onEvent?.("fullscreenChanged", handleViewportChange);
+  window.addEventListener("resize", applyForcedPortraitFallback);
+  window.visualViewport?.addEventListener("resize", applyForcedPortraitFallback);
 
   return () => {
     retryTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
     webApp?.offEvent?.("viewportChanged", handleViewportChange);
     webApp?.offEvent?.("fullscreenChanged", handleViewportChange);
+    window.removeEventListener("resize", applyForcedPortraitFallback);
+    window.visualViewport?.removeEventListener("resize", applyForcedPortraitFallback);
+    document.documentElement.classList.remove("app-force-portrait");
+    document.documentElement.style.removeProperty("--app-force-portrait-width");
+    document.documentElement.style.removeProperty("--app-force-portrait-height");
   };
 }

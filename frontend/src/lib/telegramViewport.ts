@@ -41,19 +41,27 @@ function readTelegramTopInset(webApp: TelegramWebAppNative) {
 
 function applyTelegramViewportSafety() {
   const webApp = getTelegramWebApp();
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  const isForcedPortrait = document.documentElement.classList.contains("app-force-portrait");
+  const effectiveViewportHeight = isForcedPortrait
+    ? Math.max(viewportWidth, viewportHeight)
+    : viewportHeight;
 
   if (!webApp) {
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     document.documentElement.style.setProperty("--telegram-safe-area-top", "0px");
-    document.documentElement.style.setProperty("--app-viewport-height", `${viewportHeight}px`);
+    document.documentElement.style.setProperty("--app-viewport-height", `${effectiveViewportHeight}px`);
     return;
   }
 
   const topInset = readTelegramTopInset(webApp);
-  const viewportHeight = webApp.viewportHeight || window.visualViewport?.height || window.innerHeight;
+  const telegramViewportHeight = webApp.viewportHeight || viewportHeight;
+  const resolvedViewportHeight = isForcedPortrait
+    ? Math.max(viewportWidth, viewportHeight)
+    : telegramViewportHeight;
 
   document.documentElement.style.setProperty("--telegram-safe-area-top", `${topInset}px`);
-  document.documentElement.style.setProperty("--app-viewport-height", `${viewportHeight}px`);
+  document.documentElement.style.setProperty("--app-viewport-height", `${resolvedViewportHeight}px`);
 }
 
 export function attachTelegramViewportSafety() {
