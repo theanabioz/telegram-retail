@@ -37,6 +37,7 @@ import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
+import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
 import type { DraftResponse, ShiftHistoryItem } from "../types/seller";
 
@@ -167,6 +168,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [isDraftCartOpen, setIsDraftCartOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
+  const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
 
   const resetSellerSection = useCallback(
@@ -198,6 +200,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    const syncFullscreenState = () => setShowFullscreenHeaderContext(isTelegramFullscreenLike());
+
+    syncFullscreenState();
+    window.addEventListener("appfullscreenchange", syncFullscreenState);
+
+    return () => {
+      window.removeEventListener("appfullscreenchange", syncFullscreenState);
+    };
+  }, []);
 
   useEffect(() => {
     if (!draft?.items.length && isDraftCartOpen) {
@@ -1973,22 +1986,24 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     >
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
-          <VStack spacing={6} align="stretch" pt={4} mb={2}>
-            <VStack align="stretch" spacing={3} px={1}>
-              <HStack justify="space-between" align="center">
-                <Text
-                  fontSize="xs"
-                  fontWeight="800"
-                  letterSpacing="0.08em"
-                  textTransform="uppercase"
-                  color="surface.400"
-                >
-                  {storeName || "Current store"} · {shiftContextLabel}
-                </Text>
-                <Text fontSize="xs" color="surface.400" fontWeight="700">
-                  Today · {formatHeaderDate(new Date())}
-                </Text>
-              </HStack>
+          <VStack spacing={6} align="stretch" pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
+            <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1}>
+              {showFullscreenHeaderContext ? (
+                <HStack justify="space-between" align="center">
+                  <Text
+                    fontSize="xs"
+                    fontWeight="800"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color="surface.400"
+                  >
+                    {storeName || "Current store"} · {shiftContextLabel}
+                  </Text>
+                  <Text fontSize="xs" color="surface.400" fontWeight="700">
+                    Today · {formatHeaderDate(new Date())}
+                  </Text>
+                </HStack>
+              ) : null}
 
               <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>

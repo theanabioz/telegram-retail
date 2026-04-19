@@ -15,6 +15,7 @@ import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
+import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
 import type {
@@ -341,6 +342,7 @@ export function AdminDashboardScreen({
   const [productEdits, setProductEdits] = useState<
     Record<string, { name: string; sku: string; defaultPrice: string; isActive: boolean }>
   >({});
+  const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const headerContextLabel =
     activeTab === "overview"
@@ -397,6 +399,17 @@ export function AdminDashboardScreen({
       }
     }
   );
+
+  useEffect(() => {
+    const syncFullscreenState = () => setShowFullscreenHeaderContext(isTelegramFullscreenLike());
+
+    syncFullscreenState();
+    window.addEventListener("appfullscreenchange", syncFullscreenState);
+
+    return () => {
+      window.removeEventListener("appfullscreenchange", syncFullscreenState);
+    };
+  }, []);
 
   const handleOverviewChartPointer = (event: PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -2470,21 +2483,23 @@ export function AdminDashboardScreen({
     <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
-          <VStack align="stretch" spacing={3} px={1} pt={4} mb={2}>
-            <HStack justify="space-between" align="center">
-              <Text
-                fontSize="xs"
-                fontWeight="800"
-                letterSpacing="0.08em"
-                textTransform="uppercase"
-                color="surface.400"
-              >
-                {headerContextLabel}
-              </Text>
-              <Text fontSize="xs" color="surface.400" fontWeight="700">
-                Today · {formatHeaderDate(new Date())}
-              </Text>
-            </HStack>
+          <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1} pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
+            {showFullscreenHeaderContext ? (
+              <HStack justify="space-between" align="center">
+                <Text
+                  fontSize="xs"
+                  fontWeight="800"
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  color="surface.400"
+                >
+                  {headerContextLabel}
+                </Text>
+                <Text fontSize="xs" color="surface.400" fontWeight="700">
+                  Today · {formatHeaderDate(new Date())}
+                </Text>
+              </HStack>
+            ) : null}
 
             <HStack justify="space-between" align="center">
               <Text

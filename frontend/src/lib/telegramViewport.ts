@@ -39,6 +39,14 @@ function isFullscreenLike(webApp: TelegramWebAppNative) {
   return viewportHeight / screenHeight > 0.93;
 }
 
+export function isTelegramFullscreenLike() {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  return document.documentElement.classList.contains("app-fullscreen-like");
+}
+
 function readTelegramTopInset(webApp: TelegramWebAppNative) {
   const cssContentTop = readTelegramCssInset("--tg-content-safe-area-inset-top");
   const cssSafeTop = readTelegramCssInset("--tg-safe-area-inset-top");
@@ -69,9 +77,12 @@ function applyTelegramViewportSafety() {
   if (!webApp) {
     document.documentElement.style.setProperty("--telegram-safe-area-top", "0px");
     document.documentElement.style.setProperty("--app-viewport-height", `${effectiveViewportHeight}px`);
+    document.documentElement.classList.remove("app-fullscreen-like");
+    window.dispatchEvent(new CustomEvent("appfullscreenchange"));
     return;
   }
 
+  const fullscreenLike = isFullscreenLike(webApp);
   const topInset = readTelegramTopInset(webApp);
   const telegramViewportHeight = webApp.viewportHeight || viewportHeight;
   const resolvedViewportHeight = isForcedPortrait
@@ -80,6 +91,8 @@ function applyTelegramViewportSafety() {
 
   document.documentElement.style.setProperty("--telegram-safe-area-top", `${topInset}px`);
   document.documentElement.style.setProperty("--app-viewport-height", `${resolvedViewportHeight}px`);
+  document.documentElement.classList.toggle("app-fullscreen-like", fullscreenLike);
+  window.dispatchEvent(new CustomEvent("appfullscreenchange"));
 }
 
 export function attachTelegramViewportSafety() {
