@@ -6,6 +6,7 @@ import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
 import { SellerHomeScreen } from "./screens/SellerHomeScreen";
 import type { AuthSessionResponse } from "./types/seller";
@@ -221,7 +222,7 @@ export function App() {
   }
 
   return (
-    <>
+    <AppErrorBoundary>
       {session.role === "admin" ? (
         <AdminDashboardScreen
           operatorName={session.operatorName}
@@ -235,6 +236,6 @@ export function App() {
           onSwitchPanel={switchPanel}
         />
       )}
-    </>
+    </AppErrorBoundary>
   );
 }

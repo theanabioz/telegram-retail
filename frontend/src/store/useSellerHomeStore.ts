@@ -36,6 +36,7 @@ type SellerHomeState = {
   shiftHistoryPagination: ShiftHistoryResponse["pagination"] | null;
   shiftDetails: ShiftDetailsResponse | null;
   shiftDetailsLoading: boolean;
+  shiftDetailsById: Record<string, ShiftDetailsResponse>;
   token: string | null;
   bootstrap: () => Promise<void>;
   startShift: () => Promise<void>;
@@ -139,6 +140,10 @@ function resolveCurrentToken(stateToken: string | null) {
   return getStoredToken() ?? stateToken;
 }
 
+async function fetchShiftDetailsById(token: string, shiftId: string) {
+  return apiGet<ShiftDetailsResponse>(`/shifts/history/${shiftId}`, token);
+}
+
 export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   mode: "demo",
   loading: true,
@@ -159,6 +164,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   shiftHistoryPagination: null,
   shiftDetails: null,
   shiftDetailsLoading: false,
+  shiftDetailsById: {},
   token: getStoredToken(),
 
   bootstrap: async () => {
@@ -214,6 +220,18 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         shiftDetailsLoading: false,
       });
 
+      void Promise.allSettled(
+        shiftHistory.items.slice(0, 7).map(async (entry) => {
+          const shiftDetails = await fetchShiftDetailsById(token, entry.shift.id);
+          set((current) => ({
+            shiftDetailsById: {
+              ...current.shiftDetailsById,
+              [entry.shift.id]: shiftDetails,
+            },
+          }));
+        })
+      );
+
       if (!shiftState.activeShift || shiftState.activeShift.status !== "active") {
         set({
           mode: "demo",
@@ -264,6 +282,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         shiftSummary: null,
         shiftDetails: null,
         shiftDetailsLoading: false,
+        shiftDetailsById: {},
       });
     }
   },
@@ -817,11 +836,28 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         `/shifts/history?limit=${limit}&offset=${offset}`,
         token
       );
+      const nextHistory = offset > 0 ? [...get().shiftHistory, ...history.items] : history.items;
       set({
-        shiftHistory: offset > 0 ? [...get().shiftHistory, ...history.items] : history.items,
+        shiftHistory: nextHistory,
         shiftHistoryPagination: history.pagination,
         error: null,
       });
+
+      void Promise.allSettled(
+        history.items.slice(0, 7).map(async (entry) => {
+          if (get().shiftDetailsById[entry.shift.id]) {
+            return;
+          }
+
+          const shiftDetails = await fetchShiftDetailsById(token, entry.shift.id);
+          set((current) => ({
+            shiftDetailsById: {
+              ...current.shiftDetailsById,
+              [entry.shift.id]: shiftDetails,
+            },
+          }));
+        })
+      );
     } catch (error) {
       triggerNotification("error");
       set({
@@ -838,6 +874,30 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
+    const cachedDetails = get().shiftDetailsById[shiftId];
+
+    if (cachedDetails) {
+      set({
+        shiftDetails: cachedDetails,
+        shiftDetailsLoading: false,
+        error: null,
+      });
+
+      void fetchShiftDetailsById(token, shiftId)
+        .then((shiftDetails) => {
+          set((current) => ({
+            shiftDetails: current.shiftDetails?.shift.id === shiftId ? shiftDetails : current.shiftDetails,
+            shiftDetailsById: {
+              ...current.shiftDetailsById,
+              [shiftId]: shiftDetails,
+            },
+            error: null,
+          }));
+        })
+        .catch(() => undefined);
+      return;
+    }
+
     const currentDetails = get().shiftDetails;
     set({
       shiftDetailsLoading: true,
@@ -846,9 +906,13 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     });
 
     try {
-      const shiftDetails = await apiGet<ShiftDetailsResponse>(`/shifts/history/${shiftId}`, token);
+      const shiftDetails = await fetchShiftDetailsById(token, shiftId);
       set({
         shiftDetails,
+        shiftDetailsById: {
+          ...get().shiftDetailsById,
+          [shiftId]: shiftDetails,
+        },
         shiftDetailsLoading: false,
         error: null,
       });
@@ -863,7 +927,15 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   },
 
   showShiftDetails: (shiftDetails: ShiftDetailsResponse) => {
-    set({ shiftDetails, shiftDetailsLoading: false, error: null });
+    set((current) => ({
+      shiftDetails,
+      shiftDetailsById: {
+        ...current.shiftDetailsById,
+        [shiftDetails.shift.id]: shiftDetails,
+      },
+      shiftDetailsLoading: false,
+      error: null,
+    }));
   },
 
   clearShiftDetails: () => {
