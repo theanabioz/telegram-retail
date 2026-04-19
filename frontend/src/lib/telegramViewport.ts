@@ -1,6 +1,18 @@
 import { getTelegramWebApp, type TelegramWebAppNative } from "./telegramWebApp";
 
 const TELEGRAM_FULLSCREEN_TOP_FALLBACK = 72;
+const TELEGRAM_FULLSCREEN_TOP_EXTRA = 14;
+
+function readTelegramCssInset(name: string) {
+  if (typeof window === "undefined") {
+    return 0;
+  }
+
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const numeric = Number.parseFloat(value);
+
+  return Number.isFinite(numeric) ? numeric : 0;
+}
 
 function isMobileTelegram(webApp: TelegramWebAppNative) {
   const platform = String(webApp.platform ?? "").toLowerCase();
@@ -28,15 +40,21 @@ function isFullscreenLike(webApp: TelegramWebAppNative) {
 }
 
 function readTelegramTopInset(webApp: TelegramWebAppNative) {
-  const contentTop = webApp.contentSafeAreaInset?.top ?? 0;
-  const safeTop = webApp.safeAreaInset?.top ?? 0;
-  const telegramTopInset = Math.max(contentTop, safeTop);
+  const cssContentTop = readTelegramCssInset("--tg-content-safe-area-inset-top");
+  const cssSafeTop = readTelegramCssInset("--tg-safe-area-inset-top");
+  const contentTop = Math.max(webApp.contentSafeAreaInset?.top ?? 0, cssContentTop);
+  const safeTop = Math.max(webApp.safeAreaInset?.top ?? 0, cssSafeTop);
+  const fullscreenLike = isFullscreenLike(webApp);
+  const telegramTopInset = Math.max(
+    contentTop,
+    safeTop + (fullscreenLike ? TELEGRAM_FULLSCREEN_TOP_EXTRA : 0)
+  );
 
   if (telegramTopInset > 0) {
     return telegramTopInset;
   }
 
-  return isFullscreenLike(webApp) ? TELEGRAM_FULLSCREEN_TOP_FALLBACK : 0;
+  return fullscreenLike ? TELEGRAM_FULLSCREEN_TOP_FALLBACK : 0;
 }
 
 function applyTelegramViewportSafety() {
