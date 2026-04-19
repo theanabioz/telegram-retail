@@ -232,12 +232,32 @@ export async function stopShift(userId: string) {
   });
 
   const summary = buildShiftSummary(updated);
+  const completedSales = await listCompletedSalesByShift(updated.id);
+  const totalRevenue = Number(
+    completedSales.reduce((sum, sale) => sum + Number(sale.total_amount), 0).toFixed(2)
+  );
+  const cashSales = completedSales.filter((sale) => sale.payment_method === "cash");
+  const cardSales = completedSales.filter((sale) => sale.payment_method === "card");
+  const cashRevenue = Number(
+    cashSales.reduce((sum, sale) => sum + Number(sale.total_amount), 0).toFixed(2)
+  );
+  const cardRevenue = Number(
+    cardSales.reduce((sum, sale) => sum + Number(sale.total_amount), 0).toFixed(2)
+  );
 
   void notifyShiftEnded({
     sellerUserId: userId,
     storeId: updated.store_id,
+    startedAt: updated.started_at,
+    endedAt: updated.ended_at ?? endedAt,
     workedSeconds: summary.workedSeconds,
     pausedSeconds: summary.pausedSeconds,
+    salesCount: completedSales.length,
+    totalRevenue,
+    cashSalesCount: cashSales.length,
+    cardSalesCount: cardSales.length,
+    cashRevenue,
+    cardRevenue,
   });
 
   return {

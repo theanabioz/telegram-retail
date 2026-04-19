@@ -12,6 +12,7 @@ type TelegramUpdate = {
 
 const LOW_STOCK_THRESHOLD = 10;
 const TARGET_CACHE_TTL_MS = 60_000;
+const ALERT_TIME_ZONE = "Europe/Lisbon";
 
 let cachedChatIds: string[] = [];
 let cachedAt = 0;
@@ -21,6 +22,44 @@ function escapeHtml(value: string) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: ALERT_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+function formatTime(iso: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: ALERT_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+function formatCurrency(amount: number) {
+  return `${amount.toFixed(2)} EUR`;
+}
+
+function formatDuration(seconds: number) {
+  const totalMinutes = Math.max(0, Math.floor(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}ч ${minutes}м`;
+}
+
+function buildLine(label: string, value: string) {
+  return `<b>${escapeHtml(label)}:</b> ${escapeHtml(value)}`;
+}
+
+function buildText(title: string, lines: string[]) {
+  return [`<b>${escapeHtml(title)}</b>`, ...lines].join("\n");
 }
 
 async function telegramRequest<T>(method: string, body?: Record<string, unknown>) {
@@ -132,7 +171,7 @@ async function sendTelegramAlert(title: string, lines: string[]) {
       return;
     }
 
-    const text = [`<b>${escapeHtml(title)}</b>`, ...lines.map((line) => escapeHtml(line))].join("\n");
+    const text = buildText(title, lines);
 
     await Promise.allSettled(
       chatIds.map((chatId) =>
@@ -153,26 +192,48 @@ async function sendTelegramAlert(title: string, lines: string[]) {
 
 export async function notifyShiftStarted(input: { sellerUserId: string; storeId: string }) {
   const [sellerName, storeName] = await Promise.all([getUserName(input.sellerUserId), getStoreName(input.storeId)]);
+  const nowIso = new Date().toISOString();
 
-  await sendTelegramAlert("Shift started", [`Seller: ${sellerName}`, `Store: ${storeName}`]);
+  await sendTelegramAlert("Открыта смена", [
+    buildLine("Продавец", sellerName),
+    buildLine("Магазин", storeName),
+    buildLine("Дата", formatDate(nowIso)),
+    buildLine("Время открытия", formatTime(nowIso)),
+    "",
+    "Смена успешно начата и готова к продажам.",
+  ]);
 }
 
 export async function notifyShiftEnded(input: {
   sellerUserId: string;
   storeId: string;
+  startedAt: string;
+  endedAt: string;
   workedSeconds: number;
   pausedSeconds: number;
+  salesCount: number;
+  totalRevenue: number;
+  cashSalesCount: number;
+  cardSalesCount: number;
+  cashRevenue: number;
+  cardRevenue: number;
 }) {
   const [sellerName, storeName] = await Promise.all([getUserName(input.sellerUserId), getStoreName(input.storeId)]);
 
-  const workedMinutes = Math.max(0, Math.floor(input.workedSeconds / 60));
-  const pausedMinutes = Math.max(0, Math.floor(input.pausedSeconds / 60));
-
-  await sendTelegramAlert("Shift ended", [
-    `Seller: ${sellerName}`,
-    `Store: ${storeName}`,
-    `Worked: ${workedMinutes} min`,
-    `Paused: ${pausedMinutes} min`,
+  await sendTelegramAlert("Отчет по смене", [
+    buildLine("Продавец", sellerName),
+    buildLine("Магазин", storeName),
+    buildLine("Дата", formatDate(input.endedAt)),
+    "",
+    buildLine("Начало", formatTime(input.startedAt)),
+    buildLine("Завершение", formatTime(input.endedAt)),
+    buildLine("Отработано", formatDuration(input.workedSeconds)),
+    buildLine("Пауза", formatDuration(input.pausedSeconds)),
+    "",
+    buildLine("Продаж за смену", String(input.salesCount)),
+    buildLine("Выручка за смену", formatCurrency(input.totalRevenue)),
+    buildLine("Наличные", `${input.cashSalesCount} шт. • ${formatCurrency(input.cashRevenue)}`),
+    buildLine("Карта", `${input.cardSalesCount} шт. • ${formatCurrency(input.cardRevenue)}`),
   ]);
 }
 
@@ -188,9 +249,11 @@ export async function notifyLowStockIfNeeded(input: {
 
   const [storeName, productName] = await Promise.all([getStoreName(input.storeId), getProductName(input.productId)]);
 
-  await sendTelegramAlert("Low stock alert", [
-    `Store: ${storeName}`,
-    `Product: ${productName}`,
-    `Remaining stock: ${input.nextQuantity}`,
+  await sendTelegramAlert("Низкий остаток", [
+    buildLine("Магазин", storeName),
+    buildLine("Товар", productName),
+    buildLine("Остаток", String(input.nextQuantity)),
+    "",
+    "Остаток опустился до порогового значения. Проверь пополнение.",
   ]);
 }
