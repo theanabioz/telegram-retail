@@ -276,16 +276,31 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previous = {
+      shiftActive: get().shiftActive,
+      shiftStatus: get().shiftStatus,
+      shiftSummary: get().shiftSummary,
+      mode: get().mode,
+    };
+
+    triggerSelection();
+    set({
+      actionLoading: false,
+      error: null,
+      mode: "live",
+      shiftActive: true,
+      shiftStatus: "active",
+      shiftSummary: previous.shiftSummary ?? { totalSeconds: 0, pausedSeconds: 0, workedSeconds: 0 },
+    });
 
     try {
       await apiPost("/shifts/start", { storeId }, token);
       triggerNotification("success");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      void get().bootstrap();
     } catch (error) {
       triggerNotification("error");
       set({
+        ...previous,
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to start shift",
       });
@@ -299,16 +314,28 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previous = {
+      shiftActive: get().shiftActive,
+      shiftStatus: get().shiftStatus,
+      shiftSummary: get().shiftSummary,
+      mode: get().mode,
+    };
+
+    triggerSelection();
+    set({
+      actionLoading: false,
+      error: null,
+      shiftActive: false,
+      shiftStatus: "paused",
+    });
 
     try {
       await apiPost("/shifts/pause", {}, token);
-      triggerSelection();
-      set({ actionLoading: false });
-      await get().bootstrap();
+      void get().bootstrap();
     } catch (error) {
       triggerNotification("error");
       set({
+        ...previous,
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to pause shift",
       });
@@ -322,16 +349,30 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previous = {
+      shiftActive: get().shiftActive,
+      shiftStatus: get().shiftStatus,
+      shiftSummary: get().shiftSummary,
+      mode: get().mode,
+    };
+
+    triggerSelection();
+    set({
+      actionLoading: false,
+      error: null,
+      mode: "live",
+      shiftActive: true,
+      shiftStatus: "active",
+    });
 
     try {
       await apiPost("/shifts/resume", {}, token);
       triggerNotification("success");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      void get().bootstrap();
     } catch (error) {
       triggerNotification("error");
       set({
+        ...previous,
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to resume shift",
       });
@@ -345,16 +386,33 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previous = {
+      shiftActive: get().shiftActive,
+      shiftStatus: get().shiftStatus,
+      shiftSummary: get().shiftSummary,
+      mode: get().mode,
+      draft: get().draft,
+    };
+
+    triggerSelection();
+    set({
+      actionLoading: false,
+      error: null,
+      mode: "demo",
+      shiftActive: false,
+      shiftStatus: "inactive",
+      shiftSummary: null,
+      draft: null,
+    });
 
     try {
       await apiPost("/shifts/stop", {}, token);
       triggerNotification("warning");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      void get().bootstrap();
     } catch (error) {
       triggerNotification("error");
       set({
+        ...previous,
         actionLoading: false,
         error: error instanceof Error ? error.message : "Failed to stop shift",
       });
