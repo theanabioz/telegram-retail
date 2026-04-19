@@ -1,4 +1,4 @@
-import { useEffect, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useState, type PointerEvent } from "react";
 import {
   Avatar,
   Box,
@@ -12,6 +12,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
+import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
 import type { AdminDashboardResponse, AdminInventoryResponse, AdminSalesOverviewResponse } from "../types/admin";
@@ -65,6 +66,14 @@ type InventoryMode = "stock" | "products";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
+
+function scrollToSectionTop() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -252,6 +261,52 @@ export function AdminDashboardScreen({
   const [productEdits, setProductEdits] = useState<
     Record<string, { name: string; sku: string; defaultPrice: string; isActive: boolean }>
   >({});
+  const supportsTelegramBackButton = canUseTelegramBackButton();
+
+  const resetAdminSection = useCallback((tab: AdminTab) => {
+    if (tab === "overview") {
+      setSelectedOverviewHour(null);
+    }
+
+    if (tab === "sales") {
+      setSelectedAdminSaleId(null);
+      setSelectedAdminReturnId(null);
+    }
+
+    if (tab === "inventory") {
+      setSelectedInventoryItemId(null);
+    }
+
+    scrollToSectionTop();
+  }, []);
+
+  const handleAdminTabChange = useCallback((tab: AdminTab) => {
+    setActiveTab(tab);
+    scrollToSectionTop();
+  }, []);
+
+  useTelegramBackButton(
+    activeTab === "sales"
+      ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
+      : activeTab === "inventory"
+        ? Boolean(selectedInventoryItemId)
+        : false,
+    () => {
+      if (activeTab === "sales" && selectedAdminSaleId) {
+        setSelectedAdminSaleId(null);
+        return;
+      }
+
+      if (activeTab === "sales" && selectedAdminReturnId) {
+        setSelectedAdminReturnId(null);
+        return;
+      }
+
+      if (activeTab === "inventory" && selectedInventoryItemId) {
+        setSelectedInventoryItemId(null);
+      }
+    }
+  );
 
   const handleOverviewChartPointer = (event: PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -1014,15 +1069,17 @@ export function AdminDashboardScreen({
                     {selectedStore?.name ?? selectedItem.storeName}
                   </Text>
                 </VStack>
-                <Button
-                  size="sm"
-                  borderRadius="14px"
-                  variant="outline"
-                  borderColor="var(--app-border)"
-                  onClick={() => setSelectedInventoryItemId(null)}
-                >
-                  Back
-                </Button>
+                {!supportsTelegramBackButton ? (
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="var(--app-border)"
+                    onClick={() => setSelectedInventoryItemId(null)}
+                  >
+                    Back
+                  </Button>
+                ) : null}
               </HStack>
 
               <HStack justify="space-between" align="start">
@@ -1604,15 +1661,17 @@ export function AdminDashboardScreen({
                     {formatDateTime(selectedSale.createdAt)}
                   </Text>
                 </VStack>
-                <Button
-                  size="sm"
-                  borderRadius="14px"
-                  variant="outline"
-                  borderColor="var(--app-border)"
-                  onClick={() => setSelectedAdminSaleId(null)}
-                >
-                  Back
-                </Button>
+                {!supportsTelegramBackButton ? (
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="var(--app-border)"
+                    onClick={() => setSelectedAdminSaleId(null)}
+                  >
+                    Back
+                  </Button>
+                ) : null}
               </HStack>
 
               <HStack justify="space-between">
@@ -1704,15 +1763,17 @@ export function AdminDashboardScreen({
                     {formatDateTime(selectedReturn.createdAt)}
                   </Text>
                 </VStack>
-                <Button
-                  size="sm"
-                  borderRadius="14px"
-                  variant="outline"
-                  borderColor="var(--app-border)"
-                  onClick={() => setSelectedAdminReturnId(null)}
-                >
-                  Back
-                </Button>
+                {!supportsTelegramBackButton ? (
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="var(--app-border)"
+                    onClick={() => setSelectedAdminReturnId(null)}
+                  >
+                    Back
+                  </Button>
+                ) : null}
               </HStack>
 
               <Box bg="rgba(74,132,244,0.08)" borderRadius="16px" px={3} py={3}>
@@ -2314,7 +2375,7 @@ export function AdminDashboardScreen({
       </Container>
 
       <Box position="fixed" left={0} right={0} bottom={0} zIndex={30}>
-        <AdminNav activeTab={activeTab} onChange={setActiveTab} />
+        <AdminNav activeTab={activeTab} onChange={handleAdminTabChange} onReselect={resetAdminSection} />
       </Box>
     </Box>
   );

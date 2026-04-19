@@ -27,9 +27,10 @@ const items: NavItem[] = [
 type AdminNavProps = {
   activeTab: AdminTab;
   onChange: (tab: AdminTab) => void;
+  onReselect?: (tab: AdminTab) => void;
 };
 
-export function AdminNav({ activeTab, onChange }: AdminNavProps) {
+export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
   return (
     <Box
       as="nav"
@@ -58,7 +59,14 @@ export function AdminNav({ activeTab, onChange }: AdminNavProps) {
               color={isActive ? "surface.900" : "surface.500"}
               fontWeight={isActive ? "900" : "750"}
               cursor="pointer"
-              onClick={() => onChange(item.id)}
+              onClick={() => {
+                if (isActive) {
+                  onReselect?.(item.id);
+                  return;
+                }
+
+                onChange(item.id);
+              }}
               border={0}
               px={0.5}
               py={0.5}

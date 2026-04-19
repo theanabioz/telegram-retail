@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   Box,
@@ -43,6 +43,14 @@ type SellerHomeScreenProps = {
   currentPanel: "admin" | "seller";
   onSwitchPanel: (panel: "admin" | "seller") => Promise<void>;
 };
+
+function scrollToSectionTop() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 function formatDuration(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
@@ -150,6 +158,32 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
   const supportsTelegramBackButton = canUseTelegramBackButton();
+
+  const resetSellerSection = useCallback(
+    (tab: SellerTab) => {
+      if (tab === "checkout") {
+        setDiscountModalItemId(null);
+        setIsDraftCartOpen(false);
+      }
+
+      if (tab === "orders") {
+        setSelectedSaleId(null);
+      }
+
+      if (tab === "shift") {
+        clearShiftDetails();
+        setShiftView("overview");
+      }
+
+      scrollToSectionTop();
+    },
+    [clearShiftDetails]
+  );
+
+  const handleSellerTabChange = useCallback((tab: SellerTab) => {
+    setActiveTab(tab);
+    scrollToSectionTop();
+  }, []);
 
   useEffect(() => {
     void bootstrap();
@@ -1969,7 +2003,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       >
         <BottomNav
           activeTab={activeTab}
-          onChange={setActiveTab}
+          onChange={handleSellerTabChange}
+          onReselect={resetSellerSection}
           topAccessory={renderDraftCartBar()}
         />
       </Box>

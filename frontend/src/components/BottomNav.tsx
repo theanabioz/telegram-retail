@@ -28,10 +28,11 @@ const items: NavItem[] = [
 type BottomNavProps = {
   activeTab: SellerTab;
   onChange: (tab: SellerTab) => void;
+  onReselect?: (tab: SellerTab) => void;
   topAccessory?: ReactNode;
 };
 
-export function BottomNav({ activeTab, onChange, topAccessory }: BottomNavProps) {
+export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: BottomNavProps) {
   return (
     <Box
       as="nav"
@@ -66,7 +67,14 @@ export function BottomNav({ activeTab, onChange, topAccessory }: BottomNavProps)
               spacing={1}
               color={isActive ? "brand.500" : "surface.400"}
               cursor="pointer"
-              onClick={() => onChange(item.id)}
+              onClick={() => {
+                if (isActive) {
+                  onReselect?.(item.id);
+                  return;
+                }
+
+                onChange(item.id);
+              }}
               border={0}
               p={1}
               minH="54px"
