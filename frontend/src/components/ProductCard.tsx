@@ -1,6 +1,7 @@
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { LuPlus } from "react-icons/lu";
 import type { ProductCardItem } from "../data/mockSellerHome";
+import { formatEur } from "../lib/currency";
 
 type ProductCardProps = {
   item: ProductCardItem;
@@ -30,7 +31,7 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
         </Text>
         <HStack spacing={2}>
           <Text color="brand.500" fontSize="sm" fontWeight="800">
-            EUR {item.price.toFixed(2)}
+            {formatEur(item.price)}
           </Text>
           <Box w="1px" h="10px" bg="surface.200" />
           <Text color="surface.500" fontSize="xs" fontWeight="700">

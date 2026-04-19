@@ -35,6 +35,7 @@ import {
 import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
+import { formatDiscountValue, formatEur } from "../lib/currency";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
 import type { DraftResponse, ShiftHistoryItem } from "../types/seller";
@@ -578,7 +579,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       Final Price
                     </Text>
                     <Text fontSize="xl" fontWeight="900" color="surface.900">
-                      EUR {previewFinalPrice.toFixed(2)}
+                      {formatEur(previewFinalPrice)}
                     </Text>
                   </Box>
                 </SimpleGrid>
@@ -684,19 +685,19 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       fontWeight="600"
                       textDecoration={item.discount_type ? "line-through" : "none"}
                     >
-                      EUR {item.base_price.toFixed(2)}
+                      {formatEur(item.base_price)}
                     </Text>
                     {item.discount_type && (
                       <Box bg="green.50" px={2} py={0.5} borderRadius="6px">
                         <Text fontSize="10px" color="green.600" fontWeight="800" textTransform="uppercase">
-                          -{item.discount_type === "percent" ? `${item.discount_value}%` : `EUR ${item.discount_value}`}
+                            {formatDiscountValue(item.discount_value ?? 0, item.discount_type)}
                         </Text>
                       </Box>
                     )}
                   </HStack>
                 </VStack>
                 <Text fontWeight="900" fontSize="lg" color="surface.900">
-                  EUR {item.line_total.toFixed(2)}
+                  {formatEur(item.line_total)}
                 </Text>
               </HStack>
 
@@ -816,7 +817,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 Total Amount
               </Text>
               <Text fontSize="2xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
-                EUR {draft.summary.totalAmount.toFixed(2)}
+                {formatEur(draft.summary.totalAmount)}
               </Text>
             </Box>
 
@@ -967,7 +968,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         
         <HStack spacing={3}>
           <Text fontSize="lg" fontWeight="900" letterSpacing="-0.02em">
-            EUR {draft.summary.totalAmount.toFixed(2)}
+            {formatEur(draft.summary.totalAmount)}
           </Text>
           <Box
             w="32px"
@@ -1071,7 +1072,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="800">{item.product_name_snapshot}</Text>
                   <Text fontSize="sm" color="surface.500">
-                    Qty {item.quantity} x EUR {item.final_price.toFixed(2)}
+                    Qty {item.quantity} x {formatEur(item.final_price)}
                   </Text>
                   {item.discount_type ? (
                     <Text fontSize="xs" color="surface.500">
@@ -1079,7 +1080,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     </Text>
                   ) : null}
                 </VStack>
-                <Text fontWeight="900">EUR {item.line_total.toFixed(2)}</Text>
+                <Text fontWeight="900">{formatEur(item.line_total)}</Text>
               </HStack>
             ))}
 
@@ -1090,20 +1091,20 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <Text color="surface.500" fontWeight="700">
                   Subtotal
                 </Text>
-                <Text fontWeight="800">EUR {selectedSale.subtotal_amount.toFixed(2)}</Text>
+                <Text fontWeight="800">{formatEur(selectedSale.subtotal_amount)}</Text>
               </HStack>
               <HStack justify="space-between">
                 <Text color="surface.500" fontWeight="700">
                   Discount
                 </Text>
-                <Text fontWeight="800">EUR {selectedSale.discount_amount.toFixed(2)}</Text>
+                <Text fontWeight="800">{formatEur(selectedSale.discount_amount)}</Text>
               </HStack>
               <HStack justify="space-between">
                 <Text fontSize="lg" fontWeight="900">
                   Total
                 </Text>
                 <Text fontSize="lg" fontWeight="900">
-                  EUR {selectedSale.total_amount.toFixed(2)}
+                  {formatEur(selectedSale.total_amount)}
                 </Text>
               </HStack>
             </VStack>
@@ -1153,7 +1154,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
             <VStack align="end" spacing={0.5}>
               <Text fontWeight="900" fontSize="lg">
-                EUR {sale.total_amount.toFixed(2)}
+                {formatEur(sale.total_amount)}
               </Text>
               <Text fontSize="xs" color="surface.500" fontWeight="700">
                 Open receipt
@@ -1196,7 +1197,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {item.name}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="600">
-                    EUR {item.price.toFixed(2)} · Current Stock: {item.stock}
+                    {formatEur(item.price)} · Current Stock: {item.stock}
                   </Text>
                 </VStack>
                 <Box 
@@ -1752,7 +1753,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               { label: "Time Worked", value: formatDuration(shiftDetails.summary.workedSeconds) },
               { label: "Break Time", value: formatDuration(shiftDetails.summary.pausedSeconds) },
               { label: "Completed Sales", value: String(shiftDetails.salesSummary.count) },
-              { label: "Revenue", value: `EUR ${shiftDetails.salesSummary.totalRevenue.toFixed(2)}` },
+              { label: "Revenue", value: formatEur(shiftDetails.salesSummary.totalRevenue) },
             ].map((item) => (
               <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
                 <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
@@ -1785,7 +1786,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {shiftDetails.salesSummary.cashSalesCount}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
-                    EUR {shiftDetails.salesSummary.cashRevenue.toFixed(2)}
+                    {formatEur(shiftDetails.salesSummary.cashRevenue)}
                   </Text>
                 </Box>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
@@ -1796,7 +1797,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {shiftDetails.salesSummary.cardSalesCount}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
-                    EUR {shiftDetails.salesSummary.cardRevenue.toFixed(2)}
+                    {formatEur(shiftDetails.salesSummary.cardRevenue)}
                   </Text>
                 </Box>
               </SimpleGrid>
@@ -1849,7 +1850,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     Amount
                   </Text>
                   <Text mt={2} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
-                    EUR {shiftDetails.commission.amount.toFixed(2)}
+                    {formatEur(shiftDetails.commission.amount)}
                   </Text>
                 </Box>
               </SimpleGrid>

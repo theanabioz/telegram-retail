@@ -12,6 +12,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
+import { formatEur } from "../lib/currency";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
 import { useAdminManagementStore } from "../store/useAdminManagementStore";
@@ -685,7 +686,7 @@ export function AdminDashboardScreen({
     <VStack spacing={4} align="stretch">
       <SimpleGrid columns={2} spacing={3}>
         {[
-          { label: "Today Revenue", value: data ? `EUR ${data.summary.totalRevenueToday.toFixed(2)}` : "..." },
+          { label: "Today Revenue", value: data ? formatEur(data.summary.totalRevenueToday) : "..." },
           { label: "Sales Today", value: data ? String(data.summary.completedSalesToday) : "..." },
           { label: "Low Stock", value: data ? String(data.summary.lowStockCount) : "..." },
           { label: "Active Sellers", value: data ? String(data.summary.totalSellers) : "..." },
@@ -713,7 +714,7 @@ export function AdminDashboardScreen({
               </Text>
             </VStack>
             <Text color="surface.500" fontWeight="800" fontSize="sm">
-              EUR {data?.summary.totalRevenueToday.toFixed(2) ?? "0.00"}
+              {data ? formatEur(data.summary.totalRevenueToday) : formatEur(0)}
             </Text>
           </HStack>
 
@@ -835,7 +836,7 @@ export function AdminDashboardScreen({
                   {new Date(sale.createdAt).toLocaleString()}
                 </Text>
               </VStack>
-              <Text fontWeight="900">EUR {sale.totalAmount.toFixed(2)}</Text>
+              <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
             </HStack>
           ))}
         </VStack>
@@ -863,7 +864,7 @@ export function AdminDashboardScreen({
                     {store.stockUnits} units in stock
                   </Text>
                 </VStack>
-                <Text fontWeight="900">EUR {store.revenue.toFixed(2)}</Text>
+                <Text fontWeight="900">{formatEur(store.revenue)}</Text>
               </HStack>
             </Box>
           ))}
@@ -957,7 +958,7 @@ export function AdminDashboardScreen({
                       <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                         Today
                       </Text>
-                      <Text fontWeight="900">EUR {store.revenueToday.toFixed(2)}</Text>
+                      <Text fontWeight="900">{formatEur(store.revenueToday)}</Text>
                     </Box>
                   </SimpleGrid>
 
@@ -1088,7 +1089,7 @@ export function AdminDashboardScreen({
                     {selectedItem.productName}
                   </Text>
                   <Text fontSize="sm" color="surface.500">
-                    Default EUR {selectedItem.defaultPrice.toFixed(2)}
+                    Default {formatEur(selectedItem.defaultPrice)}
                   </Text>
                 </VStack>
                 <StatusPill
@@ -1103,7 +1104,7 @@ export function AdminDashboardScreen({
                     Store Price
                   </Text>
                   <Text fontWeight="900" fontSize="xl">
-                    EUR {selectedItem.storePrice.toFixed(2)}
+                    {formatEur(selectedItem.storePrice)}
                   </Text>
                 </Box>
                 <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
@@ -1406,10 +1407,10 @@ export function AdminDashboardScreen({
                         {!item.isProductActive ? <StatusPill label="Product Off" tone="orange" /> : null}
                       </HStack>
                       <Text fontSize="sm" color="surface.600" fontWeight="700">
-                        EUR {item.storePrice.toFixed(2)}
+                        {formatEur(item.storePrice)}
                       </Text>
                       <Text fontSize="xs" color="surface.500">
-                        Default EUR {item.defaultPrice.toFixed(2)} · Updated {formatShortDate(item.updatedAt)}
+                        Default {formatEur(item.defaultPrice)} · Updated {formatShortDate(item.updatedAt)}
                       </Text>
                     </VStack>
                     <VStack align="end" spacing={1}>
@@ -1494,7 +1495,7 @@ export function AdminDashboardScreen({
                           <VStack align="start" spacing={0}>
                             <Text fontWeight="900">{product.name}</Text>
                             <Text fontSize="sm" color="surface.500">
-                              Default EUR {product.defaultPrice.toFixed(2)}
+                              Default {formatEur(product.defaultPrice)}
                             </Text>
                           </VStack>
                           <StatusPill label={product.isActive ? "Active" : "Inactive"} tone={product.isActive ? "green" : "red"} />
@@ -1632,16 +1633,16 @@ export function AdminDashboardScreen({
     );
     const salesSummaryCards = salesLedgerMode === "sales"
       ? [
-          { label: "Revenue", value: `EUR ${salesTotal.toFixed(2)}` },
+          { label: "Revenue", value: formatEur(salesTotal) },
           { label: "Sales", value: String(visibleSales.length) },
-          { label: "Cash", value: `EUR ${cashTotal.toFixed(2)}` },
-          { label: "Card", value: `EUR ${cardTotal.toFixed(2)}` },
+          { label: "Cash", value: formatEur(cashTotal) },
+          { label: "Card", value: formatEur(cardTotal) },
         ]
       : [
-          { label: "Returned", value: `EUR ${returnsTotal.toFixed(2)}` },
+          { label: "Returned", value: formatEur(returnsTotal) },
           { label: "Returns", value: String(visibleReturns.length) },
           { label: "Units", value: String(returnedUnits) },
-          { label: "Avg Return", value: `EUR ${(returnsTotal / Math.max(visibleReturns.length, 1)).toFixed(2)}` },
+          { label: "Avg Return", value: formatEur(returnsTotal / Math.max(visibleReturns.length, 1)) },
         ];
 
     if (selectedSale) {
@@ -1689,7 +1690,7 @@ export function AdminDashboardScreen({
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      Qty {item.quantity} x EUR {item.finalPrice.toFixed(2)}
+                      Qty {item.quantity} x {formatEur(item.finalPrice)}
                     </Text>
                     {item.discountType ? (
                       <Text fontSize="xs" color="surface.500">
@@ -1697,7 +1698,7 @@ export function AdminDashboardScreen({
                       </Text>
                     ) : null}
                   </VStack>
-                  <Text fontWeight="900">EUR {item.lineTotal.toFixed(2)}</Text>
+                  <Text fontWeight="900">{formatEur(item.lineTotal)}</Text>
                 </HStack>
               ))}
 
@@ -1708,20 +1709,20 @@ export function AdminDashboardScreen({
                   <Text color="surface.500" fontWeight="700">
                     Subtotal
                   </Text>
-                  <Text fontWeight="800">EUR {selectedSale.subtotalAmount.toFixed(2)}</Text>
+                  <Text fontWeight="800">{formatEur(selectedSale.subtotalAmount)}</Text>
                 </HStack>
                 <HStack justify="space-between">
                   <Text color="surface.500" fontWeight="700">
                     Discount
                   </Text>
-                  <Text fontWeight="800">EUR {selectedSale.discountAmount.toFixed(2)}</Text>
+                  <Text fontWeight="800">{formatEur(selectedSale.discountAmount)}</Text>
                 </HStack>
                 <HStack justify="space-between">
                   <Text fontSize="lg" fontWeight="900">
                     Total
                   </Text>
                   <Text fontSize="lg" fontWeight="900">
-                    EUR {selectedSale.totalAmount.toFixed(2)}
+                    {formatEur(selectedSale.totalAmount)}
                   </Text>
                 </HStack>
               </VStack>
@@ -1790,10 +1791,10 @@ export function AdminDashboardScreen({
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      Qty {item.quantity} x EUR {item.returnedPrice.toFixed(2)}
+                      Qty {item.quantity} x {formatEur(item.returnedPrice)}
                     </Text>
                   </VStack>
-                  <Text fontWeight="900">EUR {item.lineTotal.toFixed(2)}</Text>
+                  <Text fontWeight="900">{formatEur(item.lineTotal)}</Text>
                 </HStack>
               ))}
 
@@ -1804,7 +1805,7 @@ export function AdminDashboardScreen({
                   Total Returned
                 </Text>
                 <Text fontSize="lg" fontWeight="900">
-                  EUR {selectedReturn.totalAmount.toFixed(2)}
+                  {formatEur(selectedReturn.totalAmount)}
                 </Text>
               </HStack>
 
@@ -2036,7 +2037,7 @@ export function AdminDashboardScreen({
                         </Text>
                       </VStack>
                       <VStack align="end" spacing={1}>
-                        <Text fontWeight="900">EUR {sale.totalAmount.toFixed(2)}</Text>
+                        <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
                         <StatusPill
                           label={sale.status === "deleted" ? "Deleted" : "Completed"}
                           tone={sale.status === "deleted" ? "red" : "green"}
@@ -2072,7 +2073,7 @@ export function AdminDashboardScreen({
                         </Text>
                       </VStack>
                       <VStack align="end" spacing={1}>
-                        <Text fontWeight="900">EUR {entry.totalAmount.toFixed(2)}</Text>
+                        <Text fontWeight="900">{formatEur(entry.totalAmount)}</Text>
                         <Text fontSize="xs" color="surface.500" fontWeight="700">
                           Sale {entry.saleId.slice(0, 8)}
                         </Text>
@@ -2129,7 +2130,7 @@ export function AdminDashboardScreen({
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                     Revenue
                   </Text>
-                  <Text fontWeight="900">EUR {seller.revenue.toFixed(2)}</Text>
+                  <Text fontWeight="900">{formatEur(seller.revenue)}</Text>
                 </Box>
               </SimpleGrid>
 
