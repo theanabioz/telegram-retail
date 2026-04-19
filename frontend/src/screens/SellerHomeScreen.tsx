@@ -195,6 +195,36 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
   }, [draft?.items.length, isDraftCartOpen]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const shouldLockBackground = isDraftCartOpen || Boolean(discountModalItemId);
+
+    if (!shouldLockBackground) {
+      return;
+    }
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscroll = body.style.overscrollBehavior;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousHtmlOverscroll = documentElement.style.overscrollBehavior;
+
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    documentElement.style.overflow = "hidden";
+    documentElement.style.overscrollBehavior = "none";
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscroll;
+      documentElement.style.overflow = previousHtmlOverflow;
+      documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+    };
+  }, [discountModalItemId, isDraftCartOpen]);
+
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) {
@@ -746,38 +776,21 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           mt={2}
         >
           <VStack align="stretch" spacing={3}>
-            <SimpleGrid columns={2} spacing={3}>
-              <Box
-                bg="white"
-                borderRadius="18px"
-                px={4}
-                py={3}
-                border="1px solid"
-                borderColor="rgba(232,229,223,0.9)"
-              >
-                <Text fontWeight="800" fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.06em">
-                  Items Count
-                </Text>
-                <Text fontWeight="900" fontSize="2xl" color="surface.900">
-                  {draft.summary.itemsCount}
-                </Text>
-              </Box>
-              <Box
-                bg="rgba(82, 129, 236, 0.08)"
-                borderRadius="18px"
-                px={4}
-                py={3}
-                border="1px solid"
-                borderColor="rgba(82, 129, 236, 0.16)"
-              >
-                <Text fontWeight="800" fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.06em">
-                  Total Amount
-                </Text>
-                <Text fontSize="xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
-                  EUR {draft.summary.totalAmount.toFixed(2)}
-                </Text>
-              </Box>
-            </SimpleGrid>
+            <Box
+              bg="rgba(82, 129, 236, 0.08)"
+              borderRadius="18px"
+              px={4}
+              py={3}
+              border="1px solid"
+              borderColor="rgba(82, 129, 236, 0.16)"
+            >
+              <Text fontWeight="800" fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.06em">
+                Total Amount
+              </Text>
+              <Text fontSize="2xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
+                EUR {draft.summary.totalAmount.toFixed(2)}
+              </Text>
+            </Box>
 
             <HStack spacing={3} pt={1}>
               <Button
@@ -827,6 +840,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           position="absolute"
           inset={0}
           bg="rgba(14, 12, 10, 0.4)"
+          overscrollBehavior="none"
+          style={{ touchAction: "none" }}
           onClick={() => setIsDraftCartOpen(false)}
         />
         <Box
@@ -844,13 +859,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           overflow="hidden"
           display="flex"
           flexDirection="column"
+          overscrollBehavior="contain"
         >
           {/* Handle for the sheet */}
           <Box w="full" py={3} display="flex" justifyContent="center" onClick={() => setIsDraftCartOpen(false)} cursor="pointer">
             <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
           </Box>
           
-          <Box px={5} pb={6} pt={2} overflowY="auto" flex="1">
+          <Box px={5} pb={6} pt={2} overflowY="auto" flex="1" overscrollBehavior="contain">
             <HStack justify="space-between" mb={6} align="center">
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
