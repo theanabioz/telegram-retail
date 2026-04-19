@@ -76,6 +76,21 @@ type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
 
+function getCachedAdminStartup() {
+  try {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+    const raw = window.localStorage.getItem(ADMIN_STARTUP_CACHE_KEY);
+    if (!token || !raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
+    return cached.token === token ? cached.startup : null;
+  } catch {
+    return null;
+  }
+}
+
 function scrollToSectionTop() {
   if (typeof window === "undefined") {
     return;
@@ -135,17 +150,8 @@ function buildSalesCacheKey(input: {
 }
 
 function readAdminStartupCache(token: string) {
-  try {
-    const raw = window.localStorage.getItem(ADMIN_STARTUP_CACHE_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
-    return cached.token === token ? cached.startup : null;
-  } catch {
-    return null;
-  }
+  const cached = getCachedAdminStartup();
+  return cached;
 }
 
 function writeAdminStartupCache(token: string, startup: AdminStartupResponse) {
@@ -259,13 +265,39 @@ export function AdminDashboardScreen({
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
   const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
   const [selectedAdminReturnId, setSelectedAdminReturnId] = useState<string | null>(null);
-  const [salesView, setSalesView] = useState<SalesLedgerSnapshot>({ sales: [], returns: [] });
+  const [salesView, setSalesView] = useState<SalesLedgerSnapshot>(() => {
+    const cachedStartup = getCachedAdminStartup();
+    return {
+      sales: cachedStartup?.sales.sales ?? [],
+      returns: cachedStartup?.sales.returns ?? [],
+    };
+  });
   const [salesCache, setSalesCache] = useState<Record<string, SalesLedgerSnapshot>>({});
   const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("stock");
   const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
-  const [inventoryView, setInventoryView] = useState<InventorySnapshot>({ items: [], history: [] });
-  const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>({});
+  const [inventoryView, setInventoryView] = useState<InventorySnapshot>(() => {
+    const cachedStartup = getCachedAdminStartup();
+    return {
+      items: cachedStartup?.inventory.items ?? [],
+      history: cachedStartup?.inventory.history ?? [],
+    };
+  });
+  const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>(() => {
+    const cachedStartup = getCachedAdminStartup();
+    const selectedStoreId = cachedStartup?.inventory.selectedStoreId;
+
+    if (!selectedStoreId) {
+      return {};
+    }
+
+    return {
+      [selectedStoreId]: {
+        items: cachedStartup.inventory.items,
+        history: cachedStartup.inventory.history,
+      },
+    };
+  });
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
   const [teamMode, setTeamMode] = useState<TeamMode>("staff");
@@ -276,7 +308,9 @@ export function AdminDashboardScreen({
     sku: "",
     defaultPrice: "",
   });
-  const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState("");
+  const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState(
+    () => getCachedAdminStartup()?.inventory.selectedStoreId ?? ""
+  );
   const [salesStoreFilter, setSalesStoreFilter] = useState("");
   const [salesSellerFilter, setSalesSellerFilter] = useState("");
   const [salesStatusFilter, setSalesStatusFilter] = useState<"all" | "completed" | "deleted">("all");

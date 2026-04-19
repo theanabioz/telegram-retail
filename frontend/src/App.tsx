@@ -23,6 +23,41 @@ type AppSession = {
 
 const TOKEN_KEY = "telegram-retail-token";
 const PANEL_KEY = "telegram-retail-dev-panel";
+const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
+const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
+
+function readCachedOperator(panel: DevPanel, token: string | null) {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const cacheKey = panel === "admin" ? ADMIN_STARTUP_CACHE_KEY : SELLER_STARTUP_CACHE_KEY;
+    const raw = window.localStorage.getItem(cacheKey);
+    if (!raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw) as {
+      token: string;
+      startup?: {
+        me?: {
+          user?: {
+            full_name?: string;
+          };
+        };
+      };
+    };
+
+    if (cached.token !== token) {
+      return null;
+    }
+
+    return cached.startup?.me?.user?.full_name ?? null;
+  } catch {
+    return null;
+  }
+}
 
 function AppBootState({
   title,
@@ -68,17 +103,28 @@ export function App() {
 
     return config.devPanel === "admin" ? "admin" : "seller";
   });
-  const [session, setSession] = useState<AppSession>({
-    role: "seller",
-    operatorName: "User",
-    loading: true,
-    error: null,
+  const [session, setSession] = useState<AppSession>(() => {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+    const storedPanel = window.localStorage.getItem(PANEL_KEY);
+    const initialPanel = storedPanel === "admin" || storedPanel === "seller" ? storedPanel : currentPanel;
+    const cachedOperator = readCachedOperator(initialPanel, token);
+
+    return {
+      role: initialPanel,
+      operatorName: cachedOperator ?? "User",
+      loading: !cachedOperator,
+      error: null,
+    };
   });
 
   const bootstrap = useCallback(async (desiredPanel: DevPanel, forceRelogin = false) => {
+    const cachedOperator = readCachedOperator(desiredPanel, window.localStorage.getItem(TOKEN_KEY));
+
     setSession((current) => ({
       ...current,
-      loading: true,
+      role: desiredPanel,
+      operatorName: cachedOperator ?? current.operatorName,
+      loading: forceRelogin || !cachedOperator,
       error: null,
     }));
 

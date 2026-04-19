@@ -15,9 +15,25 @@ import type {
 } from "../types/admin";
 
 const TOKEN_KEY = "telegram-retail-token";
+const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 
 function getStoredToken() {
   return window.localStorage.getItem(TOKEN_KEY);
+}
+
+function readCachedAdminStartup() {
+  try {
+    const token = getStoredToken();
+    const raw = window.localStorage.getItem(ADMIN_STARTUP_CACHE_KEY);
+    if (!token || !raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
+    return cached.token === token ? cached.startup : null;
+  } catch {
+    return null;
+  }
 }
 
 type AdminManagementState = {
@@ -86,6 +102,8 @@ type AdminManagementState = {
   hydrateStartup: (startup: AdminStartupResponse) => void;
 };
 
+const cachedAdminStartup = readCachedAdminStartup();
+
 export const useAdminManagementStore = create<AdminManagementState>((set, get) => ({
   loadingStores: false,
   loadingStaff: false,
@@ -93,17 +111,17 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
   loadingInventory: false,
   loadingSales: false,
   error: null,
-  stores: [],
-  staff: [],
-  inventoryStores: [],
-  products: [],
-  inventoryItems: [],
-  inventoryHistory: [],
-  salesFilters: null,
-  salesStores: [],
-  salesSellers: [],
-  salesOverview: [],
-  returnsOverview: [],
+  stores: cachedAdminStartup?.stores.stores ?? [],
+  staff: cachedAdminStartup?.staff.sellers ?? [],
+  inventoryStores: cachedAdminStartup?.inventory.stores ?? [],
+  products: cachedAdminStartup?.inventory.products ?? [],
+  inventoryItems: cachedAdminStartup?.inventory.items ?? [],
+  inventoryHistory: cachedAdminStartup?.inventory.history ?? [],
+  salesFilters: cachedAdminStartup?.sales.filters ?? null,
+  salesStores: cachedAdminStartup?.sales.stores ?? [],
+  salesSellers: cachedAdminStartup?.sales.sellers ?? [],
+  salesOverview: cachedAdminStartup?.sales.sales ?? [],
+  returnsOverview: cachedAdminStartup?.sales.returns ?? [],
 
   hydrateStartup: (startup) => {
     set({

@@ -1,11 +1,27 @@
 import { create } from "zustand";
 import { apiGet } from "../lib/api";
-import type { AdminDashboardResponse } from "../types/admin";
+import type { AdminDashboardResponse, AdminStartupResponse } from "../types/admin";
 
 const TOKEN_KEY = "telegram-retail-token";
+const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 
 function getStoredToken() {
   return window.localStorage.getItem(TOKEN_KEY);
+}
+
+function readCachedDashboard() {
+  try {
+    const token = getStoredToken();
+    const raw = window.localStorage.getItem(ADMIN_STARTUP_CACHE_KEY);
+    if (!token || !raw) {
+      return null;
+    }
+
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
+    return cached.token === token ? cached.startup.dashboard : null;
+  } catch {
+    return null;
+  }
 }
 
 type AdminDashboardState = {
@@ -16,10 +32,12 @@ type AdminDashboardState = {
   load: () => Promise<void>;
 };
 
+const cachedDashboard = readCachedDashboard();
+
 export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   loading: false,
   error: null,
-  data: null,
+  data: cachedDashboard,
   hydrate: (data) => {
     set({ loading: false, error: null, data });
   },
