@@ -1,26 +1,10 @@
+import { getTelegramWebApp } from "./telegramWebApp";
+
 type SupportedOrientationLock = "portrait" | "portrait-primary";
 
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: SupportedOrientationLock) => Promise<void>;
 };
-
-type TelegramWebAppNative = {
-  requestFullscreen?: () => void;
-  lockOrientation?: () => void;
-  isVersionAtLeast?: (version: string) => boolean;
-  onEvent?: (eventType: string, callback: () => void) => void;
-  offEvent?: (eventType: string, callback: () => void) => void;
-};
-
-function getTelegramWebApp(): TelegramWebAppNative | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return (
-    (window as typeof window & { Telegram?: { WebApp?: TelegramWebAppNative } }).Telegram?.WebApp ?? null
-  );
-}
 
 async function lockBrowserPortrait() {
   if (typeof screen === "undefined") {

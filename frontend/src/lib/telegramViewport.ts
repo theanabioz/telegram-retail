@@ -1,29 +1,14 @@
-import WebApp from "@twa-dev/sdk";
-
-type TelegramInset = {
-  top?: number;
-  right?: number;
-  bottom?: number;
-  left?: number;
-};
-
-type TelegramWebAppViewport = typeof WebApp & {
-  isFullscreen?: boolean;
-  safeAreaInset?: TelegramInset;
-  contentSafeAreaInset?: TelegramInset;
-  onEvent?: (eventType: string, eventHandler: () => void) => void;
-  offEvent?: (eventType: string, eventHandler: () => void) => void;
-};
+import { getTelegramWebApp, type TelegramWebAppNative } from "./telegramWebApp";
 
 const TELEGRAM_FULLSCREEN_TOP_FALLBACK = 72;
 
-function isMobileTelegram(webApp: TelegramWebAppViewport) {
+function isMobileTelegram(webApp: TelegramWebAppNative) {
   const platform = String(webApp.platform ?? "").toLowerCase();
 
   return platform === "ios" || platform === "android" || platform === "android_x";
 }
 
-function isFullscreenLike(webApp: TelegramWebAppViewport) {
+function isFullscreenLike(webApp: TelegramWebAppNative) {
   if (webApp.isFullscreen) {
     return true;
   }
@@ -42,7 +27,7 @@ function isFullscreenLike(webApp: TelegramWebAppViewport) {
   return viewportHeight / screenHeight > 0.93;
 }
 
-function readTelegramTopInset(webApp: TelegramWebAppViewport) {
+function readTelegramTopInset(webApp: TelegramWebAppNative) {
   const contentTop = webApp.contentSafeAreaInset?.top ?? 0;
   const safeTop = webApp.safeAreaInset?.top ?? 0;
   const telegramTopInset = Math.max(contentTop, safeTop);
@@ -55,7 +40,15 @@ function readTelegramTopInset(webApp: TelegramWebAppViewport) {
 }
 
 function applyTelegramViewportSafety() {
-  const webApp = WebApp as TelegramWebAppViewport;
+  const webApp = getTelegramWebApp();
+
+  if (!webApp) {
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty("--telegram-safe-area-top", "0px");
+    document.documentElement.style.setProperty("--app-viewport-height", `${viewportHeight}px`);
+    return;
+  }
+
   const topInset = readTelegramTopInset(webApp);
   const viewportHeight = webApp.viewportHeight || window.visualViewport?.height || window.innerHeight;
 
@@ -64,7 +57,7 @@ function applyTelegramViewportSafety() {
 }
 
 export function attachTelegramViewportSafety() {
-  const webApp = WebApp as TelegramWebAppViewport;
+  const webApp = getTelegramWebApp();
   const update = () => applyTelegramViewportSafety();
   const eventNames = ["viewportChanged", "safeAreaChanged", "contentSafeAreaChanged", "fullscreenChanged"];
 
@@ -74,7 +67,7 @@ export function attachTelegramViewportSafety() {
 
   for (const eventName of eventNames) {
     try {
-      webApp.onEvent?.(eventName, update);
+        webApp?.onEvent?.(eventName, update);
     } catch {
       // Older Telegram SDK builds do not know the newer safe-area events.
     }
@@ -86,7 +79,7 @@ export function attachTelegramViewportSafety() {
 
     for (const eventName of eventNames) {
       try {
-        webApp.offEvent?.(eventName, update);
+        webApp?.offEvent?.(eventName, update);
       } catch {
         // Older Telegram SDK builds do not know the newer safe-area events.
       }

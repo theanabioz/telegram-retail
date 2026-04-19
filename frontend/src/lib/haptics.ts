@@ -1,4 +1,4 @@
-import WebApp from "@twa-dev/sdk";
+import { getTelegramWebApp } from "./telegramWebApp";
 
 type ImpactStyle = "light" | "medium" | "heavy" | "rigid" | "soft";
 type NotificationType = "error" | "success" | "warning";
@@ -19,7 +19,7 @@ const SCROLL_STEP_PX = 72;
 const SCROLL_FEEDBACK_INTERVAL_MS = 140;
 
 function canUseHaptics() {
-  return typeof window !== "undefined" && typeof WebApp?.HapticFeedback !== "undefined";
+  return typeof window !== "undefined" && typeof getTelegramWebApp()?.HapticFeedback !== "undefined";
 }
 
 export function triggerImpact(style: ImpactStyle = "light") {
@@ -28,7 +28,7 @@ export function triggerImpact(style: ImpactStyle = "light") {
   }
 
   try {
-    WebApp.HapticFeedback.impactOccurred(style);
+    getTelegramWebApp()?.HapticFeedback?.impactOccurred(style);
   } catch {
     // Ignore unsupported clients and non-Telegram browsers.
   }
@@ -40,7 +40,7 @@ export function triggerNotification(type: NotificationType) {
   }
 
   try {
-    WebApp.HapticFeedback.notificationOccurred(type);
+    getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type);
   } catch {
     // Ignore unsupported clients and non-Telegram browsers.
   }
@@ -52,7 +52,7 @@ export function triggerSelection() {
   }
 
   try {
-    WebApp.HapticFeedback.selectionChanged();
+    getTelegramWebApp()?.HapticFeedback?.selectionChanged();
   } catch {
     // Ignore unsupported clients and non-Telegram browsers.
   }

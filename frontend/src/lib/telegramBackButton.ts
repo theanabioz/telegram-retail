@@ -1,19 +1,5 @@
 import { useEffect, useRef } from "react";
-import WebApp from "@twa-dev/sdk";
-
-type TelegramWebAppBackButton = typeof WebApp & {
-  BackButton?: {
-    show: () => void;
-    hide: () => void;
-    onClick: (callback: () => void) => void;
-    offClick: (callback: () => void) => void;
-  };
-  platform?: string;
-};
-
-function getTelegramWebApp() {
-  return WebApp as TelegramWebAppBackButton;
-}
+import { getTelegramWebApp } from "./telegramWebApp";
 
 export function canUseTelegramBackButton() {
   if (typeof window === "undefined") {
@@ -21,7 +7,7 @@ export function canUseTelegramBackButton() {
   }
 
   const webApp = getTelegramWebApp();
-  return Boolean(webApp.platform && webApp.BackButton);
+  return Boolean(webApp?.platform && webApp.BackButton);
 }
 
 export function useTelegramBackButton(visible: boolean, onBack: () => void) {
@@ -37,6 +23,9 @@ export function useTelegramBackButton(visible: boolean, onBack: () => void) {
     }
 
     const webApp = getTelegramWebApp();
+    if (!webApp) {
+      return;
+    }
     const handleBack = () => onBackRef.current();
 
     webApp.BackButton?.onClick(handleBack);

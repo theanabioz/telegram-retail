@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Box, Button, Text, VStack } from "@chakra-ui/react";
-import WebApp from "@twa-dev/sdk";
 import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
+import { getTelegramWebApp } from "./lib/telegramWebApp";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
@@ -131,9 +131,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const webApp = getTelegramWebApp();
+
     try {
-      WebApp.ready();
-      WebApp.expand();
+      webApp?.ready?.();
+      webApp?.expand?.();
     } catch {
       // Local browser mode is expected before Telegram integration is wired.
     }
