@@ -58,6 +58,7 @@ type SellerHomeState = {
   restockProduct: (productId: string, quantity: number, reason: string) => Promise<void>;
   writeoffProduct: (productId: string, quantity: number, reason: string) => Promise<void>;
   loadShiftHistory: (limit?: number, offset?: number) => Promise<void>;
+  showShiftDetails: (shiftDetails: ShiftDetailsResponse) => void;
   loadShiftDetails: (shiftId: string) => Promise<void>;
   clearShiftDetails: () => void;
 };
@@ -837,7 +838,12 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ shiftDetailsLoading: true, shiftDetails: null, error: null });
+    const currentDetails = get().shiftDetails;
+    set({
+      shiftDetailsLoading: true,
+      shiftDetails: currentDetails?.shift.id === shiftId ? currentDetails : null,
+      error: null,
+    });
 
     try {
       const shiftDetails = await apiGet<ShiftDetailsResponse>(`/shifts/history/${shiftId}`, token);
@@ -854,6 +860,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         error: error instanceof Error ? error.message : "Failed to load shift details",
       });
     }
+  },
+
+  showShiftDetails: (shiftDetails: ShiftDetailsResponse) => {
+    set({ shiftDetails, shiftDetailsLoading: false, error: null });
   },
 
   clearShiftDetails: () => {

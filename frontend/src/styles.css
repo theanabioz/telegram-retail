@@ -33,3 +33,13 @@ input {
 #root {
   min-height: var(--app-viewport-height, 100vh);
 }
+
+@keyframes appSkeletonPulse {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}

@@ -59,12 +59,10 @@ export async function getShiftState(userId: string) {
 
 export async function getShiftHistory(userId: string, limit: number, offset: number) {
   const shifts = await listShiftsByUserId(userId, limit, offset);
+  const items = await Promise.all(shifts.map((shift) => buildShiftReport(shift)));
 
   return {
-    items: shifts.map((shift) => ({
-      shift,
-      summary: buildShiftSummary(shift),
-    })),
+    items,
     pagination: {
       limit,
       offset,
@@ -73,13 +71,7 @@ export async function getShiftHistory(userId: string, limit: number, offset: num
   };
 }
 
-export async function getShiftDetails(userId: string, shiftId: string) {
-  const shift = await findShiftById(shiftId);
-
-  if (!shift || shift.user_id !== userId) {
-    throw new HttpError(404, "Shift not found");
-  }
-
+async function buildShiftReport(shift: ShiftRecord) {
   const [store, completedSales] = await Promise.all([
     findStoreById(shift.store_id),
     listCompletedSalesByShift(shift.id),
@@ -126,6 +118,16 @@ export async function getShiftDetails(userId: string, shiftId: string) {
       amount: 0,
     },
   };
+}
+
+export async function getShiftDetails(userId: string, shiftId: string) {
+  const shift = await findShiftById(shiftId);
+
+  if (!shift || shift.user_id !== userId) {
+    throw new HttpError(404, "Shift not found");
+  }
+
+  return buildShiftReport(shift);
 }
 
 export async function startShift(userId: string, storeId: string) {

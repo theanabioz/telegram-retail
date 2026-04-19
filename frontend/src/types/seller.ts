@@ -59,10 +59,31 @@ export type ShiftStateResponse = {
 
 export type ShiftSummary = NonNullable<ShiftStateResponse["summary"]>;
 
+export type ShiftSalesSummary = {
+  count: number;
+  totalRevenue: number;
+  cashSalesCount: number;
+  cardSalesCount: number;
+  cashRevenue: number;
+  cardRevenue: number;
+  lastSaleAt: string | null;
+};
+
+export type ShiftCommission = {
+  ratePercent: number;
+  amount: number;
+};
+
 export type ShiftHistoryResponse = {
   items: Array<{
     shift: NonNullable<ShiftStateResponse["activeShift"]>;
     summary: ShiftSummary;
+    store: {
+      id: string;
+      name: string;
+    } | null;
+    salesSummary: ShiftSalesSummary;
+    commission: ShiftCommission;
   }>;
   pagination: {
     limit: number;
@@ -80,19 +101,8 @@ export type ShiftDetailsResponse = {
     id: string;
     name: string;
   } | null;
-  salesSummary: {
-    count: number;
-    totalRevenue: number;
-    cashSalesCount: number;
-    cardSalesCount: number;
-    cashRevenue: number;
-    cardRevenue: number;
-    lastSaleAt: string | null;
-  };
-  commission: {
-    ratePercent: number;
-    amount: number;
-  };
+  salesSummary: ShiftSalesSummary;
+  commission: ShiftCommission;
 };
 
 export type DraftItem = {

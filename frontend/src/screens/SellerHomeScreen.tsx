@@ -99,6 +99,7 @@ const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const innerSurface = "rgba(241,240,236,0.82)";
+const skeletonSurface = "linear-gradient(90deg, rgba(239,237,232,0.86) 0%, rgba(248,247,244,0.96) 48%, rgba(239,237,232,0.86) 100%)";
 const bottomDockReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
 const bottomDockWithCartReservedSpace = "calc(148px + env(safe-area-inset-bottom, 0px))";
 
@@ -135,6 +136,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     updateDraftItem,
     writeoffProduct,
     loadShiftDetails,
+    showShiftDetails,
     clearShiftDetails,
   } = useSellerHomeStore();
 
@@ -1126,6 +1128,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       transition="all 0.2s ease"
       _active={{ bg: panelSurface, transform: "scale(0.985)" }}
       onClick={() => {
+        showShiftDetails({
+          shift: entry.shift,
+          summary: entry.summary,
+          store: entry.store,
+          salesSummary: entry.salesSummary,
+          commission: entry.commission,
+        });
         setShiftView("detail");
         void loadShiftDetails(entry.shift.id);
       }}
@@ -1399,12 +1408,85 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     </VStack>
   );
 
+  const renderSkeletonLine = (width: string, height = "14px", borderRadius = "999px") => (
+    <Box
+      w={width}
+      h={height}
+      borderRadius={borderRadius}
+      bg={skeletonSurface}
+      backgroundSize="220% 100%"
+      animation="appSkeletonPulse 1.1s ease-in-out infinite"
+    />
+  );
+
+  const renderShiftDetailsSkeleton = () => (
+    <VStack spacing={4} align="stretch">
+      <Box bg={panelSurface} borderRadius={panelRadius} px={5} py={5} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <HStack justify="space-between" align="start">
+            <VStack align="start" spacing={2}>
+              {renderSkeletonLine("150px", "20px")}
+              {renderSkeletonLine("108px", "14px")}
+            </VStack>
+            <Button
+              size="sm"
+              borderRadius="14px"
+              variant="outline"
+              borderColor="surface.200"
+              leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
+              onClick={() => {
+                clearShiftDetails();
+                setShiftView("history");
+              }}
+            >
+              Back
+            </Button>
+          </HStack>
+
+          <SimpleGrid columns={2} spacing={3}>
+            {[0, 1].map((item) => (
+              <Box key={item} bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
+                {renderSkeletonLine("58px", "10px")}
+                <Box mt={3}>{renderSkeletonLine("86px", "28px")}</Box>
+              </Box>
+            ))}
+          </SimpleGrid>
+        </VStack>
+      </Box>
+
+      <SimpleGrid columns={2} spacing={3}>
+        {["worked", "break", "sales", "revenue"].map((item) => (
+          <Box key={item} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+            {renderSkeletonLine("72px", "10px")}
+            <Box mt={3}>{renderSkeletonLine(item === "revenue" ? "96px" : "62px", "28px")}</Box>
+          </Box>
+        ))}
+      </SimpleGrid>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <HStack justify="space-between">
+            {renderSkeletonLine("150px", "20px")}
+            {renderSkeletonLine("54px", "14px")}
+          </HStack>
+          <SimpleGrid columns={2} spacing={3}>
+            {[0, 1].map((item) => (
+              <Box key={item} bg={innerSurface} borderRadius="20px" px={4} py={4}>
+                {renderSkeletonLine("70px", "10px")}
+                <Box mt={3}>{renderSkeletonLine("36px", "28px")}</Box>
+                <Box mt={2}>{renderSkeletonLine("82px", "14px")}</Box>
+              </Box>
+            ))}
+          </SimpleGrid>
+        </VStack>
+      </Box>
+    </VStack>
+  );
+
   const renderShiftDetailsPage = () => (
     <VStack spacing={4} align="stretch">
-      {shiftDetailsLoading ? (
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
-          <Text fontWeight="800">Loading shift details...</Text>
-        </Box>
+      {shiftDetailsLoading && !shiftDetails ? (
+        renderShiftDetailsSkeleton()
       ) : null}
 
       {!shiftDetailsLoading && !shiftDetails ? (
