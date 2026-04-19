@@ -5,7 +5,7 @@ import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
-import { getTelegramWebApp } from "./lib/telegramWebApp";
+import { bootstrapTelegramSdk, expandTelegramApp, notifyTelegramAppReady } from "./lib/telegramSdk";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
@@ -131,16 +131,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const webApp = getTelegramWebApp();
+    const cleanupTelegramSdk = bootstrapTelegramSdk();
+    notifyTelegramAppReady();
+    expandTelegramApp();
+    const cleanupOrientation = attachPortraitOrientationLock();
 
-    try {
-      webApp?.ready?.();
-      webApp?.expand?.();
-    } catch {
-      // Local browser mode is expected before Telegram integration is wired.
-    }
-
-    return attachPortraitOrientationLock();
+    return () => {
+      cleanupOrientation();
+      cleanupTelegramSdk();
+    };
   }, []);
 
   useEffect(() => attachTelegramViewportSafety(), []);

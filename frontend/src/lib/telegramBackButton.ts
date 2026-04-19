@@ -1,14 +1,12 @@
 import { useEffect, useRef } from "react";
-import { getTelegramWebApp } from "./telegramWebApp";
+import {
+  canUseTelegramBackButton,
+  hideTelegramBackButton,
+  onTelegramBackButtonClick,
+  showTelegramBackButton,
+} from "./telegramSdk";
 
-export function canUseTelegramBackButton() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const webApp = getTelegramWebApp();
-  return Boolean(webApp?.platform && webApp.BackButton);
-}
+export { canUseTelegramBackButton } from "./telegramSdk";
 
 export function useTelegramBackButton(visible: boolean, onBack: () => void) {
   const onBackRef = useRef(onBack);
@@ -22,22 +20,17 @@ export function useTelegramBackButton(visible: boolean, onBack: () => void) {
       return;
     }
 
-    const webApp = getTelegramWebApp();
-    if (!webApp) {
-      return;
-    }
     const handleBack = () => onBackRef.current();
-
-    webApp.BackButton?.onClick(handleBack);
+    const offBack = onTelegramBackButtonClick(handleBack);
 
     if (visible) {
-      webApp.BackButton?.show();
+      showTelegramBackButton();
     } else {
-      webApp.BackButton?.hide();
+      hideTelegramBackButton();
     }
 
     return () => {
-      webApp.BackButton?.offClick(handleBack);
+      offBack();
     };
   }, [visible]);
 }
