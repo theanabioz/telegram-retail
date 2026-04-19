@@ -679,8 +679,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       {item.product_name_snapshot}
                     </Text>
                     <HStack spacing={2}>
-                      <Text fontSize="sm" color="surface.500" fontWeight="600">
-                        EUR {item.final_price.toFixed(2)}
+                      <Text
+                        fontSize="sm"
+                        color={item.discount_type ? "surface.400" : "surface.500"}
+                        fontWeight="600"
+                        textDecoration={item.discount_type ? "line-through" : "none"}
+                      >
+                        EUR {item.base_price.toFixed(2)}
                       </Text>
                       {item.discount_type && (
                         <Box bg="green.50" px={2} py={0.5} borderRadius="6px">
@@ -824,7 +829,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 fontWeight="800"
                 boxShadow="0 10px 22px rgba(74, 132, 244, 0.24)"
               >
-                Card Pay
+                Card
               </Button>
             </HStack>
           </VStack>
