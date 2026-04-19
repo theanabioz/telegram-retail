@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type PointerEvent } from "react";
 import {
   Avatar,
   Box,
@@ -252,6 +252,19 @@ export function AdminDashboardScreen({
   const [productEdits, setProductEdits] = useState<
     Record<string, { name: string; sku: string; defaultPrice: string; isActive: boolean }>
   >({});
+
+  const handleOverviewChartPointer = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    if (rect.width <= 0) {
+      return;
+    }
+
+    const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width - 1);
+    const hour = Math.min(23, Math.max(0, Math.floor((x / rect.width) * 24)));
+
+    setSelectedOverviewHour(hour);
+  };
 
   useEffect(() => {
     void load();
@@ -658,6 +671,11 @@ export function AdminDashboardScreen({
                 h="164px"
                 px={1}
                 overflow="hidden"
+                cursor="crosshair"
+                style={{ touchAction: "none" }}
+                onPointerDown={handleOverviewChartPointer}
+                onPointerMove={handleOverviewChartPointer}
+                onPointerLeave={() => setSelectedOverviewHour(null)}
               >
                 {(() => {
                   const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
@@ -706,9 +724,7 @@ export function AdminDashboardScreen({
                           }
                           transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
                           _active={{ transform: "scale(0.96)" }}
-                          onClick={() =>
-                            setSelectedOverviewHour((current) => (current === entry.hour ? null : entry.hour))
-                          }
+                          onClick={() => setSelectedOverviewHour(entry.hour)}
                         />
                       </VStack>
                     );
