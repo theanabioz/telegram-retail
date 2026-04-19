@@ -2251,7 +2251,7 @@ export function AdminDashboardScreen({
   };
 
   return (
-    <Box minH="100vh" px={3} pt={4} pb={bottomNavReservedSpace}>
+    <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
         <VStack spacing={5} align="stretch">
           <HStack justify="space-between" align="center" px={1} pt={2} mb={2}>

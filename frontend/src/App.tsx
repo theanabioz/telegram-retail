@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
+import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
 import { SellerHomeScreen } from "./screens/SellerHomeScreen";
 import type { AuthSessionResponse } from "./types/seller";
@@ -100,6 +101,8 @@ export function App() {
       // Local browser mode is expected before Telegram integration is wired.
     }
   }, []);
+
+  useEffect(() => attachTelegramViewportSafety(), []);
 
   useEffect(() => attachGlobalHaptics(), []);
 

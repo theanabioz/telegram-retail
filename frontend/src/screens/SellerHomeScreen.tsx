@@ -1694,7 +1694,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     <Box
       minH="100vh"
       px={3}
-      pt={4}
+      pt="var(--app-screen-pt)"
       pb={activeTab === "checkout" && draft?.items.length && !isDraftCartOpen
         ? bottomDockWithCartReservedSpace
         : bottomDockReservedSpace}
