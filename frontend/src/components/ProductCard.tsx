@@ -2,6 +2,7 @@ import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { LuPlus } from "react-icons/lu";
 import type { ProductCardItem } from "../data/mockSellerHome";
 import { formatEur } from "../lib/currency";
+import { useI18n } from "../lib/i18n";
 
 type ProductCardProps = {
   item: ProductCardItem;
@@ -10,6 +11,8 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
+  const { t } = useI18n();
+
   return (
     <HStack
       align="center"
@@ -35,13 +38,13 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
           </Text>
           <Box w="1px" h="10px" bg="surface.200" />
           <Text color="surface.500" fontSize="xs" fontWeight="700">
-            Stock {item.stock}
+            {t("checkout.stock")} {item.stock}
           </Text>
         </HStack>
       </VStack>
 
       <Button
-        aria-label={`Add ${item.name} to cart`}
+        aria-label={`${t("checkout.addToCart")}: ${item.name}`}
         w="48px"
         h="48px"
         borderRadius="16px"

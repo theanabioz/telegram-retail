@@ -539,7 +539,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           <ModalHeader px={6} pt={6} pb={2}>
             <VStack align="start" spacing={1}>
               <Text fontSize="11px" color="brand.500" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase">
-                Adjustment
+                {t("discount.adjustment")}
               </Text>
               <Text fontSize="xl" fontWeight="900" noOfLines={1} letterSpacing="-0.01em">
                 {discountModalItem.product_name_snapshot}
@@ -567,7 +567,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       fontSize="sm"
                       fontWeight="800"
                     >
-                      {type === "amount" ? "Fixed EUR" : "Percent %"}
+                      {type === "amount" ? t("discount.fixedEur") : t("discount.percent")}
                     </Button>
                   );
                 })}
@@ -591,7 +591,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     borderColor="rgba(232,229,223,0.9)"
                   >
                     <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
-                      Discount Value
+                      {t("discount.value")}
                     </Text>
                     <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
                       {discountDraft.value || "0"}
@@ -609,7 +609,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     borderColor="rgba(82, 129, 236, 0.16)"
                   >
                     <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
-                      Final Price
+                      {t("discount.finalPrice")}
                     </Text>
                     <Text fontSize="xl" fontWeight="900" color="surface.900">
                       {formatEur(previewFinalPrice)}
@@ -634,7 +634,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     _active={{ transform: "scale(0.92)", bg: "surface.100" }}
                     onClick={() => pressDiscountKey(discountModalItem, key)}
                   >
-                    {key === "backspace" ? "Del" : key}
+                    {key === "backspace" ? t("discount.backspace") : key}
                   </Button>
                 ))}
               </SimpleGrid>
@@ -650,7 +650,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontWeight="800"
                     onClick={() => pressDiscountKey(discountModalItem, "clear")}
                   >
-                    Clear
+                    {t("discount.clear")}
                   </Button>
                   <Button
                     flex="1.5"
@@ -663,7 +663,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     _active={{ transform: "scale(0.96)" }}
                     onClick={() => applyDiscount(discountModalItem)}
                   >
-                    Apply Discount
+                    {t("discount.apply")}
                   </Button>
                 </HStack>
 
@@ -678,7 +678,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontWeight="700"
                     onClick={() => clearDiscount(discountModalItem)}
                   >
-                    Remove Discount
+                    {t("discount.remove")}
                   </Button>
                 ) : null}
               </VStack>
@@ -744,7 +744,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   spacing={0}
                 >
                   <IconButton
-                    aria-label="Decrease quantity"
+                    aria-label={t("draftCart.decreaseQuantity")}
                     icon={<Text fontSize="xl">−</Text>}
                     size="sm"
                     w="36px"
@@ -758,7 +758,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {item.quantity}
                   </Text>
                   <IconButton
-                    aria-label="Increase quantity"
+                    aria-label={t("draftCart.increaseQuantity")}
                     icon={<Text fontSize="xl">+</Text>}
                     size="sm"
                     w="36px"
@@ -782,10 +782,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     onClick={() => openDiscountModal(item)}
                     leftIcon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={3.5} />}
                   >
-                    {item.discount_type ? "Edit Discount" : "Add Discount"}
+                    {item.discount_type ? t("draftCart.editDiscount") : t("draftCart.addDiscount")}
                   </Button>
                   <IconButton
-                    aria-label="Remove item"
+                    aria-label={t("draftCart.removeItem")}
                     icon={<Box as={HiOutlineTrash} boxSize={4} />}
                     size="sm"
                     h="38px"
@@ -845,7 +845,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               borderColor="rgba(82, 129, 236, 0.16)"
             >
               <Text fontWeight="800" fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.06em">
-                Total Amount
+                {t("draftCart.totalAmount")}
               </Text>
               <Text fontSize="2xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
                 {formatEur(draft.summary.totalAmount)}
@@ -867,7 +867,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 fontSize="sm"
                 fontWeight="800"
               >
-                Cash
+                {t("draftCart.cash")}
               </Button>
               <Button
                 flex="1"
@@ -882,7 +882,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 fontWeight="800"
                 boxShadow="0 10px 22px rgba(74, 132, 244, 0.24)"
               >
-                Card
+                {t("draftCart.card")}
               </Button>
             </HStack>
           </VStack>
@@ -905,7 +905,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         <Box
           role="dialog"
           aria-modal="true"
-          aria-label="Draft Cart"
+          aria-label={t("draftCart.title")}
           position="absolute"
           left={0}
           right={0}
@@ -928,14 +928,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <HStack justify="space-between" mb={6} align="center">
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
-                  Draft Cart
+                  {t("draftCart.title")}
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {draft.summary.itemsCount} products added
+                  {draft.summary.itemsCount} {t("draftCart.productsAdded")}
                 </Text>
               </VStack>
               <IconButton
-                aria-label="Close Draft Cart"
+                aria-label={t("orders.back")}
                 icon={<Text fontSize="2xl" lineHeight="1">×</Text>}
                 size="md"
                 borderRadius="full"
@@ -1072,13 +1072,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <HStack justify="space-between" align="start">
               <VStack align="start" spacing={1}>
                 <Text fontWeight="900" fontSize="xl">
-                  Receipt
+                  {t("orders.receipt")}
                 </Text>
                 <Text fontSize="sm" color="surface.500">
                   {formatDateTimeLabel(selectedSale.created_at)}
                 </Text>
                 <Text fontSize="sm" color="surface.500">
-                  {selectedSale.payment_method.toUpperCase()} · {selectedSale.status}
+                  {selectedSale.payment_method.toUpperCase()} · {selectedSale.status === "deleted" ? t("status.deleted") : t("status.completed")}
                 </Text>
               </VStack>
               {!supportsTelegramBackButton ? (
@@ -1089,7 +1089,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   borderColor="var(--app-border)"
                   onClick={() => setSelectedSaleId(null)}
                 >
-                  Back
+                  {t("orders.back")}
                 </Button>
               ) : null}
             </HStack>
@@ -1101,11 +1101,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="800">{item.product_name_snapshot}</Text>
                   <Text fontSize="sm" color="surface.500">
-                    Qty {item.quantity} x {formatEur(item.final_price)}
+                    {t("receipt.qty")} {item.quantity} x {formatEur(item.final_price)}
                   </Text>
                   {item.discount_type ? (
                     <Text fontSize="xs" color="surface.500">
-                      Discount {item.discount_type}: {item.discount_value}
+                      {t("receipt.discount")} {item.discount_type}: {item.discount_value}
                     </Text>
                   ) : null}
                 </VStack>
@@ -1118,19 +1118,19 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <VStack align="stretch" spacing={2}>
               <HStack justify="space-between">
                 <Text color="surface.500" fontWeight="700">
-                  Subtotal
+                  {t("receipt.subtotal")}
                 </Text>
                 <Text fontWeight="800">{formatEur(selectedSale.subtotal_amount)}</Text>
               </HStack>
               <HStack justify="space-between">
                 <Text color="surface.500" fontWeight="700">
-                  Discount
+                  {t("receipt.discount")}
                 </Text>
                 <Text fontWeight="800">{formatEur(selectedSale.discount_amount)}</Text>
               </HStack>
               <HStack justify="space-between">
                 <Text fontSize="lg" fontWeight="900">
-                  Total
+                  {t("receipt.total")}
                 </Text>
                 <Text fontSize="lg" fontWeight="900">
                   {formatEur(selectedSale.total_amount)}
@@ -1139,7 +1139,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </VStack>
 
             <Text fontSize="xs" color="surface.500">
-              Sale ID: {selectedSale.id}
+              {t("receipt.saleId")}: {selectedSale.id}
             </Text>
           </VStack>
         </Box>
@@ -1168,7 +1168,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           >
             <VStack align="start" spacing={0.5}>
               <Text fontWeight="800">
-                {sale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
+                {sale.status === "deleted" ? t("orders.deletedSale") : t("orders.completedSale")}
               </Text>
               <Text fontSize="sm" color="surface.500">
                 {new Date(sale.created_at).toLocaleDateString()}
@@ -1183,16 +1183,16 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {formatEur(sale.total_amount)}
               </Text>
               <Text fontSize="xs" color="surface.500" fontWeight="700">
-                Open receipt
+                {t("orders.openReceipt")}
               </Text>
             </VStack>
           </HStack>
         ))
       ) : (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
-          <Text fontWeight="800">No sales yet</Text>
+          <Text fontWeight="800">{t("orders.noSales")}</Text>
           <Text color="surface.500" fontSize="sm">
-            Completed sales and returns will appear here.
+            {t("orders.noSalesDescription")}
           </Text>
         </Box>
       )}
@@ -2088,7 +2088,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <Box as={HiOutlineMagnifyingGlass} boxSize={5} strokeWidth={2.5} />
               </InputLeftElement>
               <Input
-                placeholder="Search products..."
+                placeholder={t("checkout.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 borderRadius="20px"
@@ -2109,7 +2109,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               />
               <InputRightElement w="62px" h="54px" pr={1}>
                 <IconButton
-                  aria-label="Filters"
+                  aria-label={t("checkout.filters")}
                   icon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={5} strokeWidth={2} />}
                   size="sm"
                   borderRadius="14px"
