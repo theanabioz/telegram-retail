@@ -38,6 +38,9 @@ type SellerHomeState = {
   shiftDetails: ShiftDetailsResponse | null;
   shiftDetailsLoading: boolean;
   shiftDetailsById: Record<string, ShiftDetailsResponse>;
+  pendingShiftMutationId: number | null;
+  expectedShiftStatus: "active" | "paused" | "inactive" | null;
+  shiftBootstrapAttempts: number;
   token: string | null;
   bootstrap: (options?: { skipCache?: boolean }) => Promise<void>;
   startShift: () => Promise<void>;
@@ -68,6 +71,8 @@ type SellerHomeState = {
 const TOKEN_KEY = "telegram-retail-token";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 let draftMutationVersion = 0;
+let shiftMutationVersion = 0;
+let shiftBootstrapRetryTimer: number | null = null;
 
 type SellerStartupCache = {
   token: string;
@@ -260,6 +265,13 @@ function resolveCurrentToken(stateToken: string | null) {
   return getStoredToken() ?? stateToken;
 }
 
+function clearShiftBootstrapRetryTimer() {
+  if (shiftBootstrapRetryTimer !== null) {
+    window.clearTimeout(shiftBootstrapRetryTimer);
+    shiftBootstrapRetryTimer = null;
+  }
+}
+
 async function fetchShiftDetailsById(token: string, shiftId: string) {
   return apiGet<ShiftDetailsResponse>(`/shifts/history/${shiftId}`, token);
 }
@@ -320,6 +332,9 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   shiftDetails: null,
   shiftDetailsLoading: false,
   shiftDetailsById: {},
+  pendingShiftMutationId: null,
+  expectedShiftStatus: null,
+  shiftBootstrapAttempts: 0,
   token: getStoredToken(),
 
   bootstrap: async (options) => {
@@ -357,8 +372,40 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       }
 
       const startup = await apiGet<SellerStartupResponse>("/seller/startup", token);
+      const pendingShiftMutationId = get().pendingShiftMutationId;
+      const expectedShiftStatus = get().expectedShiftStatus;
+      const startupShiftStatus = startup.shiftState.activeShift?.status ?? "inactive";
+
+      if (
+        pendingShiftMutationId !== null &&
+        expectedShiftStatus !== null &&
+        startupShiftStatus !== expectedShiftStatus
+      ) {
+        const nextAttempts = get().shiftBootstrapAttempts + 1;
+        set({
+          loading: false,
+          error: null,
+          shiftBootstrapAttempts: nextAttempts,
+        });
+        clearShiftBootstrapRetryTimer();
+        if (nextAttempts <= 5) {
+          shiftBootstrapRetryTimer = window.setTimeout(() => {
+            if (get().pendingShiftMutationId === pendingShiftMutationId) {
+              void get().bootstrap({ skipCache: true });
+            }
+          }, nextAttempts < 3 ? 350 : 650);
+        }
+        return;
+      }
+
+      clearShiftBootstrapRetryTimer();
       writeSellerStartupCache(token, startup);
-      set(buildSellerStartupState(startup, token));
+      set({
+        ...buildSellerStartupState(startup, token),
+        pendingShiftMutationId: null,
+        expectedShiftStatus: null,
+        shiftBootstrapAttempts: 0,
+      });
 
       void Promise.allSettled(
         startup.shiftHistory.items.slice(0, 7).map(async (entry) => {
@@ -411,9 +458,14 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       shiftStatus: get().shiftStatus,
       shiftSummary: get().shiftSummary,
       mode: get().mode,
+      pendingShiftMutationId: get().pendingShiftMutationId,
+      expectedShiftStatus: get().expectedShiftStatus,
+      shiftBootstrapAttempts: get().shiftBootstrapAttempts,
     };
+    const mutationId = ++shiftMutationVersion;
 
     triggerSelection();
+    clearShiftBootstrapRetryTimer();
     set({
       actionLoading: false,
       error: null,
@@ -421,6 +473,9 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       shiftActive: true,
       shiftStatus: "active",
       shiftSummary: previous.shiftSummary ?? { totalSeconds: 0, pausedSeconds: 0, workedSeconds: 0 },
+      pendingShiftMutationId: mutationId,
+      expectedShiftStatus: "active",
+      shiftBootstrapAttempts: 0,
     });
 
     try {
@@ -445,6 +500,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
+      clearShiftBootstrapRetryTimer();
       set({
         ...previous,
         actionLoading: false,
@@ -465,14 +521,22 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       shiftStatus: get().shiftStatus,
       shiftSummary: get().shiftSummary,
       mode: get().mode,
+      pendingShiftMutationId: get().pendingShiftMutationId,
+      expectedShiftStatus: get().expectedShiftStatus,
+      shiftBootstrapAttempts: get().shiftBootstrapAttempts,
     };
+    const mutationId = ++shiftMutationVersion;
 
     triggerSelection();
+    clearShiftBootstrapRetryTimer();
     set({
       actionLoading: false,
       error: null,
       shiftActive: false,
       shiftStatus: "paused",
+      pendingShiftMutationId: mutationId,
+      expectedShiftStatus: "paused",
+      shiftBootstrapAttempts: 0,
     });
 
     try {
@@ -493,6 +557,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
+      clearShiftBootstrapRetryTimer();
       set({
         ...previous,
         actionLoading: false,
@@ -513,15 +578,23 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       shiftStatus: get().shiftStatus,
       shiftSummary: get().shiftSummary,
       mode: get().mode,
+      pendingShiftMutationId: get().pendingShiftMutationId,
+      expectedShiftStatus: get().expectedShiftStatus,
+      shiftBootstrapAttempts: get().shiftBootstrapAttempts,
     };
+    const mutationId = ++shiftMutationVersion;
 
     triggerSelection();
+    clearShiftBootstrapRetryTimer();
     set({
       actionLoading: false,
       error: null,
       mode: "live",
       shiftActive: true,
       shiftStatus: "active",
+      pendingShiftMutationId: mutationId,
+      expectedShiftStatus: "active",
+      shiftBootstrapAttempts: 0,
     });
 
     try {
@@ -543,6 +616,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
+      clearShiftBootstrapRetryTimer();
       set({
         ...previous,
         actionLoading: false,
@@ -564,9 +638,14 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       shiftSummary: get().shiftSummary,
       mode: get().mode,
       draft: get().draft,
+      pendingShiftMutationId: get().pendingShiftMutationId,
+      expectedShiftStatus: get().expectedShiftStatus,
+      shiftBootstrapAttempts: get().shiftBootstrapAttempts,
     };
+    const mutationId = ++shiftMutationVersion;
 
     triggerSelection();
+    clearShiftBootstrapRetryTimer();
     set({
       actionLoading: false,
       error: null,
@@ -575,6 +654,9 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       shiftStatus: "inactive",
       shiftSummary: null,
       draft: null,
+      pendingShiftMutationId: mutationId,
+      expectedShiftStatus: "inactive",
+      shiftBootstrapAttempts: 0,
     });
 
     try {
@@ -594,6 +676,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
+      clearShiftBootstrapRetryTimer();
       set({
         ...previous,
         actionLoading: false,
