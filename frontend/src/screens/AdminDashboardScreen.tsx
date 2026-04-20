@@ -1768,6 +1768,41 @@ export function AdminDashboardScreen({
       { label: "Total Units", value: String(totalUnits) },
       { label: "Low Stock", value: String(lowStockCount) },
     ];
+    const getInventoryMovementUi = (movementType: string, quantityDelta: number) => {
+      if (movementType === "restock") {
+        return {
+          title: "Restock",
+          icon: LuPlus,
+          iconBg: "rgba(74,132,244,0.14)",
+          iconColor: "brand.600",
+        };
+      }
+
+      if (movementType === "writeoff") {
+        return {
+          title: "Write-off",
+          icon: LuMinus,
+          iconBg: "rgba(248,113,113,0.14)",
+          iconColor: "red.500",
+        };
+      }
+
+      if (movementType === "manual_adjustment") {
+        return {
+          title: quantityDelta >= 0 ? "Manual increase" : "Manual decrease",
+          icon: quantityDelta >= 0 ? LuPlus : LuMinus,
+          iconBg: quantityDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(248,113,113,0.14)",
+          iconColor: quantityDelta >= 0 ? "green.600" : "red.500",
+        };
+      }
+
+      return {
+        title: movementType.replace(/_/g, " "),
+        icon: LuActivity,
+        iconBg: "rgba(148,163,184,0.16)",
+        iconColor: "surface.600",
+      };
+    };
 
     if (selectedItem) {
       const draft = inventoryEdits[selectedItem.storeProductId] ?? {
@@ -2387,23 +2422,63 @@ export function AdminDashboardScreen({
                 </Text>
               </HStack>
 
-              {visibleInventoryHistory.slice(0, 6).map((entry) => (
-                <HStack key={entry.id} justify="space-between" align="start">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="800">{entry.product?.name ?? "Unknown product"}</Text>
-                    <Text fontSize="sm" color="surface.500">
-                      {entry.movementType} · balance {entry.balanceAfter}
-                    </Text>
-                    <Text fontSize="xs" color="surface.500">
-                      {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
-                    </Text>
-                  </VStack>
-                  <Text fontWeight="900" color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}>
-                    {entry.quantityDelta >= 0 ? "+" : ""}
-                    {entry.quantityDelta}
-                  </Text>
-                </HStack>
-              ))}
+              {visibleInventoryHistory.slice(0, 6).map((entry) => {
+                const movementUi = getInventoryMovementUi(entry.movementType, entry.quantityDelta);
+                const MovementIcon = movementUi.icon;
+
+                return (
+                  <HStack
+                    key={entry.id}
+                    spacing={3}
+                    align="center"
+                    bg={panelMutedSurface}
+                    borderRadius="18px"
+                    px={3}
+                    py={3}
+                  >
+                    <Box
+                      w="40px"
+                      h="40px"
+                      borderRadius="16px"
+                      bg={movementUi.iconBg}
+                      color={movementUi.iconColor}
+                      display="grid"
+                      placeItems="center"
+                      flexShrink={0}
+                    >
+                      <MovementIcon size={20} strokeWidth={2.5} />
+                    </Box>
+
+                    <VStack align="start" spacing={0} minW={0} flex="1">
+                      <HStack spacing={2} minW={0}>
+                        <Text fontWeight="900" noOfLines={1}>
+                          {movementUi.title}
+                        </Text>
+                        <Text fontSize="sm" color="surface.600" fontWeight="800" noOfLines={1}>
+                          {entry.product?.name ?? "Unknown product"}
+                        </Text>
+                      </HStack>
+                      <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                        Balance {entry.balanceAfter}
+                        {entry.reason ? ` · ${entry.reason}` : ""}
+                      </Text>
+                      <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
+                        {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
+                      </Text>
+                    </VStack>
+
+                    <VStack align="end" spacing={0} flexShrink={0}>
+                      <Text fontWeight="900" color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}>
+                        {entry.quantityDelta >= 0 ? "+" : ""}
+                        {entry.quantityDelta}
+                      </Text>
+                      <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase">
+                        Units
+                      </Text>
+                    </VStack>
+                  </HStack>
+                );
+              })}
             </VStack>
           </Box>
         ) : null}
