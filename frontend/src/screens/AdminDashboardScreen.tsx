@@ -341,6 +341,7 @@ export function AdminDashboardScreen({
     salesFilters,
     salesStores,
     salesSellers,
+    salesSummary,
     salesOverview,
     returnsOverview,
     updateStoreProduct,
@@ -369,6 +370,9 @@ export function AdminDashboardScreen({
   });
   const [salesSummaryCache, setSalesSummaryCache] = useState<Partial<SalesPeriodSummaryMap>>(
     () => getCachedAdminStartup()?.sales.periodSummaries ?? {}
+  );
+  const [displayedSalesSummary, setDisplayedSalesSummary] = useState<SalesPeriodSummary | null>(
+    () => getCachedAdminStartup()?.sales.periodSummaries?.today ?? null
   );
   const [salesCache, setSalesCache] = useState<Record<string, SalesLedgerSnapshot>>({});
   const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
@@ -824,40 +828,33 @@ export function AdminDashboardScreen({
       return;
     }
 
-    const summary: SalesPeriodSummary = {
-      revenue: Number(salesOverview.reduce((total, sale) => total + sale.totalAmount, 0).toFixed(2)),
-      salesCount: salesOverview.length,
-      cashTotal: Number(
-        salesOverview
-          .filter((sale) => sale.paymentMethod === "cash")
-          .reduce((total, sale) => total + sale.totalAmount, 0)
-          .toFixed(2)
-      ),
-      cardTotal: Number(
-        salesOverview
-          .filter((sale) => sale.paymentMethod === "card")
-          .reduce((total, sale) => total + sale.totalAmount, 0)
-          .toFixed(2)
-      ),
-      returnsTotal: Number(returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0).toFixed(2)),
-      returnsCount: returnsOverview.length,
-      returnedUnits: returnsOverview.reduce(
-        (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
-        0
-      ),
-      averageReturn: Number(
-        (
-          returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0) /
-          Math.max(returnsOverview.length, 1)
-        ).toFixed(2)
-      ),
-    };
+    if (!salesSummary) {
+      return;
+    }
 
     setSalesSummaryCache((current) => ({
       ...current,
-      [matchedPeriod]: summary,
+      [matchedPeriod]: salesSummary,
     }));
-  }, [returnsOverview, salesFilters, salesOverview]);
+    setDisplayedSalesSummary(salesSummary);
+  }, [salesFilters, salesSummary]);
+
+  useEffect(() => {
+    if (
+      salesPeriod !== "custom" &&
+      !salesStoreFilter &&
+      !salesSellerFilter &&
+      salesStatusFilter === "all"
+    ) {
+      const cachedSummary = salesSummaryCache[salesPeriod];
+      if (cachedSummary) {
+        setDisplayedSalesSummary(cachedSummary);
+      }
+      return;
+    }
+
+    setDisplayedSalesSummary(null);
+  }, [salesPeriod, salesSellerFilter, salesStatusFilter, salesStoreFilter, salesSummaryCache]);
 
   useEffect(() => {
     const snapshot = { items: inventoryItems, history: inventoryHistory };
@@ -1282,6 +1279,13 @@ export function AdminDashboardScreen({
 
     if (cachedSnapshot) {
       setSalesView(cachedSnapshot);
+    }
+
+    if (!salesStoreFilter && !salesSellerFilter && salesStatusFilter === "all") {
+      const cachedSummary = salesSummaryCache[period];
+      if (cachedSummary) {
+        setDisplayedSalesSummary(cachedSummary);
+      }
     }
 
     setSalesDateFrom(range.from);
@@ -1991,8 +1995,10 @@ export function AdminDashboardScreen({
   };
 
   const renderInventory = () => {
-    const visibleInventoryItems = inventoryView.items;
-    const visibleInventoryHistory = inventoryView.history;
+    const activeInventorySnapshot =
+      (selectedInventoryStoreId ? inventoryCache[selectedInventoryStoreId] : null) ?? inventoryView;
+    const visibleInventoryItems = activeInventorySnapshot.items;
+    const visibleInventoryHistory = activeInventorySnapshot.history;
     const visibleProductCatalog = productCatalogMode === "archive" ? archivedProducts : products;
     const selectedStore = inventoryStores.find((store) => store.id === selectedInventoryStoreId) ?? null;
     const selectedItem = selectedInventoryItemId
@@ -3106,23 +3112,23 @@ export function AdminDashboardScreen({
       (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
       0
     );
+    const computedSalesSummary: SalesPeriodSummary = {
+      revenue: salesTotal,
+      salesCount: visibleSales.length,
+      cashTotal,
+      cardTotal,
+      returnsTotal,
+      returnsCount: visibleReturns.length,
+      returnedUnits,
+      averageReturn: returnsTotal / Math.max(visibleReturns.length, 1),
+    };
     const activeSalesSummary =
       salesPeriod !== "custom" &&
       !salesStoreFilter &&
       !salesSellerFilter &&
-      salesStatusFilter === "all" &&
-      salesSummaryCache[salesPeriod]
-        ? salesSummaryCache[salesPeriod]
-        : {
-            revenue: salesTotal,
-            salesCount: visibleSales.length,
-            cashTotal,
-            cardTotal,
-            returnsTotal,
-            returnsCount: visibleReturns.length,
-            returnedUnits,
-            averageReturn: returnsTotal / Math.max(visibleReturns.length, 1),
-          };
+      salesStatusFilter === "all"
+        ? displayedSalesSummary ?? salesSummaryCache[salesPeriod] ?? computedSalesSummary
+        : computedSalesSummary;
     const salesSummaryCards = salesLedgerMode === "sales"
       ? [
           { label: "Revenue", value: formatEur(activeSalesSummary.revenue) },

@@ -214,6 +214,7 @@ type AdminManagementState = {
   salesFilters: AdminSalesOverviewResponse["filters"] | null;
   salesStores: AdminSalesOverviewResponse["stores"];
   salesSellers: AdminSalesOverviewResponse["sellers"];
+  salesSummary: AdminSalesOverviewResponse["summary"] | null;
   salesOverview: AdminSalesOverviewResponse["sales"];
   returnsOverview: AdminSalesOverviewResponse["returns"];
   loadStores: () => Promise<void>;
@@ -298,6 +299,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
   salesFilters: cachedAdminStartup?.sales.filters ?? null,
   salesStores: cachedAdminStartup?.sales.stores ?? [],
   salesSellers: cachedAdminStartup?.sales.sellers ?? [],
+  salesSummary: cachedAdminStartup?.sales.summary ?? null,
   salesOverview: cachedAdminStartup?.sales.sales ?? [],
   returnsOverview: cachedAdminStartup?.sales.returns ?? [],
 
@@ -326,6 +328,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       salesFilters: startup.sales.filters,
       salesStores: startup.sales.stores,
       salesSellers: startup.sales.sellers,
+      salesSummary: startup.sales.summary,
       salesOverview: startup.sales.sales,
       returnsOverview: startup.sales.returns,
     });
@@ -476,6 +479,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         salesFilters: data.filters,
         salesStores: data.stores,
         salesSellers: data.sellers,
+        salesSummary: data.summary,
         salesOverview: data.sales,
         returnsOverview: data.returns,
         loadingSales: false,

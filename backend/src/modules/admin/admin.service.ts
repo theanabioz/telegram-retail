@@ -890,7 +890,7 @@ export async function getAdminSalesOverview(input: {
   dateTo?: string;
   limit: number;
 }) {
-  const fetchLimit = Math.max(input.limit * 3, 100);
+  const fetchLimit = Math.max(input.limit * 3, 4000);
   const [sales, returns, stores, users] = await Promise.all([
     listAdminSales(fetchLimit),
     listAdminReturns(fetchLimit),
@@ -913,26 +913,27 @@ export async function getAdminSalesOverview(input: {
     return true;
   };
 
-  const filteredSales = sales
+  const allFilteredSales = sales
     .filter((sale) => (input.storeId ? sale.store_id === input.storeId : true))
     .filter((sale) => (input.sellerId ? sale.seller_id === input.sellerId : true))
     .filter((sale) => (input.saleStatus === "all" ? true : sale.status === input.saleStatus))
-    .filter((sale) => inRange(sale.created_at))
-    .slice(0, input.limit);
+    .filter((sale) => inRange(sale.created_at));
 
-  const filteredReturns = returns
+  const allFilteredReturns = returns
     .filter((entry) => (input.storeId ? entry.store_id === input.storeId : true))
     .filter((entry) => (input.sellerId ? entry.seller_id === input.sellerId : true))
-    .filter((entry) => inRange(entry.created_at))
-    .slice(0, input.limit);
+    .filter((entry) => inRange(entry.created_at));
+
+  const filteredSales = allFilteredSales.slice(0, input.limit);
+  const filteredReturns = allFilteredReturns.slice(0, input.limit);
 
   const [saleItems, returnItems] = await Promise.all([
     listAdminSaleItems(filteredSales.map((sale) => sale.id)),
-    listAdminReturnItems(filteredReturns.map((entry) => entry.id)),
+    listAdminReturnItems(allFilteredReturns.map((entry) => entry.id)),
   ]);
   const summary = buildAdminSalesSummaryFromRows({
-    sales: filteredSales,
-    returns: filteredReturns,
+    sales: allFilteredSales,
+    returns: allFilteredReturns,
     returnItems,
   });
 
