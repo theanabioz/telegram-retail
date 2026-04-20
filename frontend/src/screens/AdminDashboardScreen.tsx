@@ -296,7 +296,11 @@ export function AdminDashboardScreen({
     loadingInventory,
     loadingSales,
     mutating,
+    creatingStore,
+    creatingSeller,
     creatingProduct,
+    pendingStoreIds,
+    pendingSellerIds,
     pendingStoreProductIds,
     pendingProductIds,
     loadStores,
@@ -895,7 +899,6 @@ export function AdminDashboardScreen({
       address: newStoreAddress || null,
       isActive: true,
     });
-    await load();
     setNewStoreName("");
     setNewStoreAddress("");
     setShowNewStoreModal(false);
@@ -915,7 +918,6 @@ export function AdminDashboardScreen({
       storeId: newSeller.storeId || undefined,
       isActive: newSeller.isActive,
     });
-    await load();
     setNewSeller({
       fullName: "",
       telegramId: "",
@@ -937,7 +939,6 @@ export function AdminDashboardScreen({
       address: draft.address || null,
       isActive: draft.isActive,
     });
-    await load();
   };
 
   const handleAssignSeller = async (sellerId: string) => {
@@ -948,7 +949,6 @@ export function AdminDashboardScreen({
     }
 
     await assignSeller(sellerId, storeId);
-    await load();
   };
 
   const sortedProducts = useMemo(
@@ -1772,7 +1772,7 @@ export function AdminDashboardScreen({
                 bg="surface.900"
                 color="white"
                 _hover={{ bg: "surface.700" }}
-                isLoading={mutating}
+                isLoading={Boolean(pendingStoreIds[store.id])}
                 onClick={() => void handleSaveStore(store.id)}
               >
                 Save Store
@@ -3946,7 +3946,7 @@ export function AdminDashboardScreen({
                 bg="brand.500"
                 color="white"
                 _hover={{ bg: "brand.600" }}
-                isLoading={mutating}
+                isLoading={Boolean(pendingSellerIds[seller.id])}
                 isDisabled={!seller.isActive || !staffAssignments[seller.id]}
                 onClick={() => void handleAssignSeller(seller.id)}
               >
@@ -4440,7 +4440,7 @@ export function AdminDashboardScreen({
                 bg="surface.900"
                 color="white"
                 _hover={{ bg: "surface.700" }}
-                isLoading={mutating}
+                isLoading={creatingStore}
                 isDisabled={!newStoreName.trim()}
                 onClick={() => void handleCreateStore()}
               >
@@ -4600,7 +4600,7 @@ export function AdminDashboardScreen({
                 bg="surface.900"
                 color="white"
                 _hover={{ bg: "surface.700" }}
-                isLoading={mutating}
+                isLoading={creatingSeller}
                 isDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
                 onClick={() => void handleCreateSeller()}
               >

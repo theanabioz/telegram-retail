@@ -144,8 +144,12 @@ type AdminManagementState = {
   mutating: boolean;
   loadingInventory: boolean;
   loadingSales: boolean;
+  creatingStore: boolean;
+  creatingSeller: boolean;
   creatingProduct: boolean;
   error: string | null;
+  pendingStoreIds: Record<string, true>;
+  pendingSellerIds: Record<string, true>;
   pendingStoreProductIds: Record<string, true>;
   pendingProductIds: Record<string, true>;
   stores: AdminStoresResponse["stores"];
@@ -224,8 +228,12 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
   mutating: false,
   loadingInventory: false,
   loadingSales: false,
+  creatingStore: false,
+  creatingSeller: false,
   creatingProduct: false,
   error: null,
+  pendingStoreIds: {},
+  pendingSellerIds: {},
   pendingStoreProductIds: {},
   pendingProductIds: {},
   stores: cachedAdminStartup?.stores.stores ?? [],
@@ -247,8 +255,12 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       loadingStaff: false,
       loadingInventory: false,
       loadingSales: false,
+      creatingStore: false,
+      creatingSeller: false,
       creatingProduct: false,
       error: null,
+      pendingStoreIds: {},
+      pendingSellerIds: {},
       pendingStoreProductIds: {},
       pendingProductIds: {},
       stores: startup.stores.stores,
@@ -424,18 +436,65 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       set({ error: "Missing auth token" });
       return;
     }
+    const previousStores = get().stores;
+    const optimisticId = `optimistic-store-${Date.now()}`;
+    const optimisticNow = new Date().toISOString();
+    const optimisticStore: AdminStoreItem = {
+      id: optimisticId,
+      name: input.name.trim(),
+      address: input.address?.trim() || null,
+      isActive: input.isActive ?? true,
+      createdAt: optimisticNow,
+      updatedAt: optimisticNow,
+      sellerCount: 0,
+      activeShiftCount: 0,
+      stockUnits: 0,
+      lowStockCount: 0,
+      salesCount: 0,
+      revenueAllTime: 0,
+      revenueToday: 0,
+    };
 
-    set({ mutating: true, error: null });
+    set((state) => ({
+      creatingStore: true,
+      error: null,
+      stores: [optimisticStore, ...state.stores],
+      pendingStoreIds: {
+        ...state.pendingStoreIds,
+        [optimisticId]: true,
+      },
+    }));
 
     try {
-      await apiPost<AdminStoreMutationResponse>("/admin/stores", input, token);
+      const response = await apiPost<AdminStoreMutationResponse>("/admin/stores", input, token);
       triggerNotification("success");
-      await get().loadStores();
-      set({ mutating: false, error: null });
+      const confirmedStore: AdminStoreItem = {
+        ...optimisticStore,
+        ...response.store,
+      };
+
+      set((state) => ({
+        creatingStore: false,
+        error: null,
+        stores: state.stores.map((store) => (store.id === optimisticId ? confirmedStore : store)),
+        pendingStoreIds: Object.fromEntries(
+          Object.entries(state.pendingStoreIds).filter(([id]) => id !== optimisticId)
+        ),
+      }));
+
+      patchAdminStartupCache(token, (startup) => ({
+        ...startup,
+        stores: {
+          ...startup.stores,
+          stores: [confirmedStore, ...startup.stores.stores],
+        },
+      }));
     } catch (error) {
       triggerNotification("error");
       set({
-        mutating: false,
+        creatingStore: false,
+        stores: previousStores,
+        pendingStoreIds: {},
         error: error instanceof Error ? error.message : "Failed to create store",
       });
     }
@@ -448,18 +507,69 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       set({ error: "Missing auth token" });
       return;
     }
+    const previousStaff = get().staff;
+    const previousStores = get().stores;
+    const optimisticId = `optimistic-seller-${Date.now()}`;
+    const optimisticNow = new Date().toISOString();
+    const assignedStore = input.storeId ? get().stores.find((store) => store.id === input.storeId) ?? null : null;
+    const optimisticSeller: AdminStaffResponse["sellers"][number] = {
+      id: optimisticId,
+      telegramId: input.telegramId,
+      fullName: input.fullName.trim(),
+      isActive: input.isActive ?? true,
+      currentAssignment: assignedStore
+        ? {
+            id: `optimistic-assignment-${Date.now()}`,
+            storeId: assignedStore.id,
+            storeName: assignedStore.name,
+            startedAt: optimisticNow,
+          }
+        : null,
+      activeShift: null,
+      salesCount: 0,
+      revenue: 0,
+      lastSaleAt: null,
+    };
 
-    set({ mutating: true, error: null });
+    set((state) => ({
+      creatingSeller: true,
+      error: null,
+      staff: [optimisticSeller, ...state.staff],
+      pendingSellerIds: {
+        ...state.pendingSellerIds,
+        [optimisticId]: true,
+      },
+      stores: assignedStore
+        ? state.stores.map((store) =>
+            store.id === assignedStore.id ? { ...store, sellerCount: store.sellerCount + 1 } : store
+          )
+        : state.stores,
+    }));
 
     try {
-      await apiPost<AdminSellerMutationResponse>("/admin/staff", input, token);
+      const response = await apiPost<AdminSellerMutationResponse>("/admin/staff", input, token);
       triggerNotification("success");
-      await Promise.all([get().loadStaff(), get().loadStores()]);
-      set({ mutating: false, error: null });
+      set((state) => ({
+        creatingSeller: false,
+        error: null,
+        staff: state.staff.map((seller) => (seller.id === optimisticId ? response.seller : seller)),
+        pendingSellerIds: Object.fromEntries(
+          Object.entries(state.pendingSellerIds).filter(([id]) => id !== optimisticId)
+        ),
+      }));
+
+      void get().loadStores();
     } catch (error) {
       triggerNotification("error");
       set({
-        mutating: false,
+        creatingSeller: false,
+        staff: previousStaff,
+        pendingSellerIds: {},
+        stores: previousStores.map((store) =>
+          assignedStore && store.id === assignedStore.id
+            ? { ...store, sellerCount: Math.max(0, store.sellerCount - 1) }
+            : store
+        ),
         error: error instanceof Error ? error.message : "Failed to create seller",
       });
     }
@@ -472,20 +582,54 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       set({ error: "Missing auth token" });
       return;
     }
+    const previousStores = get().stores;
+    const optimisticUpdatedAt = new Date().toISOString();
 
-    set({ mutating: true, error: null });
+    set((state) => ({
+      error: null,
+      pendingStoreIds: {
+        ...state.pendingStoreIds,
+        [storeId]: true,
+      },
+      stores: state.stores.map((store) =>
+        store.id === storeId
+          ? {
+              ...store,
+              name: input.name ?? store.name,
+              address: input.address === undefined ? store.address : input.address,
+              isActive: input.isActive ?? store.isActive,
+              updatedAt: optimisticUpdatedAt,
+            }
+          : store
+      ),
+    }));
 
     try {
-      await apiPatch<AdminStoreMutationResponse>(`/admin/stores/${storeId}`, input, token);
+      const response = await apiPatch<AdminStoreMutationResponse>(`/admin/stores/${storeId}`, input, token);
       triggerNotification("success");
-      await get().loadStores();
-      set({ mutating: false, error: null });
+      set((state) => ({
+        error: null,
+        pendingStoreIds: Object.fromEntries(
+          Object.entries(state.pendingStoreIds).filter(([id]) => id !== storeId)
+        ),
+        stores: state.stores.map((store) =>
+          store.id === storeId
+            ? {
+                ...store,
+                ...response.store,
+              }
+            : store
+        ),
+      }));
     } catch (error) {
       triggerNotification("error");
-      set({
-        mutating: false,
+      set((state) => ({
         error: error instanceof Error ? error.message : "Failed to update store",
-      });
+        pendingStoreIds: Object.fromEntries(
+          Object.entries(state.pendingStoreIds).filter(([id]) => id !== storeId)
+        ),
+        stores: previousStores,
+      }));
     }
   },
 
@@ -496,24 +640,84 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       set({ error: "Missing auth token" });
       return;
     }
+    const previousStaff = get().staff;
+    const previousStores = get().stores;
+    const selectedStore = get().stores.find((store) => store.id === storeId);
+    const seller = previousStaff.find((entry) => entry.id === sellerId);
+    const previousStoreId = seller?.currentAssignment?.storeId ?? null;
+    const optimisticStartedAt = new Date().toISOString();
 
-    set({ mutating: true, error: null });
+    set((state) => ({
+      error: null,
+      pendingSellerIds: {
+        ...state.pendingSellerIds,
+        [sellerId]: true,
+      },
+      staff: state.staff.map((entry) =>
+        entry.id === sellerId
+          ? {
+              ...entry,
+              currentAssignment: selectedStore
+                ? {
+                    id: entry.currentAssignment?.id ?? `optimistic-assignment-${Date.now()}`,
+                    storeId: selectedStore.id,
+                    storeName: selectedStore.name,
+                    startedAt: optimisticStartedAt,
+                  }
+                : entry.currentAssignment,
+            }
+          : entry
+      ),
+      stores: state.stores.map((store) => {
+        if (previousStoreId && store.id === previousStoreId) {
+          return { ...store, sellerCount: Math.max(0, store.sellerCount - 1) };
+        }
+
+        if (store.id === storeId) {
+          return { ...store, sellerCount: store.sellerCount + (previousStoreId === storeId ? 0 : 1) };
+        }
+
+        return store;
+      }),
+    }));
 
     try {
-      await apiPost<AdminAssignmentMutationResponse>(
+      const response = await apiPost<AdminAssignmentMutationResponse>(
         `/admin/staff/${sellerId}/assignment`,
         { storeId },
         token
       );
       triggerImpact("medium");
-      await Promise.all([get().loadStaff(), get().loadStores()]);
-      set({ mutating: false, error: null });
+      set((state) => ({
+        error: null,
+        pendingSellerIds: Object.fromEntries(
+          Object.entries(state.pendingSellerIds).filter(([id]) => id !== sellerId)
+        ),
+        staff: state.staff.map((entry) =>
+          entry.id === sellerId
+            ? {
+                ...entry,
+                currentAssignment: {
+                  id: response.assignment.id,
+                  storeId: response.assignment.storeId,
+                  storeName: response.assignment.storeName,
+                  startedAt: response.assignment.startedAt,
+                },
+              }
+            : entry
+        ),
+      }));
+      void get().loadStores();
     } catch (error) {
       triggerNotification("error");
-      set({
-        mutating: false,
+      set((state) => ({
         error: error instanceof Error ? error.message : "Failed to assign seller",
-      });
+        pendingSellerIds: Object.fromEntries(
+          Object.entries(state.pendingSellerIds).filter(([id]) => id !== sellerId)
+        ),
+        staff: previousStaff,
+        stores: previousStores,
+      }));
     }
   },
 
