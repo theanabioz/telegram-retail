@@ -107,6 +107,75 @@ function buildDraftState(
   };
 }
 
+function draftItemsMatchLocalState(
+  serverDraft: DraftResponse,
+  localDraft: DraftResponse | null
+) {
+  if (!localDraft) {
+    return true;
+  }
+
+  if (serverDraft.items.length !== localDraft.items.length) {
+    return false;
+  }
+
+  return serverDraft.items.every((serverItem) => {
+    const localItem = localDraft.items.find((item) => item.product_id === serverItem.product_id);
+
+    if (!localItem) {
+      return false;
+    }
+
+    return (
+      localItem.quantity === serverItem.quantity &&
+      localItem.discount_type === serverItem.discount_type &&
+      (localItem.discount_value ?? null) === (serverItem.discount_value ?? null) &&
+      localItem.final_price === serverItem.final_price
+    );
+  });
+}
+
+async function reconcileDraftWithLocalState(
+  serverDraft: DraftResponse,
+  localDraft: DraftResponse | null,
+  token: string
+) {
+  if (!localDraft || draftItemsMatchLocalState(serverDraft, localDraft)) {
+    return serverDraft;
+  }
+
+  for (const serverItem of serverDraft.items) {
+    const localItem = localDraft.items.find((item) => item.product_id === serverItem.product_id);
+
+    if (!localItem) {
+      await apiDelete(`/seller/draft/items/${serverItem.id}`, token).catch(() => null);
+      continue;
+    }
+
+    const hasMismatch =
+      localItem.quantity !== serverItem.quantity ||
+      localItem.discount_type !== serverItem.discount_type ||
+      (localItem.discount_value ?? null) !== (serverItem.discount_value ?? null) ||
+      localItem.final_price !== serverItem.final_price;
+
+    if (!hasMismatch) {
+      continue;
+    }
+
+    await apiPatch(
+      `/seller/draft/items/${serverItem.id}`,
+      {
+        quantity: localItem.quantity,
+        discountType: localItem.discount_type,
+        discountValue: localItem.discount_value,
+      },
+      token
+    ).catch(() => null);
+  }
+
+  return apiGet<DraftResponse>("/seller/draft", token).catch(() => serverDraft);
+}
+
 function resolveDraftFinalPrice(
   item: DraftResponse["items"][number],
   updates: {
@@ -526,8 +595,9 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       );
 
       if (mutationVersion === draftMutationVersion) {
+        const reconciledDraft = await reconcileDraftWithLocalState(draft, get().draft, token);
         triggerSelection();
-        set({ draft, mode: "live", error: null });
+        set({ draft: reconciledDraft, mode: "live", error: null });
       } else {
         const currentDraft = get().draft;
         const outOfSyncItems = draft.items.filter((serverItem) => {
@@ -588,6 +658,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       });
 
       set({ error: null, draft: buildDraftState(previousDraft, nextItems, get().storeId) });
+
+      if (!isUuid(itemId)) {
+        return;
+      }
     } else {
       set({ error: null });
     }
