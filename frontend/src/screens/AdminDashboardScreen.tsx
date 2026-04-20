@@ -3548,11 +3548,11 @@ export function AdminDashboardScreen({
 
     if (isNumeric) {
       return (
-        <SimpleGrid columns={3} spacing={2}>
+        <SimpleGrid columns={3} spacing={2} h="full" alignContent="stretch">
           {numericKeys.map((key) => (
             <Button
               key={key}
-              h="50px"
+              h="52px"
               borderRadius="16px"
               bg={key === "delete" || key === "clear" ? "surface.50" : "white"}
               color="surface.900"
@@ -3572,13 +3572,13 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack align="stretch" spacing={1.5} w="full">
+      <VStack align="stretch" spacing={1.5} w="full" h="full">
         {alphaRows.map((row, index) => (
           <HStack key={index} spacing={1.5} justify="center" w="full">
             {row.map((key) => (
               <Button
                 key={key}
-                h="36px"
+                h="40px"
                 flex="1"
                 minW={0}
                 px={0}
@@ -3601,7 +3601,7 @@ export function AdminDashboardScreen({
         <HStack spacing={2}>
           <Button
             flex="1"
-            h="42px"
+            h="44px"
             borderRadius="16px"
             bg={teamKeyboardCapsLock ? "brand.500" : "surface.50"}
             color={teamKeyboardCapsLock ? "white" : "surface.800"}
@@ -3614,7 +3614,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="42px"
+            h="44px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3627,7 +3627,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="2"
-            h="42px"
+            h="44px"
             borderRadius="16px"
             bg="white"
             color="surface.800"
@@ -3640,7 +3640,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="42px"
+            h="44px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3675,11 +3675,11 @@ export function AdminDashboardScreen({
             position="absolute"
             left={0}
             right={0}
-            top={0}
             bottom={0}
             w="100%"
+            maxH="88vh"
             bg="white"
-            borderTopRadius="26px"
+            borderTopRadius="32px"
             boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
             overflow="hidden"
             display="flex"
@@ -3691,7 +3691,7 @@ export function AdminDashboardScreen({
               <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
             </Box>
 
-            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflow="hidden" flex="1">
+            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflowY="auto" flex="1" minH={0}>
               <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
@@ -3733,6 +3733,8 @@ export function AdminDashboardScreen({
                 mx={-2}
                 px={2}
                 py={2}
+                h="238px"
+                flexShrink={0}
                 border="1px solid"
                 borderColor="rgba(223,219,210,0.78)"
               >
@@ -3740,7 +3742,7 @@ export function AdminDashboardScreen({
               </Box>
             </VStack>
 
-            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
+            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
               <Button
                 w="full"
                 h="52px"
@@ -3776,11 +3778,11 @@ export function AdminDashboardScreen({
             position="absolute"
             left={0}
             right={0}
-            top={0}
             bottom={0}
             w="100%"
+            maxH="88vh"
             bg="white"
-            borderTopRadius="26px"
+            borderTopRadius="32px"
             boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
             overflow="hidden"
             display="flex"
@@ -3792,7 +3794,7 @@ export function AdminDashboardScreen({
               <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
             </Box>
 
-            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflow="hidden" flex="1">
+            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflowY="auto" flex="1" minH={0}>
               <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
@@ -3884,6 +3886,8 @@ export function AdminDashboardScreen({
                 mx={-2}
                 px={2}
                 py={2}
+                h="238px"
+                flexShrink={0}
                 border="1px solid"
                 borderColor="rgba(223,219,210,0.78)"
               >
@@ -3891,7 +3895,7 @@ export function AdminDashboardScreen({
               </Box>
             </VStack>
 
-            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
+            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
               <Button
                 w="full"
                 h="52px"
