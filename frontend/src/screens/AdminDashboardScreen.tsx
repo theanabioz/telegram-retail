@@ -390,6 +390,15 @@ export function AdminDashboardScreen({
       ? "Product Details"
       : adminTabTitle[activeTab];
 
+  const selectedInventoryHeaderItem = selectedInventoryItemId
+    ? inventoryView.items.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
+    : null;
+  const adminPageSubtitle =
+    activeTab === "inventory" && selectedInventoryHeaderItem
+      ? inventoryStores.find((store) => store.id === selectedInventoryStoreId)?.name ??
+        selectedInventoryHeaderItem.storeName
+      : null;
+
   useTelegramBackButton(
     activeTab === "sales"
       ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
@@ -1352,16 +1361,8 @@ export function AdminDashboardScreen({
         <VStack spacing={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={4}>
-              <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={1}>
-                  <Text fontWeight="900" fontSize="xl">
-                    Product Details
-                  </Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {selectedStore?.name ?? selectedItem.storeName}
-                  </Text>
-                </VStack>
-                {!supportsTelegramBackButton ? (
+              {!supportsTelegramBackButton ? (
+                <HStack justify="flex-end">
                   <Button
                     size="sm"
                     borderRadius="14px"
@@ -1371,8 +1372,8 @@ export function AdminDashboardScreen({
                   >
                     Back
                   </Button>
-                ) : null}
-              </HStack>
+                </HStack>
+              ) : null}
 
               <HStack justify="space-between" align="start">
                 <VStack align="start" spacing={1}>
@@ -2626,15 +2627,22 @@ export function AdminDashboardScreen({
             ) : null}
 
             <HStack justify="space-between" align="center">
-              <Text
-                fontSize="3xl"
-                fontWeight="900"
-                letterSpacing="-0.04em"
-                color="surface.900"
-                lineHeight="1"
-              >
-                {adminPageTitle}
-              </Text>
+              <VStack align="start" spacing={adminPageSubtitle ? 1 : 0}>
+                <Text
+                  fontSize="3xl"
+                  fontWeight="900"
+                  letterSpacing="-0.04em"
+                  color="surface.900"
+                  lineHeight="1"
+                >
+                  {adminPageTitle}
+                </Text>
+                {adminPageSubtitle ? (
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineHeight="1.2">
+                    {adminPageSubtitle}
+                  </Text>
+                ) : null}
+              </VStack>
 
               <HStack
                 spacing={3}
