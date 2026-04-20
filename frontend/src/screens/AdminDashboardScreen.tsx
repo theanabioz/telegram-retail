@@ -843,16 +843,29 @@ export function AdminDashboardScreen({
     storeProductId: string,
     movementType: "manual_adjustment" | "restock" | "writeoff"
   ) => {
-    const item = inventoryItems.find((entry) => entry.storeProductId === storeProductId);
-    const draft = inventoryEdits[storeProductId];
+    const item =
+      inventoryView.items.find((entry) => entry.storeProductId === storeProductId) ??
+      inventoryItems.find((entry) => entry.storeProductId === storeProductId);
+    const draft =
+      inventoryEdits[storeProductId] ??
+      (item
+        ? {
+            price: item.storePrice.toFixed(2),
+            isEnabled: item.isEnabled,
+            adjustQuantity: "1",
+            adjustReason: "",
+          }
+        : undefined);
 
     if (!item || !draft) {
+      window.alert("Product details are not ready yet. Please reopen the product and try again.");
       return;
     }
 
     const parsedQuantity = Number(draft.adjustQuantity);
 
     if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      window.alert("Enter a quantity greater than 0.");
       return;
     }
 
