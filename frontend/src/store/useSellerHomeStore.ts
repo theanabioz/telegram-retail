@@ -234,6 +234,19 @@ function writeSellerStartupCache(token: string, startup: SellerStartupResponse) 
   }
 }
 
+function patchSellerStartupCache(
+  token: string,
+  updater: (startup: SellerStartupResponse) => SellerStartupResponse
+) {
+  const cachedStartup = readSellerStartupCache(token);
+
+  if (!cachedStartup) {
+    return;
+  }
+
+  writeSellerStartupCache(token, updater(cachedStartup));
+}
+
 function mapCatalogProducts(catalog: SellerCatalogResponse) {
   return catalog.products.map((product) => ({
     id: product.id,
@@ -412,6 +425,22 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/start", { storeId }, token);
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        shiftState: {
+          activeShift: {
+            id: startup.shiftState.activeShift?.id ?? "pending-shift",
+            user_id: startup.me.user.id,
+            store_id: storeId,
+            status: "active",
+            started_at: new Date().toISOString(),
+            ended_at: null,
+            paused_total_seconds: 0,
+            current_pause_started_at: null,
+          },
+          summary: { totalSeconds: 0, pausedSeconds: 0, workedSeconds: 0 },
+        },
+      }));
       triggerNotification("success");
       void get().bootstrap({ skipCache: true });
     } catch (error) {
@@ -448,6 +477,19 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/pause", {}, token);
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        shiftState: startup.shiftState.activeShift
+          ? {
+              ...startup.shiftState,
+              activeShift: {
+                ...startup.shiftState.activeShift,
+                status: "paused",
+                current_pause_started_at: new Date().toISOString(),
+              },
+            }
+          : startup.shiftState,
+      }));
       void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
@@ -484,6 +526,19 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/resume", {}, token);
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        shiftState: startup.shiftState.activeShift
+          ? {
+              ...startup.shiftState,
+              activeShift: {
+                ...startup.shiftState.activeShift,
+                status: "active",
+                current_pause_started_at: null,
+              },
+            }
+          : startup.shiftState,
+      }));
       triggerNotification("success");
       void get().bootstrap({ skipCache: true });
     } catch (error) {
@@ -524,6 +579,17 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/stop", {}, token);
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        shiftState: {
+          activeShift: null,
+          summary: null,
+        },
+        catalog: null,
+        draft: null,
+        sales: null,
+        inventoryHistory: null,
+      }));
       triggerNotification("warning");
       void get().bootstrap({ skipCache: true });
     } catch (error) {
@@ -596,6 +662,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
       if (mutationVersion === draftMutationVersion) {
         const reconciledDraft = await reconcileDraftWithLocalState(draft, get().draft, token);
+        patchSellerStartupCache(token, (startup) => ({
+          ...startup,
+          draft: reconciledDraft,
+        }));
         triggerSelection();
         set({ draft: reconciledDraft, mode: "live", error: null });
       } else {
@@ -671,6 +741,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     try {
       const draft = await apiPatch<DraftResponse>(`/seller/draft/items/${itemId}`, updates, token);
       if (mutationVersion === draftMutationVersion) {
+        patchSellerStartupCache(token, (startup) => ({
+          ...startup,
+          draft,
+        }));
         if (updates.discountType !== undefined || updates.discountValue !== undefined) {
           triggerImpact("soft");
         } else {
@@ -714,6 +788,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       if (isUuid(itemId)) {
         const draft = await apiDelete<DraftResponse>(`/seller/draft/items/${itemId}`, token);
         if (mutationVersion === draftMutationVersion) {
+          patchSellerStartupCache(token, (startup) => ({
+            ...startup,
+            draft,
+          }));
           triggerImpact("rigid");
           set({ draft });
         }
@@ -789,6 +867,16 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           items: checkoutResult.items,
         };
 
+        patchSellerStartupCache(token, (startup) => ({
+          ...startup,
+          draft: buildDraftState(previousDraft, [], get().storeId),
+          sales: startup.sales
+            ? {
+                ...startup.sales,
+                sales: [sale, ...startup.sales.sales],
+              }
+            : startup.sales,
+        }));
         triggerNotification("success");
         set({
           draft: buildDraftState(previousDraft, [], get().storeId),
