@@ -36,6 +36,7 @@ import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
+import { useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
@@ -124,6 +125,7 @@ const bottomDockReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
 const bottomDockWithCartReservedSpace = "calc(148px + env(safe-area-inset-bottom, 0px))";
 
 export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScreenProps) {
+  const { locale, localeOptions, setLocale, t } = useI18n();
   const {
     addToDraft,
     bootstrap,
@@ -315,11 +317,16 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     shiftStatus === "active" ? "Shift active" : shiftStatus === "paused" ? "Shift paused" : "Shift inactive";
 
   const activeTabTitle: Record<SellerTab, string> = {
-    checkout: "Checkout",
-    orders: "Orders",
-    stock: "My Stock",
-    shift: shiftView === "history" ? "Shift History" : shiftView === "detail" ? "Shift Report" : "Shift",
-    options: "Settings",
+    checkout: t("nav.checkout"),
+    orders: t("nav.orders"),
+    stock: t("nav.stock"),
+    shift:
+      shiftView === "history"
+        ? t("screen.shiftHistory")
+        : shiftView === "detail"
+          ? t("screen.shiftReport")
+          : t("nav.shift"),
+    options: t("nav.settings"),
   };
 
   const groupedShiftHistory = useMemo(() => {
@@ -1902,21 +1909,51 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">Session Info</Text>
+          <Text fontWeight="900" fontSize="lg">{t("settings.language.title")}</Text>
+          <Text color="surface.500" fontSize="sm">
+            {t("settings.language.description")}
+          </Text>
+          <HStack spacing={3}>
+            {localeOptions.map((option) => {
+              const isActive = locale === option.value;
+
+              return (
+                <Button
+                  key={option.value}
+                  flex="1"
+                  borderRadius="16px"
+                  bg={isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
+                  color={isActive ? "white" : "surface.800"}
+                  _hover={{
+                    bg: isActive ? "brand.600" : "rgba(225,223,218,0.95)",
+                  }}
+                  onClick={() => setLocale(option.value)}
+                >
+                  {option.label}
+                </Button>
+              );
+            })}
+          </HStack>
+        </VStack>
+      </Box>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={3}>
+          <Text fontWeight="900" fontSize="lg">{t("settings.session.title")}</Text>
           <HStack justify="space-between">
-            <Text color="surface.500">Operator</Text>
+            <Text color="surface.500">{t("settings.session.operator")}</Text>
             <Text fontWeight="800">{operatorName}</Text>
           </HStack>
           <HStack justify="space-between">
-            <Text color="surface.500">Store</Text>
+            <Text color="surface.500">{t("settings.session.store")}</Text>
             <Text fontWeight="800">{storeName}</Text>
           </HStack>
           <HStack justify="space-between">
-            <Text color="surface.500">Mode</Text>
-            <Text fontWeight="800">{mode === "live" ? "Live mode" : "Demo mode"}</Text>
+            <Text color="surface.500">{t("settings.session.mode")}</Text>
+            <Text fontWeight="800">{mode === "live" ? t("settings.session.liveMode") : t("settings.session.demoMode")}</Text>
           </HStack>
           <HStack justify="space-between">
-            <Text color="surface.500">Device</Text>
+            <Text color="surface.500">{t("settings.session.device")}</Text>
             <Text fontWeight="800">{localIpLabel}</Text>
           </HStack>
         </VStack>
@@ -1924,9 +1961,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">Developer Switch</Text>
+          <Text fontWeight="900" fontSize="lg">{t("settings.developerSwitch.title")}</Text>
           <Text color="surface.500" fontSize="sm">
-            Switch between seller and admin without restarting the app.
+            {t("settings.developerSwitch.sellerDescription")}
           </Text>
           <HStack spacing={3}>
             <Button
@@ -1939,7 +1976,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               }}
               onClick={() => void onSwitchPanel("seller")}
             >
-              Seller
+              {t("common.seller")}
             </Button>
             <Button
               flex="1"
@@ -1951,7 +1988,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               }}
               onClick={() => void onSwitchPanel("admin")}
             >
-              Admin
+              {t("common.admin")}
             </Button>
           </HStack>
         </VStack>

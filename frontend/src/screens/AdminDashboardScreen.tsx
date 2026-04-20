@@ -16,6 +16,7 @@ import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
+import { useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
@@ -59,13 +60,6 @@ const ADMIN_OVERVIEW_CHART_MOCK_TOTALS: Record<number, number> = {
 };
 const TOKEN_KEY = "telegram-retail-token";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
-const adminTabTitle: Record<AdminTab, string> = {
-  overview: "Overview",
-  sales: "Sales",
-  inventory: "Inventory",
-  team: "Team",
-  settings: "Settings",
-};
 
 function getLowStockCardProps(shouldPulse: boolean) {
   return shouldPulse
@@ -338,6 +332,7 @@ export function AdminDashboardScreen({
   onSwitchPanel,
   onViewAsSeller,
 }: AdminDashboardScreenProps) {
+  const { locale, localeOptions, setLocale, t } = useI18n();
   const { data, error, loading, load, hydrate: hydrateDashboard } = useAdminDashboardStore();
   const {
     stores,
@@ -547,7 +542,13 @@ export function AdminDashboardScreen({
         ? "Seller Details"
         : activeTab === "team" && selectedTeamStore
           ? "Store Details"
-      : adminTabTitle[activeTab];
+      : ({
+          overview: t("nav.overview"),
+          sales: t("nav.sales"),
+          inventory: t("nav.inventory"),
+          team: t("nav.team"),
+          settings: t("nav.settings"),
+        } satisfies Record<AdminTab, string>)[activeTab];
 
   const selectedInventoryHeaderItem = selectedInventoryItemId
     ? inventoryView.items.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
@@ -5308,16 +5309,47 @@ export function AdminDashboardScreen({
         return (
           <VStack spacing={4} align="stretch">
             {renderPlaceholder(
-              "Admin Settings",
-              "Session controls and admin-side environment tools live here for now. Later we can add account preferences and support diagnostics."
+              t("settings.admin.title"),
+              t("settings.admin.description")
             )}
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
                 <Text fontWeight="900" fontSize="lg">
-                  Developer Switch
+                  {t("settings.language.title")}
                 </Text>
                 <Text color="surface.500" fontSize="sm">
-                  Switch between admin and seller without restarting the app.
+                  {t("settings.language.description")}
+                </Text>
+                <HStack spacing={3}>
+                  {localeOptions.map((option) => {
+                    const isActive = locale === option.value;
+
+                    return (
+                      <Button
+                        key={option.value}
+                        flex="1"
+                        borderRadius="16px"
+                        bg={isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
+                        color={isActive ? "white" : "surface.800"}
+                        _hover={{
+                          bg: isActive ? "brand.600" : "rgba(225,223,218,0.95)",
+                        }}
+                        onClick={() => setLocale(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    );
+                  })}
+                </HStack>
+              </VStack>
+            </Box>
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <Text fontWeight="900" fontSize="lg">
+                  {t("settings.developerSwitch.title")}
+                </Text>
+                <Text color="surface.500" fontSize="sm">
+                  {t("settings.developerSwitch.adminDescription")}
                 </Text>
                 <HStack spacing={3}>
                   <Button
@@ -5330,7 +5362,7 @@ export function AdminDashboardScreen({
                     }}
                     onClick={() => void onSwitchPanel("seller")}
                   >
-                    Seller
+                    {t("common.seller")}
                   </Button>
                   <Button
                     flex="1"
@@ -5342,7 +5374,7 @@ export function AdminDashboardScreen({
                     }}
                     onClick={() => void onSwitchPanel("admin")}
                   >
-                    Admin
+                    {t("common.admin")}
                   </Button>
                 </HStack>
               </VStack>

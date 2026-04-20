@@ -8,21 +8,22 @@ import {
 } from "react-icons/lu";
 import { useRef } from "react";
 import type { IconType } from "react-icons";
+import { useI18n } from "../lib/i18n";
 
 export type AdminTab = "overview" | "sales" | "inventory" | "team" | "settings";
 
 type NavItem = {
   id: AdminTab;
-  label: string;
+  labelKey: "nav.overview" | "nav.sales" | "nav.inventory" | "nav.team" | "nav.settings";
   icon: IconType;
 };
 
 const items: NavItem[] = [
-  { id: "overview", label: "Overview", icon: LuLayoutDashboard },
-  { id: "sales", label: "Sales", icon: LuReceiptText },
-  { id: "inventory", label: "Inventory", icon: LuBoxes },
-  { id: "team", label: "Team", icon: LuUsers },
-  { id: "settings", label: "Settings", icon: LuSettings2 },
+  { id: "overview", labelKey: "nav.overview", icon: LuLayoutDashboard },
+  { id: "sales", labelKey: "nav.sales", icon: LuReceiptText },
+  { id: "inventory", labelKey: "nav.inventory", icon: LuBoxes },
+  { id: "team", labelKey: "nav.team", icon: LuUsers },
+  { id: "settings", labelKey: "nav.settings", icon: LuSettings2 },
 ];
 
 type AdminNavProps = {
@@ -33,6 +34,7 @@ type AdminNavProps = {
 
 export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
   const pointerHandledTabRef = useRef<AdminTab | null>(null);
+  const { t } = useI18n();
 
   const activateTab = (tab: AdminTab, isActive: boolean) => {
     if (isActive) {
@@ -58,14 +60,15 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
+          const label = t(item.labelKey);
 
           return (
             <VStack
               as="button"
               type="button"
-              aria-label={`Open ${item.label} tab`}
+              aria-label={`Open ${label} tab`}
               aria-current={isActive ? "page" : undefined}
-              key={item.label}
+              key={item.id}
               flex="1"
               spacing={0.5}
               color={isActive ? "surface.900" : "surface.500"}
@@ -123,7 +126,7 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
                 color={isActive ? "brand.500" : "surface.500"}
                 fontWeight={isActive ? "800" : "700"}
               >
-                {item.label}
+                {label}
               </Text>
             </VStack>
           );

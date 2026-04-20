@@ -8,21 +8,22 @@ import {
 } from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { useRef, type ReactNode } from "react";
+import { useI18n } from "../lib/i18n";
 
 export type SellerTab = "checkout" | "orders" | "stock" | "shift" | "options";
 
 type NavItem = {
   id: SellerTab;
-  label: string;
+  labelKey: "nav.checkout" | "nav.orders" | "nav.stock" | "nav.shift" | "nav.settings";
   icon: IconType;
 };
 
 const items: NavItem[] = [
-  { id: "checkout", label: "Checkout", icon: LuShoppingCart },
-  { id: "orders", label: "Orders", icon: LuReceiptText },
-  { id: "stock", label: "My Stock", icon: LuPackage2 },
-  { id: "shift", label: "Shift", icon: LuClock3 },
-  { id: "options", label: "Settings", icon: LuSettings2 },
+  { id: "checkout", labelKey: "nav.checkout", icon: LuShoppingCart },
+  { id: "orders", labelKey: "nav.orders", icon: LuReceiptText },
+  { id: "stock", labelKey: "nav.stock", icon: LuPackage2 },
+  { id: "shift", labelKey: "nav.shift", icon: LuClock3 },
+  { id: "options", labelKey: "nav.settings", icon: LuSettings2 },
 ];
 
 type BottomNavProps = {
@@ -34,6 +35,7 @@ type BottomNavProps = {
 
 export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: BottomNavProps) {
   const pointerHandledTabRef = useRef<SellerTab | null>(null);
+  const { t } = useI18n();
 
   const activateTab = (tab: SellerTab, isActive: boolean) => {
     if (isActive) {
@@ -66,12 +68,13 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
+          const label = t(item.labelKey);
 
           return (
             <VStack
               as="button"
               type="button"
-              aria-label={`Open ${item.label} tab`}
+              aria-label={`Open ${label} tab`}
               aria-current={isActive ? "page" : undefined}
               key={item.id}
               flex="1"
@@ -130,7 +133,7 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
                 fontWeight={isActive ? "800" : "600"}
                 transition="all 0.2s ease"
               >
-                {item.label}
+                {label}
               </Text>
               
               {isActive && (
