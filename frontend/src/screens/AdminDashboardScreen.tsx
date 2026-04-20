@@ -450,6 +450,7 @@ export function AdminDashboardScreen({
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const softRefreshInFlightRef = useRef(false);
+  const inventorySelectionRefreshStoreIdRef = useRef<string | null>(null);
   const selectedStaffSeller = selectedStaffSellerId
     ? staff.find((seller) => seller.id === selectedStaffSellerId) ?? null
     : null;
@@ -926,13 +927,25 @@ export function AdminDashboardScreen({
       if (cachedSnapshot) {
         setInventoryView(cachedSnapshot);
         setSelectedInventoryItemId(null);
-        void loadInventory(selectedInventoryStoreId, { silent: true }).finally(() => setInventorySoftRefreshing(false));
+        if (inventorySelectionRefreshStoreIdRef.current !== selectedInventoryStoreId) {
+          inventorySelectionRefreshStoreIdRef.current = selectedInventoryStoreId;
+          void loadInventory(selectedInventoryStoreId, { silent: true }).finally(() => {
+            if (inventorySelectionRefreshStoreIdRef.current === selectedInventoryStoreId) {
+              setInventorySoftRefreshing(false);
+            }
+          });
+        }
         return;
       }
 
       setInventorySoftRefreshing(true);
       setSelectedInventoryItemId(null);
-      void loadInventory(selectedInventoryStoreId).finally(() => setInventorySoftRefreshing(false));
+      inventorySelectionRefreshStoreIdRef.current = selectedInventoryStoreId;
+      void loadInventory(selectedInventoryStoreId).finally(() => {
+        if (inventorySelectionRefreshStoreIdRef.current === selectedInventoryStoreId) {
+          setInventorySoftRefreshing(false);
+        }
+      });
     }
   }, [inventoryCache, inventoryHistory, inventoryItems, loadInventory, selectedInventoryStoreId]);
 
