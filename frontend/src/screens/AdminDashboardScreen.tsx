@@ -2892,42 +2892,54 @@ export function AdminDashboardScreen({
                   {activityItems.length} actions
                 </Text>
               </HStack>
-              {visibleActivityItems.map((item) => {
-                const Icon = item.icon;
+              {visibleActivityItems.length > 0 ? (
+                <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
+                  <VStack align="stretch" spacing={0}>
+                    {visibleActivityItems.map((item, index) => {
+                      const Icon = item.icon;
 
-                return (
-                <Box key={item.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <HStack justify="space-between" align="start">
-                    <HStack spacing={3} align="start" minW={0}>
-                      <Box
-                        w="42px"
-                        h="42px"
-                        borderRadius="16px"
-                        display="grid"
-                        placeItems="center"
-                        bg={item.iconBg}
-                        color={item.iconColor}
-                        flexShrink={0}
-                      >
-                        <Box as={Icon} boxSize={6} strokeWidth={2.5} />
-                      </Box>
-                      <VStack align="start" spacing={0} minW={0}>
-                        <Text fontWeight="900">{item.title}</Text>
-                        <Text fontSize="sm" color="surface.500" noOfLines={2}>
-                          {item.meta}
-                        </Text>
-                        <Text fontSize="xs" color="surface.400" fontWeight="700">
-                          {formatDateTime(item.date)}
-                        </Text>
-                      </VStack>
-                    </HStack>
-                    <Text fontSize="xs" color="surface.400" fontWeight="900" textTransform="uppercase">
-                      {item.iconLabel}
-                    </Text>
-                  </HStack>
+                      return (
+                        <HStack
+                          key={item.id}
+                          justify="space-between"
+                          align="start"
+                          px={1}
+                          py={3}
+                          borderBottom={index === visibleActivityItems.length - 1 ? 0 : "1px solid"}
+                          borderColor="rgba(226,224,218,0.82)"
+                        >
+                          <HStack spacing={3} align="start" minW={0}>
+                            <Box
+                              w="42px"
+                              h="42px"
+                              borderRadius="16px"
+                              display="grid"
+                              placeItems="center"
+                              bg={item.iconBg}
+                              color={item.iconColor}
+                              flexShrink={0}
+                            >
+                              <Box as={Icon} boxSize={6} strokeWidth={2.5} />
+                            </Box>
+                            <VStack align="start" spacing={0} minW={0}>
+                              <Text fontWeight="900">{item.title}</Text>
+                              <Text fontSize="sm" color="surface.500" noOfLines={2}>
+                                {item.meta}
+                              </Text>
+                              <Text fontSize="xs" color="surface.400" fontWeight="700">
+                                {formatDateTime(item.date)}
+                              </Text>
+                            </VStack>
+                          </HStack>
+                          <Text fontSize="xs" color="surface.400" fontWeight="900" textTransform="uppercase" pt={1}>
+                            {item.iconLabel}
+                          </Text>
+                        </HStack>
+                      );
+                    })}
+                  </VStack>
                 </Box>
-                );
-              })}
+              ) : null}
               {activityItems.length > activityPageSize ? (
                 <HStack justify="space-between" pt={1}>
                   <Button
