@@ -141,6 +141,13 @@ function draftItemsMatchLocalState(
   });
 }
 
+function patchSellerDraftCache(token: string, draft: DraftResponse | null) {
+  patchSellerStartupCache(token, (startup) => ({
+    ...startup,
+    draft,
+  }));
+}
+
 async function reconcileDraftWithLocalState(
   serverDraft: DraftResponse,
   localDraft: DraftResponse | null,
@@ -373,6 +380,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   bootstrap: async (options) => {
     set({ error: null });
     let usedCachedStartup = false;
+    const draftVersionAtStart = draftMutationVersion;
 
     try {
       let token = resolveCurrentToken(get().token);
@@ -408,6 +416,17 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       const pendingShiftMutationId = get().pendingShiftMutationId;
       const expectedShiftStatus = get().expectedShiftStatus;
       const startupShiftStatus = startup.shiftState.activeShift?.status ?? "inactive";
+      const currentLocalDraft = get().draft;
+      const shouldPreserveLocalDraft =
+        currentLocalDraft &&
+        draftMutationVersion !== draftVersionAtStart &&
+        (!startup.draft || !draftItemsMatchLocalState(startup.draft, currentLocalDraft));
+      const nextStartup = shouldPreserveLocalDraft
+        ? {
+            ...startup,
+            draft: currentLocalDraft,
+          }
+        : startup;
 
       if (
         pendingShiftMutationId !== null &&
@@ -432,16 +451,16 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       }
 
       clearShiftBootstrapRetryTimer();
-      writeSellerStartupCache(token, startup);
+      writeSellerStartupCache(token, nextStartup);
       set({
-        ...buildSellerStartupState(startup, token),
+        ...buildSellerStartupState(nextStartup, token),
         pendingShiftMutationId: null,
         expectedShiftStatus: null,
         shiftBootstrapAttempts: 0,
       });
 
       void Promise.allSettled(
-        startup.shiftHistory.items.slice(0, 7).map(async (entry) => {
+        nextStartup.shiftHistory.items.slice(0, 7).map(async (entry) => {
           const shiftDetails = await fetchShiftDetailsById(token, entry.shift.id);
           set((current) => ({
             shiftDetailsById: {
@@ -760,6 +779,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         error: null,
         draft: buildDraftState(previousDraft ?? null, nextItems, get().storeId),
       });
+      patchSellerDraftCache(token, buildDraftState(previousDraft ?? null, nextItems, get().storeId));
     } else {
       set({ error: null });
     }
@@ -778,10 +798,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
       if (mutationVersion === draftMutationVersion) {
         const reconciledDraft = await reconcileDraftWithLocalState(draft, get().draft, token);
-        patchSellerStartupCache(token, (startup) => ({
-          ...startup,
-          draft: reconciledDraft,
-        }));
+        patchSellerDraftCache(token, reconciledDraft);
         triggerSelection();
         set({ draft: reconciledDraft, mode: "live", error: null });
       } else {
@@ -804,6 +821,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
+        patchSellerDraftCache(token, previousDraft);
         set({
           draft: previousDraft,
           error: error instanceof Error ? error.message : "Failed to add item to cart",
@@ -843,7 +861,9 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         };
       });
 
-      set({ error: null, draft: buildDraftState(previousDraft, nextItems, get().storeId) });
+      const nextDraft = buildDraftState(previousDraft, nextItems, get().storeId);
+      set({ error: null, draft: nextDraft });
+      patchSellerDraftCache(token, nextDraft);
 
       if (!isUuid(itemId)) {
         return;
@@ -857,10 +877,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     try {
       const draft = await apiPatch<DraftResponse>(`/seller/draft/items/${itemId}`, updates, token);
       if (mutationVersion === draftMutationVersion) {
-        patchSellerStartupCache(token, (startup) => ({
-          ...startup,
-          draft,
-        }));
+        patchSellerDraftCache(token, draft);
         if (updates.discountType !== undefined || updates.discountValue !== undefined) {
           triggerImpact("soft");
         } else {
@@ -871,6 +888,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
+        patchSellerDraftCache(token, previousDraft);
         set({
           draft: previousDraft,
           error: error instanceof Error ? error.message : "Failed to update cart item",
@@ -890,10 +908,12 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     if (previousDraft) {
       const nextItems = previousDraft.items.filter((item) => item.id !== itemId);
+      const nextDraft = buildDraftState(previousDraft, nextItems, get().storeId);
       set({
         error: null,
-        draft: buildDraftState(previousDraft, nextItems, get().storeId),
+        draft: nextDraft,
       });
+      patchSellerDraftCache(token, nextDraft);
     } else {
       set({ error: null });
     }
@@ -904,10 +924,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       if (isUuid(itemId)) {
         const draft = await apiDelete<DraftResponse>(`/seller/draft/items/${itemId}`, token);
         if (mutationVersion === draftMutationVersion) {
-          patchSellerStartupCache(token, (startup) => ({
-            ...startup,
-            draft,
-          }));
+          patchSellerDraftCache(token, draft);
           triggerImpact("rigid");
           set({ draft });
         }
@@ -915,6 +932,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
+        patchSellerDraftCache(token, previousDraft);
         set({
           draft: previousDraft,
           error: error instanceof Error ? error.message : "Failed to remove cart item",
@@ -971,6 +989,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           : product;
       }),
     });
+    patchSellerDraftCache(token, buildDraftState(previousDraft, [], get().storeId));
 
     const mutationVersion = ++draftMutationVersion;
 
@@ -1003,6 +1022,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
+        patchSellerDraftCache(token, previousDraft);
         set({
           draft: previousDraft,
           sales: previousSales,
