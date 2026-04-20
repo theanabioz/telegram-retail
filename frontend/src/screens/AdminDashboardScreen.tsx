@@ -88,6 +88,7 @@ type StaffSeller = AdminStaffResponse["sellers"][number];
 type StoreDetailMode = "overview" | "profile" | "staff" | "activity";
 type TeamStore = AdminStoresResponse["stores"][number];
 type TeamVirtualKeyboardField = "storeName" | "storeAddress" | "sellerName" | "sellerTelegramId";
+type ProductVirtualKeyboardField = "productName" | "productPrice";
 
 function getCachedAdminStartup() {
   try {
@@ -364,6 +365,8 @@ export function AdminDashboardScreen({
   });
   const [newProductIsActive, setNewProductIsActive] = useState(true);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
+  const [productKeyboardField, setProductKeyboardField] = useState<ProductVirtualKeyboardField>("productName");
+  const [productKeyboardCapsLock, setProductKeyboardCapsLock] = useState(false);
   const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState(
     () => getCachedAdminStartup()?.inventory.selectedStoreId ?? ""
   );
@@ -2799,7 +2802,11 @@ export function AdminDashboardScreen({
                   bg="surface.900"
                   color="white"
                   _hover={{ bg: "surface.700" }}
-                  onClick={() => setShowNewProductModal(true)}
+                  onClick={() => {
+                    setProductKeyboardField("productName");
+                    setProductKeyboardCapsLock(false);
+                    setShowNewProductModal(true);
+                  }}
                 >
                   New Product
                 </Button>
@@ -4456,34 +4463,19 @@ export function AdminDashboardScreen({
               </Button>
             </HStack>
 
-            <VStack align="stretch" spacing={2}>
-              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                Product name
-              </Text>
-              <Input
-                value={newProduct.name}
-                onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Product name"
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-              />
-            </VStack>
+            {renderProductVirtualField({
+              field: "productName",
+              label: "Product name",
+              value: newProduct.name,
+              placeholder: "Product name",
+            })}
 
-            <VStack align="stretch" spacing={2}>
-              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                Default price
-              </Text>
-              <Input
-                value={newProduct.defaultPrice}
-                onChange={(event) => setNewProduct((current) => ({ ...current, defaultPrice: event.target.value }))}
-                placeholder="Default price"
-                inputMode="decimal"
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-              />
-            </VStack>
+            {renderProductVirtualField({
+              field: "productPrice",
+              label: "Default price",
+              value: newProduct.defaultPrice,
+              placeholder: "24,90",
+            })}
 
             <SimpleGrid columns={2} spacing={2}>
               <Button
@@ -4505,6 +4497,21 @@ export function AdminDashboardScreen({
                 Inactive
               </Button>
             </SimpleGrid>
+
+            <Box
+              bg="rgba(246,244,239,0.96)"
+              borderRadius="22px"
+              mx={-2}
+              px={2}
+              pt={2}
+              pb={3}
+              h="250px"
+              flexShrink={0}
+              border="1px solid"
+              borderColor="rgba(223,219,210,0.78)"
+            >
+              {renderProductVirtualKeyboard()}
+            </Box>
           </VStack>
 
           <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
@@ -4516,6 +4523,7 @@ export function AdminDashboardScreen({
               color="white"
               _hover={{ bg: "surface.700" }}
               isLoading={mutating}
+              isDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
               onClick={() => void handleCreateProduct()}
             >
               Create Product
@@ -4524,6 +4532,237 @@ export function AdminDashboardScreen({
         </Box>
       </Box>
     ) : null;
+
+  const getProductKeyboardValue = (field: ProductVirtualKeyboardField) =>
+    field === "productName" ? newProduct.name : newProduct.defaultPrice;
+
+  const setProductKeyboardValue = (field: ProductVirtualKeyboardField, value: string) => {
+    if (field === "productName") {
+      setNewProduct((current) => ({ ...current, name: value }));
+      return;
+    }
+
+    const normalized = value.replace(/[^\d,.\s]/g, "");
+    setNewProduct((current) => ({ ...current, defaultPrice: normalized }));
+  };
+
+  const pressProductKeyboardKey = (key: string) => {
+    const value = getProductKeyboardValue(productKeyboardField);
+
+    if (key === "delete") {
+      setProductKeyboardValue(productKeyboardField, value.slice(0, -1));
+      return;
+    }
+
+    if (key === "clear") {
+      setProductKeyboardValue(productKeyboardField, "");
+      return;
+    }
+
+    if (key === "space") {
+      if (productKeyboardField === "productName" && value && !value.endsWith(" ")) {
+        setProductKeyboardValue(productKeyboardField, `${value} `);
+      }
+      return;
+    }
+
+    if (key === "caps") {
+      setProductKeyboardCapsLock((current) => !current);
+      return;
+    }
+
+    if (productKeyboardField === "productPrice") {
+      if (/^\d$/.test(key)) {
+        setProductKeyboardValue(productKeyboardField, `${value}${key}`);
+        return;
+      }
+
+      if ((key === "," || key === ".") && !value.includes(",") && !value.includes(".")) {
+        setProductKeyboardValue(productKeyboardField, `${value}${key}`);
+      }
+      return;
+    }
+
+    const shouldUppercase = productKeyboardCapsLock || !value || value.endsWith(" ");
+    const nextChar = key.length === 1 && /[a-z]/i.test(key)
+      ? shouldUppercase
+        ? key.toUpperCase()
+        : key.toLowerCase()
+      : key;
+
+    if (value.length < 80) {
+      setProductKeyboardValue(productKeyboardField, `${value}${nextChar}`);
+      if (productKeyboardCapsLock && key.length === 1 && /[a-z]/i.test(key)) {
+        setProductKeyboardCapsLock(false);
+      }
+    }
+  };
+
+  const renderProductVirtualField = (input: {
+    field: ProductVirtualKeyboardField;
+    label: string;
+    value: string;
+    placeholder: string;
+  }) => {
+    const isActive = productKeyboardField === input.field;
+
+    return (
+      <VStack align="stretch" spacing={2}>
+        <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+          {input.label}
+        </Text>
+        <Button
+          h="44px"
+          justifyContent="flex-start"
+          borderRadius="18px"
+          bg="surface.50"
+          border="1px solid"
+          borderColor={isActive ? "brand.400" : "rgba(226,224,218,0.95)"}
+          color={input.value ? "surface.900" : "surface.400"}
+          fontWeight="800"
+          boxShadow={isActive ? "0 0 0 3px rgba(74,132,244,0.12)" : "none"}
+          _hover={{ bg: "surface.50" }}
+          _active={{ transform: "scale(0.99)" }}
+          onClick={() => setProductKeyboardField(input.field)}
+        >
+          <Text noOfLines={1}>{input.value || input.placeholder}</Text>
+        </Button>
+      </VStack>
+    );
+  };
+
+  const renderProductVirtualKeyboard = () => {
+    const isNumeric = productKeyboardField === "productPrice";
+    const numericKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", ","];
+    const alphaRows = [
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+      ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
+      ["z", "x", "c", "v", "b", "n", "m"],
+    ];
+
+    if (isNumeric) {
+      return (
+        <SimpleGrid columns={3} spacing={2} h="full" alignContent="stretch">
+          {numericKeys.map((key) => (
+            <Button
+              key={key}
+              h="50px"
+              borderRadius="16px"
+              bg={key === "clear" ? "surface.50" : "white"}
+              color="surface.900"
+              fontSize={key === "clear" ? "sm" : "xl"}
+              fontWeight="800"
+              border="1px solid"
+              borderColor="surface.100"
+              _hover={{ bg: "surface.50" }}
+              _active={{ transform: "scale(0.92)", bg: "surface.100" }}
+              onClick={() => pressProductKeyboardKey(key)}
+            >
+              {key === "clear" ? "Clear" : key}
+            </Button>
+          ))}
+          <Button
+            gridColumn="1 / -1"
+            h="42px"
+            borderRadius="16px"
+            bg="surface.50"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressProductKeyboardKey("delete")}
+          >
+            Del
+          </Button>
+        </SimpleGrid>
+      );
+    }
+
+    return (
+      <VStack align="stretch" spacing={1.5} w="full" h="full">
+        {alphaRows.map((row, index) => (
+          <HStack key={index} spacing={1.5} justify="center" w="full">
+            {row.map((key) => (
+              <Button
+                key={key}
+                h="38px"
+                flex="1"
+                minW={0}
+                px={0}
+                borderRadius="11px"
+                bg="white"
+                color="surface.900"
+                fontSize="sm"
+                fontWeight="900"
+                border="1px solid"
+                borderColor="surface.100"
+                _hover={{ bg: "surface.50" }}
+                _active={{ transform: "scale(0.92)", bg: "surface.100" }}
+                onClick={() => pressProductKeyboardKey(key)}
+              >
+                {key.toUpperCase()}
+              </Button>
+            ))}
+          </HStack>
+        ))}
+        <HStack spacing={2}>
+          <Button
+            flex="1"
+            h="42px"
+            borderRadius="16px"
+            bg={productKeyboardCapsLock ? "brand.500" : "surface.50"}
+            color={productKeyboardCapsLock ? "white" : "surface.800"}
+            fontWeight="800"
+            border="1px solid"
+            borderColor={productKeyboardCapsLock ? "brand.500" : "surface.100"}
+            onClick={() => pressProductKeyboardKey("caps")}
+          >
+            Caps
+          </Button>
+          <Button
+            flex="1"
+            h="42px"
+            borderRadius="16px"
+            bg="surface.50"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressProductKeyboardKey("clear")}
+          >
+            Clear
+          </Button>
+          <Button
+            flex="2"
+            h="42px"
+            borderRadius="16px"
+            bg="white"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressProductKeyboardKey("space")}
+          >
+            Space
+          </Button>
+          <Button
+            flex="1"
+            h="42px"
+            borderRadius="16px"
+            bg="surface.50"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressProductKeyboardKey("delete")}
+          >
+            Del
+          </Button>
+        </HStack>
+      </VStack>
+    );
+  };
 
   const renderTeam = () => {
     if (selectedStaffSeller) {
