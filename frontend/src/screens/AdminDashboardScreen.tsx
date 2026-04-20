@@ -3513,11 +3513,11 @@ export function AdminDashboardScreen({
 
     return (
       <VStack align="stretch" spacing={2}>
-        <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+        <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
           {input.label}
         </Text>
         <Button
-          h="52px"
+          h="44px"
           justifyContent="flex-start"
           borderRadius="18px"
           bg="surface.50"
@@ -3548,15 +3548,15 @@ export function AdminDashboardScreen({
 
     if (isNumeric) {
       return (
-        <SimpleGrid columns={3} spacing={2.5}>
+        <SimpleGrid columns={3} spacing={2}>
           {numericKeys.map((key) => (
             <Button
               key={key}
-              h="64px"
-              borderRadius="20px"
+              h="50px"
+              borderRadius="16px"
               bg={key === "delete" || key === "clear" ? "surface.50" : "white"}
               color="surface.900"
-              fontSize={key === "delete" || key === "clear" ? "sm" : "2xl"}
+              fontSize={key === "delete" || key === "clear" ? "sm" : "xl"}
               fontWeight="800"
               border="1px solid"
               borderColor="surface.100"
@@ -3572,20 +3572,20 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack align="stretch" spacing={2.5} w="full">
+      <VStack align="stretch" spacing={1.5} w="full">
         {alphaRows.map((row, index) => (
           <HStack key={index} spacing={1.5} justify="center" w="full">
             {row.map((key) => (
               <Button
                 key={key}
-                h="44px"
+                h="36px"
                 flex="1"
                 minW={0}
                 px={0}
-                borderRadius="14px"
+                borderRadius="11px"
                 bg="white"
                 color="surface.900"
-                fontSize={index === 0 ? "sm" : "md"}
+                fontSize="sm"
                 fontWeight="900"
                 border="1px solid"
                 borderColor="surface.100"
@@ -3601,7 +3601,7 @@ export function AdminDashboardScreen({
         <HStack spacing={2}>
           <Button
             flex="1"
-            h="50px"
+            h="42px"
             borderRadius="16px"
             bg={teamKeyboardCapsLock ? "brand.500" : "surface.50"}
             color={teamKeyboardCapsLock ? "white" : "surface.800"}
@@ -3614,7 +3614,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="50px"
+            h="42px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3627,7 +3627,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="2"
-            h="50px"
+            h="42px"
             borderRadius="16px"
             bg="white"
             color="surface.800"
@@ -3640,7 +3640,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="50px"
+            h="42px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3675,12 +3675,11 @@ export function AdminDashboardScreen({
             position="absolute"
             left={0}
             right={0}
+            top={0}
             bottom={0}
             w="100%"
-            h="calc(100vh - 18px)"
-            maxH="calc(100vh - 18px)"
             bg="white"
-            borderTopRadius="32px"
+            borderTopRadius="26px"
             boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
             overflow="hidden"
             display="flex"
@@ -3688,17 +3687,17 @@ export function AdminDashboardScreen({
             overscrollBehavior="contain"
             onClick={(event) => event.stopPropagation()}
           >
-            <Box w="full" py={3} display="flex" justifyContent="center" onClick={() => setShowNewStoreModal(false)} cursor="pointer">
+            <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowNewStoreModal(false)} cursor="pointer">
               <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
             </Box>
 
-            <VStack align="stretch" spacing={4} px={5} pt={2} pb={4} overflowY="auto" flex="1">
-              <HStack justify="space-between" align="center" mb={2}>
+            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflow="hidden" flex="1">
+              <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
+                  <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
                     New Store
                   </Text>
-                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                  <Text color="surface.500" fontSize="xs" fontWeight="700">
                     Create a new sales location.
                   </Text>
                 </VStack>
@@ -3730,10 +3729,10 @@ export function AdminDashboardScreen({
 
               <Box
                 bg="rgba(246,244,239,0.96)"
-                borderRadius="24px"
-                mx={-3}
+                borderRadius="22px"
+                mx={-2}
                 px={2}
-                py={3}
+                py={2}
                 border="1px solid"
                 borderColor="rgba(223,219,210,0.78)"
               >
@@ -3741,10 +3740,10 @@ export function AdminDashboardScreen({
               </Box>
             </VStack>
 
-            <Box px={5} pt={3} pb="calc(14px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
+            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
               <Button
                 w="full"
-                h="56px"
+                h="52px"
                 borderRadius="18px"
                 bg="surface.900"
                 color="white"
@@ -3777,12 +3776,11 @@ export function AdminDashboardScreen({
             position="absolute"
             left={0}
             right={0}
+            top={0}
             bottom={0}
             w="100%"
-            h="calc(100vh - 18px)"
-            maxH="calc(100vh - 18px)"
             bg="white"
-            borderTopRadius="32px"
+            borderTopRadius="26px"
             boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
             overflow="hidden"
             display="flex"
@@ -3790,17 +3788,17 @@ export function AdminDashboardScreen({
             overscrollBehavior="contain"
             onClick={(event) => event.stopPropagation()}
           >
-            <Box w="full" py={3} display="flex" justifyContent="center" onClick={() => setShowNewSellerModal(false)} cursor="pointer">
+            <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowNewSellerModal(false)} cursor="pointer">
               <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
             </Box>
 
-            <VStack align="stretch" spacing={4} px={5} pt={2} pb={4} overflowY="auto" flex="1">
-              <HStack justify="space-between" align="center" mb={2}>
+            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflow="hidden" flex="1">
+              <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
+                  <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
                     New Seller
                   </Text>
-                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                  <Text color="surface.500" fontSize="xs" fontWeight="700">
                     Add seller account and optional store assignment.
                   </Text>
                 </VStack>
@@ -3831,7 +3829,7 @@ export function AdminDashboardScreen({
               })}
 
               <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                   Assigned store
                 </Text>
                 <Select
@@ -3843,7 +3841,7 @@ export function AdminDashboardScreen({
                   bg="surface.50"
                   borderColor="rgba(226,224,218,0.95)"
                   fontWeight="800"
-                  h="52px"
+                  h="44px"
                 >
                   <option value="">No store yet</option>
                   {stores
@@ -3882,10 +3880,10 @@ export function AdminDashboardScreen({
 
               <Box
                 bg="rgba(246,244,239,0.96)"
-                borderRadius="24px"
-                mx={-3}
+                borderRadius="22px"
+                mx={-2}
                 px={2}
-                py={3}
+                py={2}
                 border="1px solid"
                 borderColor="rgba(223,219,210,0.78)"
               >
@@ -3893,10 +3891,10 @@ export function AdminDashboardScreen({
               </Box>
             </VStack>
 
-            <Box px={5} pt={3} pb="calc(14px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
+            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
               <Button
                 w="full"
-                h="56px"
+                h="52px"
                 borderRadius="18px"
                 bg="surface.900"
                 color="white"
