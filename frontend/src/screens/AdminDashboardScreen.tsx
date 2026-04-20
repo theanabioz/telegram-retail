@@ -116,6 +116,23 @@ function getCachedAdminStartup() {
   }
 }
 
+function hasCompleteInventorySnapshots(startup: AdminStartupResponse | null) {
+  if (!startup) {
+    return false;
+  }
+
+  const snapshots = startup.inventory.storeSnapshotsByStoreId;
+
+  if (!snapshots) {
+    return false;
+  }
+
+  return startup.inventory.stores.every((store) => {
+    const snapshot = snapshots[store.id];
+    return Boolean(snapshot && snapshot.items.every((item) => item.storeId === store.id));
+  });
+}
+
 function scrollToSectionTop() {
   if (typeof window === "undefined") {
     return;
@@ -195,7 +212,7 @@ function buildSalesCacheKey(input: {
 
 function readAdminStartupCache(token: string) {
   const cached = getCachedAdminStartup();
-  return cached;
+  return hasCompleteInventorySnapshots(cached) ? cached : null;
 }
 
 function writeAdminStartupCache(token: string, startup: AdminStartupResponse) {
@@ -385,14 +402,15 @@ export function AdminDashboardScreen({
   const [inventoryView, setInventoryView] = useState<InventorySnapshot>(() => {
     const cachedStartup = getCachedAdminStartup();
     return {
-      items: cachedStartup?.inventory.items ?? [],
-      history: cachedStartup?.inventory.history ?? [],
+      items: hasCompleteInventorySnapshots(cachedStartup) ? cachedStartup?.inventory.items ?? [] : [],
+      history: hasCompleteInventorySnapshots(cachedStartup) ? cachedStartup?.inventory.history ?? [] : [],
     };
   });
   const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>(() => {
     const cachedStartup = getCachedAdminStartup();
-    return cachedStartup?.inventory.storeSnapshotsByStoreId ?? {};
+    return hasCompleteInventorySnapshots(cachedStartup) ? cachedStartup?.inventory.storeSnapshotsByStoreId ?? {} : {};
   });
+  const [trustedInventoryStoreIds, setTrustedInventoryStoreIds] = useState<Record<string, boolean>>({});
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
   const [teamMode, setTeamMode] = useState<TeamMode>("stores");
@@ -696,7 +714,7 @@ export function AdminDashboardScreen({
         return;
       }
 
-      const hydrateAdminStartup = (startup: AdminStartupResponse) => {
+      const hydrateAdminStartup = (startup: AdminStartupResponse, source: "cache" | "network") => {
         hydrateDashboard(startup.dashboard);
         hydrateStartup(startup);
         setSalesSummaryCache(startup.sales.periodSummaries ?? {});
@@ -707,18 +725,23 @@ export function AdminDashboardScreen({
             history: startup.inventory.history,
           });
           setInventoryCache(startup.inventory.storeSnapshotsByStoreId ?? {});
+          setTrustedInventoryStoreIds(
+            source === "network"
+              ? Object.fromEntries(startup.inventory.stores.map((store) => [store.id, true]))
+              : {}
+          );
         }
       };
 
       const cachedStartup = readAdminStartupCache(token);
       if (cachedStartup) {
-        hydrateAdminStartup(cachedStartup);
+        hydrateAdminStartup(cachedStartup, "cache");
       }
 
       try {
         const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
         writeAdminStartupCache(token, startup);
-        hydrateAdminStartup(startup);
+        hydrateAdminStartup(startup, "network");
       } catch {
         if (cachedStartup) {
           return;
@@ -924,7 +947,7 @@ export function AdminDashboardScreen({
         return;
       }
 
-      if (cachedSnapshot) {
+      if (cachedSnapshot && trustedInventoryStoreIds[selectedInventoryStoreId]) {
         setInventoryView(cachedSnapshot);
         setSelectedInventoryItemId(null);
         if (inventorySelectionRefreshStoreIdRef.current !== selectedInventoryStoreId) {
@@ -941,13 +964,15 @@ export function AdminDashboardScreen({
       setInventorySoftRefreshing(true);
       setSelectedInventoryItemId(null);
       inventorySelectionRefreshStoreIdRef.current = selectedInventoryStoreId;
-      void loadInventory(selectedInventoryStoreId).finally(() => {
+      void loadInventory(selectedInventoryStoreId).then(() => {
+        setTrustedInventoryStoreIds((current) => ({ ...current, [selectedInventoryStoreId]: true }));
+      }).finally(() => {
         if (inventorySelectionRefreshStoreIdRef.current === selectedInventoryStoreId) {
           setInventorySoftRefreshing(false);
         }
       });
     }
-  }, [inventoryCache, inventoryHistory, inventoryItems, loadInventory, selectedInventoryStoreId]);
+  }, [inventoryCache, inventoryHistory, inventoryItems, loadInventory, selectedInventoryStoreId, trustedInventoryStoreIds]);
 
   const managementStatus = managementError ?? error;
 
@@ -4916,13 +4941,24 @@ export function AdminDashboardScreen({
                     _hover={{ bg: isActive ? "rgba(74,132,244,0.14)" : "rgba(232,231,226,0.96)" }}
                     onClick={() => {
                       const cachedSnapshot = inventoryCache[store.id];
-                      if (cachedSnapshot) {
+                      if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
                         setInventoryView(cachedSnapshot);
                         setInventorySoftRefreshing(false);
+                        setSelectedInventoryItemId(null);
+                        setSelectedInventoryStoreId(store.id);
+                        setShowInventoryStoreSelector(false);
+                        return;
                       }
+
+                      setInventorySoftRefreshing(true);
                       setSelectedInventoryItemId(null);
-                      setSelectedInventoryStoreId(store.id);
                       setShowInventoryStoreSelector(false);
+                      void loadInventory(store.id, { silent: true }).then(() => {
+                        setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
+                        setSelectedInventoryStoreId(store.id);
+                      }).finally(() => {
+                        setInventorySoftRefreshing(false);
+                      });
                     }}
                   >
                     <VStack align="start" spacing={0} minW={0}>
