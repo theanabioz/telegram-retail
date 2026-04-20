@@ -25,6 +25,7 @@ import type {
   AdminInventoryResponse,
   AdminSalesOverviewResponse,
   AdminStaffResponse,
+  AdminStoresResponse,
   AdminStartupResponse,
 } from "../types/admin";
 
@@ -82,6 +83,8 @@ type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
 type StaffDetailMode = "overview" | "profile" | "worklog" | "activity";
 type StaffSeller = AdminStaffResponse["sellers"][number];
+type StoreDetailMode = "overview" | "profile" | "staff" | "activity";
+type TeamStore = AdminStoresResponse["stores"][number];
 
 function getCachedAdminStartup() {
   try {
@@ -332,6 +335,9 @@ export function AdminDashboardScreen({
   const [staffDetailMode, setStaffDetailMode] = useState<StaffDetailMode>("overview");
   const [staffActivityPage, setStaffActivityPage] = useState(0);
   const [staffCommissionDrafts, setStaffCommissionDrafts] = useState<Record<string, string>>({});
+  const [selectedTeamStoreId, setSelectedTeamStoreId] = useState<string | null>(null);
+  const [storeDetailMode, setStoreDetailMode] = useState<StoreDetailMode>("overview");
+  const [storeActivityPage, setStoreActivityPage] = useState(0);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -364,6 +370,9 @@ export function AdminDashboardScreen({
   const selectedStaffSeller = selectedStaffSellerId
     ? staff.find((seller) => seller.id === selectedStaffSellerId) ?? null
     : null;
+  const selectedTeamStore = selectedTeamStoreId
+    ? stores.find((store) => store.id === selectedTeamStoreId) ?? null
+    : null;
   const headerContextLabel =
     activeTab === "overview"
       ? "Live dashboard"
@@ -374,7 +383,9 @@ export function AdminDashboardScreen({
           : activeTab === "team"
             ? selectedStaffSeller
               ? "Seller management"
-              : "Stores and staff"
+              : selectedTeamStore
+                ? "Store management"
+                : "Stores and staff"
             : "Workspace settings";
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
@@ -395,6 +406,9 @@ export function AdminDashboardScreen({
       setSelectedStaffSellerId(null);
       setStaffDetailMode("overview");
       setStaffActivityPage(0);
+      setSelectedTeamStoreId(null);
+      setStoreDetailMode("overview");
+      setStoreActivityPage(0);
     }
 
     scrollToSectionTop();
@@ -410,6 +424,8 @@ export function AdminDashboardScreen({
       ? "Product Details"
       : activeTab === "team" && selectedStaffSeller
         ? "Seller Details"
+        : activeTab === "team" && selectedTeamStore
+          ? "Store Details"
       : adminTabTitle[activeTab];
 
   const selectedInventoryHeaderItem = selectedInventoryItemId
@@ -427,7 +443,7 @@ export function AdminDashboardScreen({
       : activeTab === "inventory"
         ? Boolean(selectedInventoryItemId)
         : activeTab === "team"
-          ? Boolean(selectedStaffSeller)
+          ? Boolean(selectedStaffSeller || selectedTeamStore)
           : false,
     () => {
       if (activeTab === "sales" && selectedAdminSaleId) {
@@ -449,6 +465,13 @@ export function AdminDashboardScreen({
         setSelectedStaffSellerId(null);
         setStaffDetailMode("overview");
         setStaffActivityPage(0);
+        return;
+      }
+
+      if (activeTab === "team" && selectedTeamStore) {
+        setSelectedTeamStoreId(null);
+        setStoreDetailMode("overview");
+        setStoreActivityPage(0);
       }
     }
   );
@@ -1208,16 +1231,73 @@ export function AdminDashboardScreen({
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between">
+          <HStack justify="space-between" align="center">
             <VStack align="start" spacing={0}>
               <Text fontWeight="900" fontSize="lg">
-                Add Store
+                Store Directory
               </Text>
-              <Text color="surface.500" fontSize="sm">
-                Create a new sales location.
+              <Text color="surface.500" fontSize="sm" fontWeight="700">
+                Tap a store to manage profile, staff and activity.
               </Text>
             </VStack>
+            <Text color="surface.500" fontWeight="800" fontSize="sm">
+              {stores.length}
+            </Text>
           </HStack>
+
+          {stores.map((store) => (
+            <Box
+              key={store.id}
+              as="button"
+              type="button"
+              textAlign="left"
+              bg={panelMutedSurface}
+              borderRadius="18px"
+              px={3}
+              py={3}
+              border={0}
+              onClick={() => {
+                setSelectedTeamStoreId(store.id);
+                setStoreDetailMode("overview");
+                setStoreActivityPage(0);
+                scrollToSectionTop();
+              }}
+            >
+              <HStack justify="space-between" align="center">
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" noOfLines={1}>
+                    {store.name}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                    {store.address || `Created ${formatShortDate(store.createdAt)}`} · {store.salesCount} sales
+                  </Text>
+                </VStack>
+
+                <VStack align="end" spacing={1} flexShrink={0}>
+                  <StatusPill
+                    label={store.isActive ? "Active" : "Inactive"}
+                    tone={store.isActive ? "green" : "red"}
+                  />
+                  <Text fontSize="sm" color="surface.700" fontWeight="900">
+                    {formatEur(store.revenueToday)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </Box>
+          ))}
+        </VStack>
+      </Box>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={3}>
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="900" fontSize="lg">
+              New Store
+            </Text>
+            <Text color="surface.500" fontSize="sm" fontWeight="700">
+              Add a new sales location when the business expands.
+            </Text>
+          </VStack>
           <Input
             value={newStoreName}
             onChange={(event) => setNewStoreName(event.target.value)}
@@ -1236,9 +1316,9 @@ export function AdminDashboardScreen({
           />
           <Button
             borderRadius="18px"
-            bg="brand.500"
+            bg="surface.900"
             color="white"
-            _hover={{ bg: "brand.600" }}
+            _hover={{ bg: "surface.700" }}
             isLoading={mutating}
             onClick={() => void handleCreateStore()}
           >
@@ -1246,112 +1326,423 @@ export function AdminDashboardScreen({
           </Button>
         </VStack>
       </Box>
+    </VStack>
+  );
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">
-              Store Directory
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {stores.length} locations
-            </Text>
+  const renderStoreDetail = (store: TeamStore) => {
+    const draft = storeEdits[store.id] ?? {
+      name: store.name,
+      address: store.address ?? "",
+      isActive: store.isActive,
+    };
+    const assignedStaff = staff.filter((seller) => seller.currentAssignment?.storeId === store.id);
+    const activeStoreShifts = assignedStaff.filter((seller) => seller.activeShift?.storeId === store.id);
+    const storeSales = salesOverview.filter((sale) => sale.store?.id === store.id);
+    const storeReturns = returnsOverview.filter((entry) => entry.store?.id === store.id);
+    const activityItems: Array<{
+      id: string;
+      title: string;
+      meta: string;
+      date: string;
+      icon: IconType;
+      iconLabel: string;
+      iconBg: string;
+      iconColor: string;
+    }> = [
+      ...storeSales.map((sale) => ({
+        id: `sale-${sale.id}`,
+        title: sale.status === "deleted" ? "Sale deleted" : "Sale completed",
+        meta: `${sale.seller?.fullName ?? "Unknown seller"} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
+        date: sale.createdAt,
+        icon: LuReceiptText,
+        iconLabel: sale.status === "deleted" ? "Deleted" : "Sale",
+        iconBg: sale.status === "deleted" ? "rgba(248,113,113,0.14)" : "rgba(34,197,94,0.12)",
+        iconColor: sale.status === "deleted" ? "red.500" : "green.600",
+      })),
+      ...storeReturns.map((entry) => ({
+        id: `return-${entry.id}`,
+        title: "Return created",
+        meta: `${entry.seller?.fullName ?? "Unknown seller"} · ${formatEur(entry.totalAmount)}`,
+        date: entry.createdAt,
+        icon: LuActivity,
+        iconLabel: "Return",
+        iconBg: "rgba(251,191,36,0.18)",
+        iconColor: "orange.500",
+      })),
+      ...activeStoreShifts.map((seller) => ({
+        id: `shift-${seller.activeShift?.id ?? seller.id}`,
+        title: seller.activeShift?.status === "paused" ? "Shift paused" : "Shift active",
+        meta: `${seller.fullName} · started ${formatDateTime(seller.activeShift?.startedAt ?? null)}`,
+        date: seller.activeShift?.startedAt ?? new Date().toISOString(),
+        icon: LuClock3,
+        iconLabel: "Shift",
+        iconBg: seller.activeShift?.status === "paused" ? "rgba(251,191,36,0.18)" : "rgba(74,132,244,0.14)",
+        iconColor: seller.activeShift?.status === "paused" ? "orange.500" : "brand.600",
+      })),
+    ].sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
+    const activityPageSize = 6;
+    const activityTotalPages = Math.max(1, Math.ceil(activityItems.length / activityPageSize));
+    const safeActivityPage = Math.min(storeActivityPage, activityTotalPages - 1);
+    const visibleActivityItems = activityItems.slice(
+      safeActivityPage * activityPageSize,
+      safeActivityPage * activityPageSize + activityPageSize
+    );
+
+    return (
+      <VStack spacing={4} align="stretch">
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+          <VStack align="stretch" spacing={4}>
+            {!supportsTelegramBackButton ? (
+              <HStack justify="flex-start">
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => {
+                    setSelectedTeamStoreId(null);
+                    setStoreDetailMode("overview");
+                  }}
+                >
+                  Back
+                </Button>
+              </HStack>
+            ) : null}
+
+            <HStack justify="space-between" align="center">
+              <VStack align="start" spacing={0} minW={0}>
+                <Text fontWeight="900" fontSize="xl" noOfLines={1}>
+                  {store.name}
+                </Text>
+                <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                  {store.address || "Address not specified"}
+                </Text>
+              </VStack>
+              <StatusPill label={store.isActive ? "Active" : "Inactive"} tone={store.isActive ? "green" : "red"} />
+            </HStack>
+          </VStack>
+        </Box>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+          <HStack spacing={2} overflowX="auto" pb={1}>
+            {(["overview", "profile", "staff", "activity"] as StoreDetailMode[]).map((mode) => {
+              const isActive = storeDetailMode === mode;
+
+              return (
+                <Button
+                  key={mode}
+                  size="sm"
+                  flexShrink={0}
+                  minW="88px"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onClick={() => setStoreDetailMode(mode)}
+                >
+                  {mode === "overview"
+                    ? "Overview"
+                    : mode === "profile"
+                      ? "Profile"
+                      : mode === "staff"
+                        ? "Staff"
+                        : "Activity"}
+                </Button>
+              );
+            })}
           </HStack>
+        </Box>
 
-          {stores.map((store) => {
-            const draft = storeEdits[store.id] ?? {
-              name: store.name,
-              address: store.address ?? "",
-              isActive: store.isActive,
-            };
+        {storeDetailMode === "overview" ? (
+          <VStack spacing={4} align="stretch">
+            <SimpleGrid columns={2} spacing={3}>
+              {[
+                { label: "Today Revenue", value: formatEur(store.revenueToday) },
+                { label: "Sales Today", value: String(store.salesCount) },
+                { label: "Stock Units", value: String(store.stockUnits) },
+                { label: "Low Stock", value: String(store.lowStockCount) },
+              ].map((card) => (
+                <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    {card.label}
+                  </Text>
+                  <Text mt={2} fontWeight="900" fontSize="2xl" noOfLines={1}>
+                    {card.value}
+                  </Text>
+                </Box>
+              ))}
+            </SimpleGrid>
 
-            return (
-              <Box key={store.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                <VStack align="stretch" spacing={3}>
-                  <HStack justify="space-between" align="start">
-                    <VStack align="start" spacing={0}>
-                      <Text fontWeight="900">{store.name}</Text>
-                      <Text fontSize="sm" color="surface.500">
-                        {store.address || `Created ${formatShortDate(store.createdAt)}`}
-                      </Text>
-                    </VStack>
-                    <StatusPill label={store.isActive ? "Active" : "Inactive"} tone={store.isActive ? "green" : "red"} />
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <HStack justify="space-between">
+                  <Text fontWeight="900" fontSize="lg">
+                    Store Snapshot
+                  </Text>
+                  <Text color="surface.500" fontSize="sm" fontWeight="800">
+                    {assignedStaff.length} sellers
+                  </Text>
+                </HStack>
+                {[
+                  { label: "Address", value: store.address || "Address not specified" },
+                  { label: "Active Shifts", value: String(store.activeShiftCount) },
+                  { label: "All-Time Revenue", value: formatEur(store.revenueAllTime) },
+                  { label: "Created", value: formatShortDate(store.createdAt) },
+                ].map((item) => (
+                  <HStack key={item.label} justify="space-between" bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                    <Text color="surface.500" fontSize="sm" fontWeight="800">
+                      {item.label}
+                    </Text>
+                    <Text fontWeight="900" textAlign="right" maxW="58%" noOfLines={2}>
+                      {item.value}
+                    </Text>
                   </HStack>
+                ))}
+              </VStack>
+            </Box>
+          </VStack>
+        ) : null}
 
-                  <SimpleGrid columns={2} spacing={2}>
-                    <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
-                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                        Sellers
-                      </Text>
-                      <Text fontWeight="900">{store.sellerCount}</Text>
-                    </Box>
-                    <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
-                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                        Today
-                      </Text>
-                      <Text fontWeight="900">{formatEur(store.revenueToday)}</Text>
-                    </Box>
-                  </SimpleGrid>
+        {storeDetailMode === "profile" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="900" fontSize="lg">
+                  Store Profile
+                </Text>
+                <Text color="surface.500" fontSize="sm" fontWeight="700">
+                  Update public store name, address and availability.
+                </Text>
+              </VStack>
 
-                  <Input
-                    value={draft.name}
-                    onChange={(event) =>
-                      setStoreEdits((current) => ({
-                        ...current,
-                        [store.id]: { ...draft, name: event.target.value },
-                      }))
-                    }
-                    placeholder="Store name"
-                    borderRadius="14px"
-                    bg="white"
-                    borderColor="rgba(226,224,218,0.95)"
-                  />
-                  <Input
-                    value={draft.address}
-                    onChange={(event) =>
-                      setStoreEdits((current) => ({
-                        ...current,
-                        [store.id]: { ...draft, address: event.target.value },
-                      }))
-                    }
-                    placeholder="Store address"
-                    borderRadius="14px"
-                    bg="white"
-                    borderColor="rgba(226,224,218,0.95)"
-                  />
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Store name
+                </Text>
+                <Input
+                  value={draft.name}
+                  onChange={(event) =>
+                    setStoreEdits((current) => ({
+                      ...current,
+                      [store.id]: { ...draft, name: event.target.value },
+                    }))
+                  }
+                  placeholder="Store name"
+                  borderRadius="16px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+              </VStack>
+
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Address
+                </Text>
+                <Input
+                  value={draft.address}
+                  onChange={(event) =>
+                    setStoreEdits((current) => ({
+                      ...current,
+                      [store.id]: { ...draft, address: event.target.value },
+                    }))
+                  }
+                  placeholder="Address or short location note"
+                  borderRadius="16px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+              </VStack>
+
+              <SimpleGrid columns={2} spacing={2}>
+                {[
+                  { label: "Enabled", value: true },
+                  { label: "Disabled", value: false },
+                ].map((option) => {
+                  const isActive = draft.isActive === option.value;
+
+                  return (
+                    <Button
+                      key={option.label}
+                      borderRadius="16px"
+                      bg={isActive ? "brand.500" : panelMutedSurface}
+                      color={isActive ? "white" : "surface.700"}
+                      _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.95)" }}
+                      onClick={() =>
+                        setStoreEdits((current) => ({
+                          ...current,
+                          [store.id]: { ...draft, isActive: option.value },
+                        }))
+                      }
+                    >
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </SimpleGrid>
+
+              <Button
+                borderRadius="18px"
+                bg="surface.900"
+                color="white"
+                _hover={{ bg: "surface.700" }}
+                isLoading={mutating}
+                onClick={() => void handleSaveStore(store.id)}
+              >
+                Save Store
+              </Button>
+            </VStack>
+          </Box>
+        ) : null}
+
+        {storeDetailMode === "staff" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Assigned Staff
+                </Text>
+                <Text color="surface.500" fontSize="sm" fontWeight="800">
+                  {assignedStaff.length} sellers
+                </Text>
+              </HStack>
+
+              {assignedStaff.length ? (
+                assignedStaff.map((seller) => {
+                  const status = getSellerStatus(seller);
+
+                  return (
+                    <Box
+                      key={seller.id}
+                      as="button"
+                      type="button"
+                      textAlign="left"
+                      bg={panelMutedSurface}
+                      borderRadius="18px"
+                      px={3}
+                      py={3}
+                      border={0}
+                      onClick={() => {
+                        setSelectedStaffSellerId(seller.id);
+                        setStaffDetailMode("overview");
+                        setStaffActivityPage(0);
+                        scrollToSectionTop();
+                      }}
+                    >
+                      <HStack justify="space-between" align="center">
+                        <HStack spacing={3} minW={0}>
+                          <Avatar size="sm" name={seller.fullName} bg="surface.200" color="surface.800" />
+                          <VStack align="start" spacing={0} minW={0}>
+                            <Text fontWeight="900" noOfLines={1}>
+                              {seller.fullName}
+                            </Text>
+                            <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                              {seller.salesCount} sales · {formatEur(seller.revenue)}
+                            </Text>
+                          </VStack>
+                        </HStack>
+                        <StatusPill label={status.label} tone={status.tone} />
+                      </HStack>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={4}>
+                  <Text fontWeight="900">No assigned sellers</Text>
+                  <Text color="surface.500" fontSize="sm" mt={1}>
+                    Assign sellers from a staff profile when this store is ready.
+                  </Text>
+                </Box>
+              )}
+            </VStack>
+          </Box>
+        ) : null}
+
+        {storeDetailMode === "activity" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Activity Feed
+                </Text>
+                <Text color="surface.500" fontSize="sm" fontWeight="800">
+                  {activityItems.length} events
+                </Text>
+              </HStack>
+
+              {visibleActivityItems.length ? (
+                visibleActivityItems.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <HStack key={item.id} spacing={3} align="center" bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <Box
+                        w="40px"
+                        h="40px"
+                        borderRadius="16px"
+                        bg={item.iconBg}
+                        color={item.iconColor}
+                        display="grid"
+                        placeItems="center"
+                        flexShrink={0}
+                      >
+                        <Icon size={21} strokeWidth={2.5} />
+                      </Box>
+                      <VStack align="start" spacing={0} minW={0} flex="1">
+                        <Text fontWeight="900" noOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                          {item.meta}
+                        </Text>
+                      </VStack>
+                      <Text fontSize="xs" color="surface.500" fontWeight="800" flexShrink={0}>
+                        {formatSalesTime(item.date)}
+                      </Text>
+                    </HStack>
+                  );
+                })
+              ) : (
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={4}>
+                  <Text fontWeight="900">No recent activity</Text>
+                  <Text color="surface.500" fontSize="sm" mt={1}>
+                    Sales, returns and active shift events will appear here.
+                  </Text>
+                </Box>
+              )}
+
+              {activityTotalPages > 1 ? (
+                <HStack justify="space-between">
                   <Button
                     size="sm"
                     borderRadius="14px"
-                    bg={draft.isActive ? "rgba(34,197,94,0.12)" : "rgba(248,113,113,0.14)"}
-                    color={draft.isActive ? "green.600" : "red.500"}
-                    _hover={{ bg: draft.isActive ? "rgba(34,197,94,0.18)" : "rgba(248,113,113,0.2)" }}
-                    onClick={() =>
-                      setStoreEdits((current) => ({
-                        ...current,
-                        [store.id]: { ...draft, isActive: !draft.isActive },
-                      }))
-                    }
+                    bg={panelMutedSurface}
+                    color="surface.700"
+                    isDisabled={safeActivityPage === 0}
+                    onClick={() => setStoreActivityPage((page) => Math.max(0, page - 1))}
                   >
-                    {draft.isActive ? "Active" : "Inactive"}
+                    Previous
                   </Button>
+                  <Text color="surface.500" fontSize="sm" fontWeight="800">
+                    Page {safeActivityPage + 1} of {activityTotalPages}
+                  </Text>
                   <Button
-                    borderRadius="16px"
-                    bg="surface.900"
-                    color="white"
-                    _hover={{ bg: "surface.700" }}
-                    isLoading={mutating}
-                    onClick={() => void handleSaveStore(store.id)}
+                    size="sm"
+                    borderRadius="14px"
+                    bg={panelMutedSurface}
+                    color="surface.700"
+                    isDisabled={safeActivityPage >= activityTotalPages - 1}
+                    onClick={() => setStoreActivityPage((page) => Math.min(activityTotalPages - 1, page + 1))}
                   >
-                    Save Store
+                    Next
                   </Button>
-                </VStack>
-              </Box>
-            );
-          })}
-        </VStack>
-      </Box>
-    </VStack>
-  );
+                </HStack>
+              ) : null}
+            </VStack>
+          </Box>
+        ) : null}
+      </VStack>
+    );
+  };
 
   const renderInventory = () => {
     const visibleInventoryItems = inventoryView.items;
@@ -3005,6 +3396,10 @@ export function AdminDashboardScreen({
   const renderTeam = () => {
     if (selectedStaffSeller) {
       return renderSellerDetail(selectedStaffSeller);
+    }
+
+    if (selectedTeamStore) {
+      return renderStoreDetail(selectedTeamStore);
     }
 
     return (
