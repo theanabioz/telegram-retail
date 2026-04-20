@@ -30,6 +30,7 @@ import {
   archiveProduct,
   getAdminDashboard,
   getAdminInventory,
+  getAdminSalesPeriodSummaries,
   getAdminProducts,
   getAdminSalesOverview,
   getAdminStaff,
@@ -59,7 +60,7 @@ adminRouter.get(
   "/startup",
   asyncHandler(async (req, res) => {
     const today = todaySalesRange();
-    const [me, dashboard, stores, staff, sales] = await Promise.all([
+    const [me, dashboard, stores, staff, sales, periodSummaries] = await Promise.all([
       getCurrentSessionUser(req.auth!.app_user_id),
       getAdminDashboard({ recentSalesLimit: 12, lowStockLimit: 12 }),
       getAdminStores(),
@@ -70,6 +71,7 @@ adminRouter.get(
         dateTo: today.dateTo,
         limit: 20,
       }),
+      getAdminSalesPeriodSummaries(),
     ]);
     const defaultStore = stores.stores.find((store) => store.isActive) ?? stores.stores[0];
     const inventory = await getAdminInventory({ storeId: defaultStore?.id, historyLimit: 20 });
@@ -80,7 +82,14 @@ adminRouter.get(
       stores,
       staff,
       inventory,
-      sales,
+      sales: {
+        ...sales,
+        periodSummaries: {
+          today: periodSummaries.today,
+          week: periodSummaries.week,
+          month: periodSummaries.month,
+        },
+      },
     });
   })
 );

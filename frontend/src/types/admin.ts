@@ -160,6 +160,13 @@ export type AdminInventoryResponse = {
     returnId: string | null;
     shiftId: string | null;
   }>;
+  storeSnapshotsByStoreId?: Record<
+    string,
+    {
+      items: AdminInventoryResponse["items"];
+      history: AdminInventoryResponse["history"];
+    }
+  >;
 };
 
 export type AdminProductsResponse = {
@@ -219,6 +226,16 @@ export type AdminSalesOverviewResponse = {
     fullName: string;
     isActive: boolean;
   }>;
+  summary: {
+    revenue: number;
+    salesCount: number;
+    cashTotal: number;
+    cardTotal: number;
+    returnsTotal: number;
+    returnsCount: number;
+    returnedUnits: number;
+    averageReturn: number;
+  };
   sales: Array<{
     id: string;
     status: "completed" | "deleted";
@@ -264,6 +281,11 @@ export type AdminSalesOverviewResponse = {
       lineTotal: number;
     }>;
   }>;
+  periodSummaries?: {
+    today: AdminSalesOverviewResponse["summary"];
+    week: AdminSalesOverviewResponse["summary"];
+    month: AdminSalesOverviewResponse["summary"];
+  };
 };
 
 export type AdminStartupResponse = {

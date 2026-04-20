@@ -86,6 +86,8 @@ type AdminDashboardScreenProps = {
 type SalesLedgerMode = "sales" | "returns";
 type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
+type SalesPeriodSummary = AdminSalesOverviewResponse["summary"];
+type SalesPeriodSummaryMap = NonNullable<AdminSalesOverviewResponse["periodSummaries"]>;
 type InventoryMode = "stock" | "products";
 type InventoryDetailMode = "overview" | "settings" | "stock";
 type ProductDetailMode = "overview" | "settings" | "stores";
@@ -345,6 +347,9 @@ export function AdminDashboardScreen({
       returns: cachedStartup?.sales.returns ?? [],
     };
   });
+  const [salesSummaryCache, setSalesSummaryCache] = useState<Partial<SalesPeriodSummaryMap>>(
+    () => getCachedAdminStartup()?.sales.periodSummaries ?? {}
+  );
   const [salesCache, setSalesCache] = useState<Record<string, SalesLedgerSnapshot>>({});
   const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("stock");
@@ -362,18 +367,7 @@ export function AdminDashboardScreen({
   });
   const [inventoryCache, setInventoryCache] = useState<Record<string, InventorySnapshot>>(() => {
     const cachedStartup = getCachedAdminStartup();
-    const selectedStoreId = cachedStartup?.inventory.selectedStoreId;
-
-    if (!selectedStoreId) {
-      return {};
-    }
-
-    return {
-      [selectedStoreId]: {
-        items: cachedStartup.inventory.items,
-        history: cachedStartup.inventory.history,
-      },
-    };
+    return cachedStartup?.inventory.storeSnapshotsByStoreId ?? {};
   });
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
@@ -680,19 +674,14 @@ export function AdminDashboardScreen({
       const hydrateAdminStartup = (startup: AdminStartupResponse) => {
         hydrateDashboard(startup.dashboard);
         hydrateStartup(startup);
+        setSalesSummaryCache(startup.sales.periodSummaries ?? {});
         if (startup.inventory.selectedStoreId) {
           setSelectedInventoryStoreId(startup.inventory.selectedStoreId);
           setInventoryView({
             items: startup.inventory.items,
             history: startup.inventory.history,
           });
-          setInventoryCache((current) => ({
-            ...current,
-            [startup.inventory.selectedStoreId ?? "all"]: {
-              items: startup.inventory.items,
-              history: startup.inventory.history,
-            },
-          }));
+          setInventoryCache(startup.inventory.storeSnapshotsByStoreId ?? {});
         }
       };
 
@@ -809,6 +798,49 @@ export function AdminDashboardScreen({
   }, [salesOverview, returnsOverview]);
 
   useEffect(() => {
+    if (
+      salesPeriod !== "custom" &&
+      !salesStoreFilter &&
+      !salesSellerFilter &&
+      salesStatusFilter === "all"
+    ) {
+      const summary: SalesPeriodSummary = {
+        revenue: Number(salesOverview.reduce((total, sale) => total + sale.totalAmount, 0).toFixed(2)),
+        salesCount: salesOverview.length,
+        cashTotal: Number(
+          salesOverview
+            .filter((sale) => sale.paymentMethod === "cash")
+            .reduce((total, sale) => total + sale.totalAmount, 0)
+            .toFixed(2)
+        ),
+        cardTotal: Number(
+          salesOverview
+            .filter((sale) => sale.paymentMethod === "card")
+            .reduce((total, sale) => total + sale.totalAmount, 0)
+            .toFixed(2)
+        ),
+        returnsTotal: Number(returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0).toFixed(2)),
+        returnsCount: returnsOverview.length,
+        returnedUnits: returnsOverview.reduce(
+          (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
+          0
+        ),
+        averageReturn: Number(
+          (
+            returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0) /
+            Math.max(returnsOverview.length, 1)
+          ).toFixed(2)
+        ),
+      };
+
+      setSalesSummaryCache((current) => ({
+        ...current,
+        [salesPeriod]: summary,
+      }));
+    }
+  }, [returnsOverview, salesOverview, salesPeriod, salesSellerFilter, salesStatusFilter, salesStoreFilter]);
+
+  useEffect(() => {
     const snapshot = { items: inventoryItems, history: inventoryHistory };
     const responseStoreId = inventoryItems[0]?.storeId ?? selectedInventoryStoreId;
     const key = responseStoreId || "all";
@@ -877,6 +909,9 @@ export function AdminDashboardScreen({
 
       if (cachedSnapshot) {
         setInventoryView(cachedSnapshot);
+        setSelectedInventoryItemId(null);
+        void loadInventory(selectedInventoryStoreId, { silent: true }).finally(() => setInventorySoftRefreshing(false));
+        return;
       }
 
       setInventorySoftRefreshing(true);
@@ -2842,12 +2877,9 @@ export function AdminDashboardScreen({
                     {visibleInventoryItems.length} products in this store
                   </Text>
                 </VStack>
-                <HStack spacing={2} flexShrink={0}>
-                  {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
-                  <Box color="surface.500">
-                    <LuChevronDown size={20} />
-                  </Box>
-                </HStack>
+                <Box color="surface.500" flexShrink={0}>
+                  <LuChevronDown size={20} />
+                </Box>
               </Button>
             </VStack>
           </Box>
@@ -3055,18 +3087,35 @@ export function AdminDashboardScreen({
       (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
       0
     );
+    const activeSalesSummary =
+      salesPeriod !== "custom" &&
+      !salesStoreFilter &&
+      !salesSellerFilter &&
+      salesStatusFilter === "all" &&
+      salesSummaryCache[salesPeriod]
+        ? salesSummaryCache[salesPeriod]
+        : {
+            revenue: salesTotal,
+            salesCount: visibleSales.length,
+            cashTotal,
+            cardTotal,
+            returnsTotal,
+            returnsCount: visibleReturns.length,
+            returnedUnits,
+            averageReturn: returnsTotal / Math.max(visibleReturns.length, 1),
+          };
     const salesSummaryCards = salesLedgerMode === "sales"
       ? [
-          { label: "Revenue", value: formatEur(salesTotal) },
-          { label: "Sales", value: String(visibleSales.length) },
-          { label: "Cash", value: formatEur(cashTotal) },
-          { label: "Card", value: formatEur(cardTotal) },
+          { label: "Revenue", value: formatEur(activeSalesSummary.revenue) },
+          { label: "Sales", value: String(activeSalesSummary.salesCount) },
+          { label: "Cash", value: formatEur(activeSalesSummary.cashTotal) },
+          { label: "Card", value: formatEur(activeSalesSummary.cardTotal) },
         ]
       : [
-          { label: "Returned", value: formatEur(returnsTotal) },
-          { label: "Returns", value: String(visibleReturns.length) },
-          { label: "Units", value: String(returnedUnits) },
-          { label: "Avg Return", value: formatEur(returnsTotal / Math.max(visibleReturns.length, 1)) },
+          { label: "Returned", value: formatEur(activeSalesSummary.returnsTotal) },
+          { label: "Returns", value: String(activeSalesSummary.returnsCount) },
+          { label: "Units", value: String(activeSalesSummary.returnedUnits) },
+          { label: "Avg Return", value: formatEur(activeSalesSummary.averageReturn) },
         ];
 
     if (selectedSale) {

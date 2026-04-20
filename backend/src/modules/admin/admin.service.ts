@@ -40,6 +40,87 @@ function startOfTodayIso() {
   return start.toISOString();
 }
 
+function buildAdminSalesSummary(input: {
+  sales: Awaited<ReturnType<typeof listAdminSales>>;
+  returns: Awaited<ReturnType<typeof listAdminReturns>>;
+}) {
+  const revenue = Number(input.sales.reduce((sum, sale) => sum + sale.total_amount, 0).toFixed(2));
+  const cashTotal = Number(
+    input.sales
+      .filter((sale) => sale.payment_method === "cash")
+      .reduce((sum, sale) => sum + sale.total_amount, 0)
+      .toFixed(2)
+  );
+  const cardTotal = Number(
+    input.sales
+      .filter((sale) => sale.payment_method === "card")
+      .reduce((sum, sale) => sum + sale.total_amount, 0)
+      .toFixed(2)
+  );
+  const returnsTotal = Number(input.returns.reduce((sum, entry) => sum + entry.total_amount, 0).toFixed(2));
+
+  return {
+    revenue,
+    salesCount: input.sales.length,
+    cashTotal,
+    cardTotal,
+    returnsTotal,
+    returnsCount: input.returns.length,
+    returnedUnits: 0,
+    averageReturn: Number((returnsTotal / Math.max(input.returns.length, 1)).toFixed(2)),
+  };
+}
+
+function buildAdminSalesSummaryFromRows(input: {
+  sales: Awaited<ReturnType<typeof listAdminSales>>;
+  returns: Awaited<ReturnType<typeof listAdminReturns>>;
+  returnItems?: Awaited<ReturnType<typeof listAdminReturnItems>>;
+}) {
+  return {
+    ...buildAdminSalesSummary({ sales: input.sales, returns: input.returns }),
+    returnedUnits: (input.returnItems ?? []).reduce((sum, item) => sum + Number(item.quantity), 0),
+  };
+}
+
+function buildInventoryItems(input: {
+  stores: Awaited<ReturnType<typeof listAdminStores>>;
+  products: Awaited<ReturnType<typeof listProducts>>;
+  storeProducts: Awaited<ReturnType<typeof listAdminStoreProducts>>;
+  inventoryRows: Awaited<ReturnType<typeof listInventoryRows>>;
+}) {
+  const storeMap = new Map(input.stores.map((store) => [store.id, store]));
+  const productMap = new Map(input.products.map((product) => [product.id, product]));
+  const inventoryMap = new Map(
+    input.inventoryRows.map((row) => [`${row.store_id}:${row.product_id}`, Number(row.quantity)])
+  );
+
+  return input.storeProducts.flatMap((row) => {
+    const store = storeMap.get(row.store_id);
+    const product = productMap.get(row.product_id);
+
+    if (!product) {
+      return [];
+    }
+
+    return [
+      {
+        storeProductId: row.id,
+        storeId: row.store_id,
+        storeName: store?.name ?? "Unknown store",
+        productId: row.product_id,
+        productName: product.name,
+        sku: product.sku,
+        defaultPrice: Number(product.default_price),
+        storePrice: Number(row.price),
+        isEnabled: row.is_enabled,
+        isProductActive: product.is_active,
+        stockQuantity: inventoryMap.get(`${row.store_id}:${row.product_id}`) ?? 0,
+        updatedAt: row.updated_at,
+      },
+    ];
+  });
+}
+
 function buildAdminProductsPayload(input: {
   products: Awaited<ReturnType<typeof listProducts>>;
   stores: Awaited<ReturnType<typeof listAdminStores>>;
@@ -534,36 +615,31 @@ export async function getAdminInventory(input: {
     listInventoryRows(),
     input.storeId ? listInventoryHistory(input.storeId, input.historyLimit) : Promise.resolve([]),
   ]);
-
-  const storeMap = new Map(stores.map((store) => [store.id, store]));
-  const productMap = new Map(products.map((product) => [product.id, product]));
-  const inventoryMap = new Map(
-    inventoryRows.map((row) => [`${row.store_id}:${row.product_id}`, Number(row.quantity)])
+  const items = buildInventoryItems({ stores, products, storeProducts, inventoryRows });
+  const allItems = buildInventoryItems({ stores, products, storeProducts: allStoreProducts, inventoryRows });
+  const mappedHistory = history.map((entry) => ({
+    id: entry.id,
+    movementType: entry.movement_type,
+    quantityDelta: Number(entry.quantity_delta),
+    balanceAfter: Number(entry.balance_after),
+    reason: entry.reason,
+    createdAt: entry.created_at,
+    product: entry.product,
+    actor: entry.actor,
+    saleId: entry.sale_id,
+    returnId: entry.return_id,
+    shiftId: entry.shift_id,
+  }));
+  const storeSnapshotsByStoreId = stores.reduce<Record<string, { items: typeof items; history: typeof mappedHistory }>>(
+    (map, store) => {
+      map[store.id] = {
+        items: allItems.filter((item) => item.storeId === store.id),
+        history: input.storeId === store.id ? mappedHistory : [],
+      };
+      return map;
+    },
+    {}
   );
-
-  const items = storeProducts.flatMap((row) => {
-    const store = storeMap.get(row.store_id);
-    const product = productMap.get(row.product_id);
-
-    if (!product) {
-      return [];
-    }
-
-    return [{
-      storeProductId: row.id,
-      storeId: row.store_id,
-      storeName: store?.name ?? "Unknown store",
-      productId: row.product_id,
-      productName: product?.name ?? "Unknown product",
-      sku: product?.sku ?? "Unknown SKU",
-      defaultPrice: Number(product?.default_price ?? 0),
-      storePrice: Number(row.price),
-      isEnabled: row.is_enabled,
-      isProductActive: product?.is_active ?? false,
-      stockQuantity: inventoryMap.get(`${row.store_id}:${row.product_id}`) ?? 0,
-      updatedAt: row.updated_at,
-    }];
-  });
 
   return {
     stores: stores.map((store) => ({
@@ -574,19 +650,8 @@ export async function getAdminInventory(input: {
     products: buildAdminProductsPayload({ products, stores, storeProducts: allStoreProducts }),
     selectedStoreId: input.storeId ?? null,
     items,
-    history: history.map((entry) => ({
-      id: entry.id,
-      movementType: entry.movement_type,
-      quantityDelta: Number(entry.quantity_delta),
-      balanceAfter: Number(entry.balance_after),
-      reason: entry.reason,
-      createdAt: entry.created_at,
-      product: entry.product,
-      actor: entry.actor,
-      saleId: entry.sale_id,
-      returnId: entry.return_id,
-      shiftId: entry.shift_id,
-    })),
+    history: mappedHistory,
+    storeSnapshotsByStoreId,
   };
 }
 
@@ -865,6 +930,11 @@ export async function getAdminSalesOverview(input: {
     listAdminSaleItems(filteredSales.map((sale) => sale.id)),
     listAdminReturnItems(filteredReturns.map((entry) => entry.id)),
   ]);
+  const summary = buildAdminSalesSummaryFromRows({
+    sales: filteredSales,
+    returns: filteredReturns,
+    returnItems,
+  });
 
   const saleItemsBySale = saleItems.reduce<Map<string, typeof saleItems>>((map, item) => {
     const list = map.get(item.sale_id) ?? [];
@@ -900,6 +970,7 @@ export async function getAdminSalesOverview(input: {
         fullName: user.full_name,
         isActive: user.is_active,
       })),
+    summary,
     sales: filteredSales.map((sale) => ({
       id: sale.id,
       status: sale.status,
@@ -955,5 +1026,36 @@ export async function getAdminSalesOverview(input: {
         lineTotal: Number(item.line_total),
       })),
     })),
+  };
+}
+
+export async function getAdminSalesPeriodSummaries() {
+  const [sales, returns] = await Promise.all([listAdminSales(4000), listAdminReturns(4000)]);
+  const returnItems = await listAdminReturnItems(returns.map((entry) => entry.id));
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  const weekday = weekStart.getDay();
+  weekStart.setDate(weekStart.getDate() + (weekday === 0 ? -6 : 1 - weekday));
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const buildPeriodSummary = (dateFrom: Date) => {
+    const iso = dateFrom.toISOString();
+    const periodSales = sales.filter((sale) => sale.created_at >= iso);
+    const periodReturns = returns.filter((entry) => entry.created_at >= iso);
+    const periodReturnIds = new Set(periodReturns.map((entry) => entry.id));
+
+    return buildAdminSalesSummaryFromRows({
+      sales: periodSales,
+      returns: periodReturns,
+      returnItems: returnItems.filter((item) => periodReturnIds.has(item.return_id)),
+    });
+  };
+
+  return {
+    today: buildPeriodSummary(todayStart),
+    week: buildPeriodSummary(weekStart),
+    month: buildPeriodSummary(monthStart),
   };
 }
