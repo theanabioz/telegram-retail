@@ -2668,24 +2668,31 @@ export function AdminDashboardScreen({
                     </Text>
                     <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
                   </HStack>
-                  <SimpleGrid columns={2} spacing={3}>
-                    <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                        Started
-                      </Text>
-                      <Text mt={1} fontWeight="900" fontSize="xl">
-                        {formatSalesTime(seller.activeShift.startedAt)}
-                      </Text>
-                    </Box>
-                    <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                        Time Open
-                      </Text>
-                      <Text mt={1} fontWeight="900">
-                        {Math.floor(activeShiftMinutes / 60)}h {activeShiftMinutes % 60}m
-                      </Text>
-                    </Box>
-                  </SimpleGrid>
+                  <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
+                    <VStack align="stretch" spacing={0}>
+                      {[
+                        { label: "Started", value: formatSalesTime(seller.activeShift.startedAt) },
+                        { label: "Time Open", value: `${Math.floor(activeShiftMinutes / 60)}h ${activeShiftMinutes % 60}m` },
+                        { label: "Store", value: seller.activeShift.storeName },
+                      ].map((row, index, rows) => (
+                        <HStack
+                          key={row.label}
+                          justify="space-between"
+                          px={1}
+                          py={3}
+                          borderBottom={index === rows.length - 1 ? 0 : "1px solid"}
+                          borderColor="rgba(226,224,218,0.82)"
+                        >
+                          <Text color="surface.500" fontWeight="800" fontSize="sm">
+                            {row.label}
+                          </Text>
+                          <Text fontWeight="900" textAlign="right">
+                            {row.value}
+                          </Text>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  </Box>
                 </VStack>
               </Box>
             ) : null}
@@ -2700,36 +2707,46 @@ export function AdminDashboardScreen({
                     {sellerSales.length} loaded
                   </Text>
                 </HStack>
-                {sellerSales.slice(0, 5).map((sale) => (
-                  <Box
-                    key={sale.id}
-                    as="button"
-                    type="button"
-                    textAlign="left"
-                    border={0}
-                    bg="transparent"
-                    onClick={() => {
-                      setSelectedAdminSaleId(sale.id);
-                      setActiveTab("sales");
-                      scrollToSectionTop();
-                    }}
-                  >
-                    <HStack justify="space-between" align="start">
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="800">{sale.store?.name ?? "Unknown store"}</Text>
-                        <Text fontSize="xs" color="surface.500">
-                          {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
-                        </Text>
-                      </VStack>
-                      <VStack align="end" spacing={0}>
-                        <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
-                        <Text fontSize="xs" color="brand.500" fontWeight="800">
-                          Open receipt
-                        </Text>
-                      </VStack>
-                    </HStack>
+                {sellerSales.length > 0 ? (
+                  <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
+                    <VStack align="stretch" spacing={0}>
+                      {sellerSales.slice(0, 5).map((sale, index, rows) => (
+                        <Box
+                          key={sale.id}
+                          as="button"
+                          type="button"
+                          textAlign="left"
+                          border={0}
+                          bg="transparent"
+                          px={1}
+                          py={3}
+                          borderBottom={index === rows.length - 1 ? 0 : "1px solid"}
+                          borderColor="rgba(226,224,218,0.82)"
+                          onClick={() => {
+                            setSelectedAdminSaleId(sale.id);
+                            setActiveTab("sales");
+                            scrollToSectionTop();
+                          }}
+                        >
+                          <HStack justify="space-between" align="start">
+                            <VStack align="start" spacing={0}>
+                              <Text fontWeight="900">{sale.store?.name ?? "Unknown store"}</Text>
+                              <Text fontSize="xs" color="surface.500">
+                                {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
+                              </Text>
+                            </VStack>
+                            <VStack align="end" spacing={0}>
+                              <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
+                              <Text fontSize="xs" color="brand.500" fontWeight="800">
+                                Open receipt
+                              </Text>
+                            </VStack>
+                          </HStack>
+                        </Box>
+                      ))}
+                    </VStack>
                   </Box>
-                ))}
+                ) : null}
                 {sellerSales.length === 0 ? (
                   <Text color="surface.500" fontSize="sm">
                     No seller sales are loaded in the current admin sales snapshot.
@@ -2742,81 +2759,83 @@ export function AdminDashboardScreen({
 
         {staffDetailMode === "profile" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" spacing={3}>
               <HStack justify="space-between" align="center">
                 <Text fontWeight="900" fontSize="lg">
                   Profile
                 </Text>
                 <StatusPill label={seller.isActive ? "Active" : "Inactive"} tone={seller.isActive ? "green" : "red"} />
               </HStack>
-              <SimpleGrid columns={2} spacing={3}>
-                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    Telegram ID
-                  </Text>
-                  <Text mt={1} fontWeight="900">{seller.telegramId}</Text>
-                </Box>
-                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    Account
-                  </Text>
-                  <Text mt={1} fontWeight="900">{seller.isActive ? "Active" : "Inactive"}</Text>
-                </Box>
-              </SimpleGrid>
-
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                  Assigned Store
-                </Text>
-                <Select
-                  value={staffAssignments[seller.id] ?? ""}
-                  onChange={(event) =>
-                    setStaffAssignments((current) => ({
-                      ...current,
-                      [seller.id]: event.target.value,
-                    }))
-                  }
-                  h="46px"
-                  borderRadius="16px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                  fontWeight="800"
-                >
-                  <option value="" disabled>
-                    Select assigned store
-                  </option>
-                  {stores
-                    .filter((store) => store.isActive)
-                    .map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name}
+              <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
+                <VStack align="stretch" spacing={0}>
+                  <HStack justify="space-between" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
+                    <Text color="surface.500" fontWeight="800" fontSize="sm">
+                      Telegram ID
+                    </Text>
+                    <Text fontWeight="900">{seller.telegramId}</Text>
+                  </HStack>
+                  <HStack justify="space-between" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
+                    <Text color="surface.500" fontWeight="800" fontSize="sm">
+                      Account
+                    </Text>
+                    <Text fontWeight="900">{seller.isActive ? "Active" : "Inactive"}</Text>
+                  </HStack>
+                  <HStack justify="space-between" align="center" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
+                    <Text color="surface.500" fontWeight="800" fontSize="sm">
+                      Assigned Store
+                    </Text>
+                    <Select
+                      value={staffAssignments[seller.id] ?? ""}
+                      onChange={(event) =>
+                        setStaffAssignments((current) => ({
+                          ...current,
+                          [seller.id]: event.target.value,
+                        }))
+                      }
+                      h="42px"
+                      maxW="190px"
+                      borderRadius="14px"
+                      bg="white"
+                      borderColor="rgba(226,224,218,0.95)"
+                      fontWeight="800"
+                    >
+                      <option value="" disabled>
+                        Select store
                       </option>
-                    ))}
-                </Select>
-              </VStack>
-
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                  Commission %
-                </Text>
-                <Input
-                  value={commissionDraft}
-                  onChange={(event) =>
-                    setStaffCommissionDrafts((current) => ({
-                      ...current,
-                      [seller.id]: event.target.value,
-                    }))
-                  }
-                  inputMode="decimal"
-                  h="46px"
-                  maxW="128px"
-                  borderRadius="16px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                  fontWeight="900"
-                  placeholder="0"
-                />
-              </VStack>
+                      {stores
+                        .filter((store) => store.isActive)
+                        .map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                    </Select>
+                  </HStack>
+                  <HStack justify="space-between" align="center" px={1} py={3}>
+                    <Text color="surface.500" fontWeight="800" fontSize="sm">
+                      Commission %
+                    </Text>
+                    <Input
+                      value={commissionDraft}
+                      onChange={(event) =>
+                        setStaffCommissionDrafts((current) => ({
+                          ...current,
+                          [seller.id]: event.target.value,
+                        }))
+                      }
+                      inputMode="decimal"
+                      h="42px"
+                      maxW="90px"
+                      borderRadius="14px"
+                      bg="white"
+                      borderColor="rgba(226,224,218,0.95)"
+                      fontWeight="900"
+                      textAlign="center"
+                      placeholder="0"
+                    />
+                  </HStack>
+                </VStack>
+              </Box>
               <Text fontSize="sm" color="surface.500" lineHeight="1.45">
                 Commission editing is prepared visually. The next backend step is to persist a personal commission rate and feed it into shift reports.
               </Text>
@@ -2857,25 +2876,27 @@ export function AdminDashboardScreen({
                   Timesheet
                 </Text>
               </HStack>
-              {seller.activeShift ? (
-                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <HStack justify="space-between" align="start">
-                    <VStack align="start" spacing={0}>
-                      <Text fontWeight="900">Current shift</Text>
-                      <Text fontSize="sm" color="surface.500">
-                        {seller.activeShift.storeName} · started {formatSalesTime(seller.activeShift.startedAt)}
-                      </Text>
-                    </VStack>
-                    <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
-                  </HStack>
-                </Box>
-              ) : null}
-              <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                <Text fontWeight="900">Full shift history needs the next backend payload</Text>
-                <Text mt={1} fontSize="sm" color="surface.500" lineHeight="1.45">
-                  We need `/admin/staff/:sellerId/details` to show monthly timesheets with start, end, worked hours,
-                  pauses, sales, revenue and commission per shift.
-                </Text>
+              <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
+                <VStack align="stretch" spacing={0}>
+                  {seller.activeShift ? (
+                    <HStack justify="space-between" align="start" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="900">Current shift</Text>
+                        <Text fontSize="sm" color="surface.500">
+                          {seller.activeShift.storeName} · started {formatSalesTime(seller.activeShift.startedAt)}
+                        </Text>
+                      </VStack>
+                      <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
+                    </HStack>
+                  ) : null}
+                  <Box px={1} py={3}>
+                    <Text fontWeight="900">Full shift history needs the next backend payload</Text>
+                    <Text mt={1} fontSize="sm" color="surface.500" lineHeight="1.45">
+                      We need `/admin/staff/:sellerId/details` to show monthly timesheets with start, end, worked hours,
+                      pauses, sales, revenue and commission per shift.
+                    </Text>
+                  </Box>
+                </VStack>
               </Box>
             </VStack>
           </Box>
