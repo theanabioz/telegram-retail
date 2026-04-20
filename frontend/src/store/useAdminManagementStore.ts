@@ -193,7 +193,6 @@ function patchDashboardFromAdminState(params: {
 type AdminManagementState = {
   loadingStores: boolean;
   loadingStaff: boolean;
-  mutating: boolean;
   loadingInventory: boolean;
   loadingSales: boolean;
   salesRequestVersion: number;
@@ -278,7 +277,6 @@ const cachedAdminStartup = readCachedAdminStartup();
 export const useAdminManagementStore = create<AdminManagementState>((set, get) => ({
   loadingStores: false,
   loadingStaff: false,
-  mutating: false,
   loadingInventory: false,
   loadingSales: false,
   salesRequestVersion: 0,

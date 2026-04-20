@@ -125,7 +125,6 @@ const bottomDockWithCartReservedSpace = "calc(148px + env(safe-area-inset-bottom
 
 export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScreenProps) {
   const {
-    actionLoading,
     addToDraft,
     bootstrap,
     checkout,
@@ -139,6 +138,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     operatorName,
     pauseShift,
     pendingStockProductIds,
+    pendingShiftMutationId,
     products,
     removeDraftItem,
     restockProduct,
@@ -171,6 +171,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
+  const isShiftPending = pendingShiftMutationId !== null;
 
   const resetSellerSection = useCallback(
     (tab: SellerTab) => {
@@ -744,7 +745,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     borderRadius="12px"
                     variant="ghost"
                     onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
-                    isDisabled={item.quantity <= 1 || actionLoading}
+                    isDisabled={item.quantity <= 1}
                   />
                   <Text w="44px" textAlign="center" fontWeight="800" fontSize="md">
                     {item.quantity}
@@ -758,7 +759,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     borderRadius="12px"
                     variant="ghost"
                     onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
-                    isLoading={actionLoading}
                   />
                 </HStack>
 
@@ -787,7 +787,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     variant="ghost"
                     colorScheme="red"
                     onClick={() => void removeDraftItem(item.id)}
-                    isLoading={actionLoading}
                   />
                 </HStack>
               </HStack>
@@ -858,7 +857,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _hover={{ bg: "surface.50" }}
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("cash")}
-                isLoading={actionLoading}
                 fontSize="sm"
                 fontWeight="800"
               >
@@ -873,7 +871,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _hover={{ bg: "brand.600" }}
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("card")}
-                isLoading={actionLoading}
                 fontSize="sm"
                 fontWeight="800"
                 boxShadow="0 10px 22px rgba(74, 132, 244, 0.24)"
@@ -1034,7 +1031,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               bg="brand.500"
               color="white"
               _hover={{ bg: "brand.600" }}
-              isLoading={actionLoading}
+              isLoading={isShiftPending}
               onClick={() => void startShift()}
             >
               Start Shift
@@ -1048,7 +1045,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           key={item.id}
           item={item}
           onAdd={(productId) => void addToDraft(productId)}
-          disabled={!shiftActive || actionLoading}
+          disabled={!shiftActive}
         />
       ))}
     </VStack>
@@ -1440,7 +1437,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _hover={{ bg: "brand.600" }}
                 _active={{ transform: "scale(0.97)" }}
                 boxShadow="0 8px 24px rgba(74, 132, 244, 0.3)"
-                isLoading={actionLoading}
+                isLoading={isShiftPending}
                 onClick={() => void startShift()}
               >
                 Start New Shift
@@ -1459,7 +1456,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontWeight="800"
                     onClick={() => void pauseShift()}
                     isDisabled={shiftStatus !== "active"}
-                    isLoading={actionLoading}
+                    isLoading={isShiftPending && shiftStatus === "active"}
                     leftIcon={<Box as={HiOutlinePause} boxSize={5} />}
                     _hover={{ bg: "white" }}
                     _active={{ bg: "surface.100" }}
@@ -1477,7 +1474,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontWeight="800"
                     onClick={() => void resumeShift()}
                     isDisabled={shiftStatus !== "paused"}
-                    isLoading={actionLoading}
+                    isLoading={isShiftPending && shiftStatus === "paused"}
                     leftIcon={<Box as={HiOutlinePlay} boxSize={5} />}
                     _hover={{ bg: "white" }}
                     _active={{ bg: "surface.100" }}
@@ -1500,7 +1497,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     }
                   }}
                   isDisabled={shiftStatus === "inactive" || shiftStatus === "closed"}
-                  isLoading={actionLoading}
+                  isLoading={isShiftPending && shiftStatus !== "inactive" && shiftStatus !== "closed"}
                   leftIcon={<Box as={HiOutlinePower} boxSize={5} />}
                   _hover={{ bg: "rgba(248,113,113,0.12)" }}
                   _active={{ bg: "rgba(248,113,113,0.16)" }}

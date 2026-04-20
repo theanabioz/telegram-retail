@@ -295,7 +295,6 @@ export function AdminDashboardScreen({
     loadingStaff,
     loadingInventory,
     loadingSales,
-    mutating,
     creatingStore,
     creatingSeller,
     creatingProduct,
@@ -575,7 +574,7 @@ export function AdminDashboardScreen({
       return;
     }
 
-    if (softRefreshInFlightRef.current || mutating || hasPendingAdminInventoryMutation) {
+    if (softRefreshInFlightRef.current || hasPendingAdminInventoryMutation) {
       return;
     }
 
@@ -618,7 +617,6 @@ export function AdminDashboardScreen({
     loadInventory,
     loadSalesOverview,
     hasPendingAdminInventoryMutation,
-    mutating,
     salesDateFrom,
     salesDateTo,
     salesSellerFilter,
@@ -5275,14 +5273,6 @@ export function AdminDashboardScreen({
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
               <Text fontWeight="800">
                 {activeTab === "team" ? "Loading team data..." : "Loading admin data..."}
-              </Text>
-            </Box>
-          ) : null}
-
-          {mutating ? (
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <Text fontWeight="700" color="surface.600">
-                Saving changes...
               </Text>
             </Box>
           ) : null}
