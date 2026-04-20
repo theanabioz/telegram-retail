@@ -144,6 +144,7 @@ type AdminManagementState = {
   mutating: boolean;
   loadingInventory: boolean;
   loadingSales: boolean;
+  salesRequestVersion: number;
   creatingStore: boolean;
   creatingSeller: boolean;
   creatingProduct: boolean;
@@ -228,6 +229,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
   mutating: false,
   loadingInventory: false,
   loadingSales: false,
+  salesRequestVersion: 0,
   creatingStore: false,
   creatingSeller: false,
   creatingProduct: false,
@@ -255,6 +257,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       loadingStaff: false,
       loadingInventory: false,
       loadingSales: false,
+      salesRequestVersion: 0,
       creatingStore: false,
       creatingSeller: false,
       creatingProduct: false,
@@ -380,10 +383,12 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       return;
     }
 
+    const requestVersion = get().salesRequestVersion + 1;
+
     if (!options?.silent) {
-      set({ loadingSales: true, error: null });
+      set({ loadingSales: true, error: null, salesRequestVersion: requestVersion });
     } else {
-      set({ error: null });
+      set({ error: null, salesRequestVersion: requestVersion });
     }
 
     try {
@@ -412,6 +417,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       params.set("limit", String(filters?.limit ?? 20));
 
       const data = await apiGet<AdminSalesOverviewResponse>(`/admin/sales?${params.toString()}`, token);
+
+      if (get().salesRequestVersion !== requestVersion) {
+        return;
+      }
+
       set({
         salesFilters: data.filters,
         salesStores: data.stores,
@@ -422,6 +432,10 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         error: null,
       });
     } catch (error) {
+      if (get().salesRequestVersion !== requestVersion) {
+        return;
+      }
+
       set({
         loadingSales: false,
         error: error instanceof Error ? error.message : "Failed to load sales overview",

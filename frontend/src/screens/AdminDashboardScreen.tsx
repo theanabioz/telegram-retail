@@ -1192,15 +1192,21 @@ export function AdminDashboardScreen({
     const dateFrom = nextDateFrom ? new Date(`${nextDateFrom}T00:00:00`).toISOString() : undefined;
     const dateTo = nextDateTo ? new Date(`${nextDateTo}T23:59:59`).toISOString() : undefined;
 
-    await loadSalesOverview({
-      storeId: nextStoreId || undefined,
-      sellerId: nextSellerId || undefined,
-      saleStatus: nextSaleStatus,
-      dateFrom,
-      dateTo,
-      limit: 20,
-    });
-    setSalesSoftRefreshing(false);
+    try {
+      await loadSalesOverview(
+        {
+          storeId: nextStoreId || undefined,
+          sellerId: nextSellerId || undefined,
+          saleStatus: nextSaleStatus,
+          dateFrom,
+          dateTo,
+          limit: 20,
+        },
+        { silent: true }
+      );
+    } finally {
+      setSalesSoftRefreshing(false);
+    }
   };
 
   const handleSelectSalesPeriod = async (period: SalesPeriod) => {
