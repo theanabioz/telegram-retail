@@ -6,6 +6,7 @@ import {
   LuSettings2,
   LuUsers,
 } from "react-icons/lu";
+import { useRef } from "react";
 import type { IconType } from "react-icons";
 
 export type AdminTab = "overview" | "sales" | "inventory" | "team" | "settings";
@@ -31,6 +32,17 @@ type AdminNavProps = {
 };
 
 export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
+  const pointerHandledTabRef = useRef<AdminTab | null>(null);
+
+  const activateTab = (tab: AdminTab, isActive: boolean) => {
+    if (isActive) {
+      onReselect?.(tab);
+      return;
+    }
+
+    onChange(tab);
+  };
+
   return (
     <Box
       as="nav"
@@ -59,13 +71,21 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
               color={isActive ? "surface.900" : "surface.500"}
               fontWeight={isActive ? "900" : "750"}
               cursor="pointer"
-              onClick={() => {
-                if (isActive) {
-                  onReselect?.(item.id);
+              onPointerDown={(event) => {
+                if (event.pointerType === "mouse" && event.button !== 0) {
                   return;
                 }
 
-                onChange(item.id);
+                pointerHandledTabRef.current = item.id;
+                activateTab(item.id, isActive);
+              }}
+              onClick={() => {
+                if (pointerHandledTabRef.current === item.id) {
+                  pointerHandledTabRef.current = null;
+                  return;
+                }
+
+                activateTab(item.id, isActive);
               }}
               border={0}
               px={0.5}
@@ -73,6 +93,7 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
               minH="48px"
               borderRadius="12px"
               bg="transparent"
+              sx={{ touchAction: "manipulation" }}
               transition="all 0.18s ease"
             >
               <Box

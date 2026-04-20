@@ -7,7 +7,7 @@ import {
   LuShoppingCart,
 } from "react-icons/lu";
 import type { IconType } from "react-icons";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 export type SellerTab = "checkout" | "orders" | "stock" | "shift" | "options";
 
@@ -33,6 +33,17 @@ type BottomNavProps = {
 };
 
 export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: BottomNavProps) {
+  const pointerHandledTabRef = useRef<SellerTab | null>(null);
+
+  const activateTab = (tab: SellerTab, isActive: boolean) => {
+    if (isActive) {
+      onReselect?.(tab);
+      return;
+    }
+
+    onChange(tab);
+  };
+
   return (
     <Box
       as="nav"
@@ -67,19 +78,28 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
               spacing={1}
               color={isActive ? "brand.500" : "surface.400"}
               cursor="pointer"
-              onClick={() => {
-                if (isActive) {
-                  onReselect?.(item.id);
+              onPointerDown={(event) => {
+                if (event.pointerType === "mouse" && event.button !== 0) {
                   return;
                 }
 
-                onChange(item.id);
+                pointerHandledTabRef.current = item.id;
+                activateTab(item.id, isActive);
+              }}
+              onClick={() => {
+                if (pointerHandledTabRef.current === item.id) {
+                  pointerHandledTabRef.current = null;
+                  return;
+                }
+
+                activateTab(item.id, isActive);
               }}
               border={0}
               p={1}
               minH="54px"
               borderRadius="16px"
               bg="transparent"
+              sx={{ touchAction: "manipulation" }}
               transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
               _active={{ transform: "scale(0.94)" }}
               position="relative"
