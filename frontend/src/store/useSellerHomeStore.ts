@@ -38,6 +38,7 @@ type SellerHomeState = {
   shiftDetails: ShiftDetailsResponse | null;
   shiftDetailsLoading: boolean;
   shiftDetailsById: Record<string, ShiftDetailsResponse>;
+  pendingSaleIds: Record<string, true>;
   pendingStockProductIds: Record<string, true>;
   pendingShiftMutationId: number | null;
   expectedShiftStatus: "active" | "paused" | "inactive" | null;
@@ -280,10 +281,16 @@ function buildOptimisticInventoryMovement(params: {
   balanceAfter: number;
   reason: string;
   operatorName: string;
+  movementType?: string;
+  saleId?: string | null;
+  returnId?: string | null;
+  shiftId?: string | null;
 }) {
   return {
     id: `optimistic-inventory-${params.productId}-${Date.now()}`,
-    movementType: params.quantityDelta >= 0 ? "Restock" : "Write-off",
+    movementType:
+      params.movementType ??
+      (params.quantityDelta >= 0 ? "Restock" : "Write-off"),
     quantityDelta: params.quantityDelta,
     balanceAfter: params.balanceAfter,
     reason: params.reason,
@@ -298,9 +305,9 @@ function buildOptimisticInventoryMovement(params: {
       full_name: params.operatorName,
       role: "seller" as const,
     },
-    saleId: null,
-    returnId: null,
-    shiftId: null,
+    saleId: params.saleId ?? null,
+    returnId: params.returnId ?? null,
+    shiftId: params.shiftId ?? null,
   };
 }
 
@@ -371,6 +378,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   shiftDetails: null,
   shiftDetailsLoading: false,
   shiftDetailsById: {},
+  pendingSaleIds: {},
   pendingStockProductIds: {},
   pendingShiftMutationId: null,
   expectedShiftStatus: null,
@@ -1040,18 +1048,123 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previousSales = get().sales;
+    const previousProducts = get().products;
+    const previousInventoryHistory = get().inventoryHistory;
+    const sale = previousSales.find((entry) => entry.id === saleId);
+
+    if (!sale) {
+      set({ error: "Sale not found" });
+      return;
+    }
+
+    const optimisticDeletedSale = {
+      ...sale,
+      status: "deleted" as const,
+    };
+    const restoredQuantities = new Map<string, number>();
+    sale.items.forEach((item) => {
+      restoredQuantities.set(item.product_id, (restoredQuantities.get(item.product_id) ?? 0) + item.quantity);
+    });
+
+    const nextProducts = previousProducts.map((product) => {
+      const restored = restoredQuantities.get(product.id) ?? 0;
+      return restored > 0
+        ? {
+            ...product,
+            stock: product.stock + restored,
+          }
+        : product;
+    });
+
+    const optimisticHistoryEntries = sale.items.map((item) =>
+      buildOptimisticInventoryMovement({
+        productId: item.product_id,
+        productName: item.product_name_snapshot,
+        quantityDelta: item.quantity,
+        balanceAfter:
+          nextProducts.find((product) => product.id === item.product_id)?.stock ?? item.quantity,
+        reason: `Sale deleted: ${reason}`,
+        operatorName: get().operatorName,
+        movementType: "Sale deletion",
+        saleId,
+      })
+    );
+
+    set((current) => ({
+      error: null,
+      sales: current.sales.map((entry) => (entry.id === saleId ? optimisticDeletedSale : entry)),
+      products: nextProducts,
+      inventoryHistory: [...optimisticHistoryEntries, ...current.inventoryHistory],
+      pendingSaleIds: {
+        ...current.pendingSaleIds,
+        [saleId]: true,
+      },
+    }));
 
     try {
-      await apiPost(`/seller/sales/${saleId}/delete`, { reason }, token);
+      const result = await apiPost<{
+        sale: SellerSalesResponse["sales"][number];
+        items: SellerSalesResponse["sales"][number]["items"];
+      }>(`/seller/sales/${saleId}/delete`, { reason }, token);
+      const confirmedDeletedSale = {
+        ...sale,
+        ...result.sale,
+        items: result.items,
+      };
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        sales: startup.sales
+          ? {
+              ...startup.sales,
+              sales: startup.sales.sales.map((entry) =>
+                entry.id === saleId ? confirmedDeletedSale : entry
+              ),
+            }
+          : startup.sales,
+        inventoryHistory: startup.inventoryHistory
+          ? {
+              ...startup.inventoryHistory,
+              items: [...optimisticHistoryEntries, ...startup.inventoryHistory.items],
+            }
+          : startup.inventoryHistory,
+        catalog: startup.catalog
+          ? {
+              ...startup.catalog,
+              products: startup.catalog.products.map((product) => {
+                const restored = restoredQuantities.get(product.id) ?? 0;
+                return restored > 0
+                  ? {
+                      ...product,
+                      stock: product.stock + restored,
+                    }
+                  : product;
+              }),
+            }
+          : startup.catalog,
+      }));
       triggerNotification("warning");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      set((current) => {
+        const nextPending = { ...current.pendingSaleIds };
+        delete nextPending[saleId];
+        return {
+          sales: current.sales.map((entry) => (entry.id === saleId ? confirmedDeletedSale : entry)),
+          pendingSaleIds: nextPending,
+          error: null,
+        };
+      });
     } catch (error) {
       triggerNotification("error");
-      set({
-        actionLoading: false,
-        error: error instanceof Error ? error.message : "Failed to delete sale",
+      set((current) => {
+        const nextPending = { ...current.pendingSaleIds };
+        delete nextPending[saleId];
+        return {
+          sales: previousSales,
+          products: previousProducts,
+          inventoryHistory: previousInventoryHistory,
+          pendingSaleIds: nextPending,
+          error: error instanceof Error ? error.message : "Failed to delete sale",
+        };
       });
     }
   },
@@ -1063,10 +1176,57 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previousProducts = get().products;
+    const previousInventoryHistory = get().inventoryHistory;
+    const sale = get().sales.find((entry) => entry.id === saleId);
+    const saleItem = sale?.items.find((item) => item.id === saleItemId);
+
+    if (!sale || !saleItem) {
+      set({ error: "Sale item not found" });
+      return;
+    }
+
+    const nextProducts = previousProducts.map((product) =>
+      product.id === saleItem.product_id
+        ? {
+            ...product,
+            stock: product.stock + 1,
+          }
+        : product
+    );
+    const optimisticHistoryEntry = buildOptimisticInventoryMovement({
+      productId: saleItem.product_id,
+      productName: saleItem.product_name_snapshot,
+      quantityDelta: 1,
+      balanceAfter: nextProducts.find((product) => product.id === saleItem.product_id)?.stock ?? 1,
+      reason: `Return created: ${reason}`,
+      operatorName: get().operatorName,
+      movementType: "Return",
+      saleId,
+    });
+
+    set((current) => ({
+      error: null,
+      products: nextProducts,
+      inventoryHistory: [optimisticHistoryEntry, ...current.inventoryHistory],
+      pendingSaleIds: {
+        ...current.pendingSaleIds,
+        [saleId]: true,
+      },
+    }));
 
     try {
-      await apiPost(
+      const result = await apiPost<{
+        return: { id: string };
+        items: Array<{
+          saleItemId: string;
+          productId: string;
+          productName: string;
+          quantity: number;
+          lineTotal: number;
+        }>;
+        totalAmount: number;
+      }>(
         "/seller/returns",
         {
           saleId,
@@ -1075,14 +1235,55 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         },
         token
       );
+      const confirmedHistoryEntry = {
+        ...optimisticHistoryEntry,
+        returnId: result.return.id,
+      };
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        inventoryHistory: startup.inventoryHistory
+          ? {
+              ...startup.inventoryHistory,
+              items: [confirmedHistoryEntry, ...startup.inventoryHistory.items],
+            }
+          : startup.inventoryHistory,
+        catalog: startup.catalog
+          ? {
+              ...startup.catalog,
+              products: startup.catalog.products.map((product) =>
+                product.id === saleItem.product_id
+                  ? {
+                      ...product,
+                      stock: product.stock + 1,
+                    }
+                  : product
+              ),
+            }
+          : startup.catalog,
+      }));
       triggerNotification("warning");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      set((current) => {
+        const nextPending = { ...current.pendingSaleIds };
+        delete nextPending[saleId];
+        return {
+          inventoryHistory: current.inventoryHistory.map((entry) =>
+            entry.id === optimisticHistoryEntry.id ? confirmedHistoryEntry : entry
+          ),
+          pendingSaleIds: nextPending,
+          error: null,
+        };
+      });
     } catch (error) {
       triggerNotification("error");
-      set({
-        actionLoading: false,
-        error: error instanceof Error ? error.message : "Failed to create return",
+      set((current) => {
+        const nextPending = { ...current.pendingSaleIds };
+        delete nextPending[saleId];
+        return {
+          products: previousProducts,
+          inventoryHistory: previousInventoryHistory,
+          pendingSaleIds: nextPending,
+          error: error instanceof Error ? error.message : "Failed to create return",
+        };
       });
     }
   },
