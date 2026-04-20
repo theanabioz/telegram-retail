@@ -11,6 +11,8 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { LuActivity, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
+import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
@@ -328,6 +330,8 @@ export function AdminDashboardScreen({
   const [teamMode, setTeamMode] = useState<TeamMode>("staff");
   const [selectedStaffSellerId, setSelectedStaffSellerId] = useState<string | null>(null);
   const [staffDetailMode, setStaffDetailMode] = useState<StaffDetailMode>("overview");
+  const [staffActivityPage, setStaffActivityPage] = useState(0);
+  const [staffCommissionDrafts, setStaffCommissionDrafts] = useState<Record<string, string>>({});
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -390,6 +394,7 @@ export function AdminDashboardScreen({
     if (tab === "team") {
       setSelectedStaffSellerId(null);
       setStaffDetailMode("overview");
+      setStaffActivityPage(0);
     }
 
     scrollToSectionTop();
@@ -445,6 +450,7 @@ export function AdminDashboardScreen({
       if (activeTab === "team" && selectedStaffSeller) {
         setSelectedStaffSellerId(null);
         setStaffDetailMode("overview");
+        setStaffActivityPage(0);
       }
     }
   );
@@ -2456,6 +2462,7 @@ export function AdminDashboardScreen({
               onClick={() => {
                 setSelectedStaffSellerId(seller.id);
                 setStaffDetailMode("overview");
+                setStaffActivityPage(0);
                 scrollToSectionTop();
               }}
             >
@@ -2495,20 +2502,35 @@ export function AdminDashboardScreen({
     const activeShiftMinutes = activeShiftStartedAt
       ? Math.max(0, Math.floor((Date.now() - activeShiftStartedAt) / 60000))
       : 0;
-    const activityItems = [
+    const activityItems: Array<{
+      id: string;
+      title: string;
+      meta: string;
+      date: string;
+      icon: IconType;
+      iconLabel: string;
+      iconBg: string;
+      iconColor: string;
+    }> = [
       ...sellerSales.map((sale) => ({
         id: `sale-${sale.id}`,
         title: sale.status === "deleted" ? "Sale deleted" : "Sale completed",
         meta: `${sale.store?.name ?? "Unknown store"} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
         date: sale.createdAt,
-        tone: sale.status === "deleted" ? "red" : "green",
+        icon: LuReceiptText,
+        iconLabel: sale.status === "deleted" ? "Deleted" : "Sale",
+        iconBg: sale.status === "deleted" ? "rgba(248,113,113,0.14)" : "rgba(34,197,94,0.12)",
+        iconColor: sale.status === "deleted" ? "red.500" : "green.600",
       })),
       ...sellerReturns.map((entry) => ({
         id: `return-${entry.id}`,
         title: "Return created",
         meta: `${entry.store?.name ?? "Unknown store"} · ${formatEur(entry.totalAmount)}`,
         date: entry.createdAt,
-        tone: "orange",
+        icon: LuActivity,
+        iconLabel: "Return",
+        iconBg: "rgba(251,191,36,0.18)",
+        iconColor: "orange.500",
       })),
       ...sellerStockActivity.map((entry) => ({
         id: `stock-${entry.id}`,
@@ -2520,7 +2542,10 @@ export function AdminDashboardScreen({
               : "Stock adjusted",
         meta: `${entry.product?.name ?? "Unknown product"} · ${entry.quantityDelta > 0 ? "+" : ""}${entry.quantityDelta} units`,
         date: entry.createdAt,
-        tone: entry.quantityDelta < 0 ? "red" : "blue",
+        icon: entry.quantityDelta < 0 ? LuMinus : LuPlus,
+        iconLabel: entry.quantityDelta < 0 ? "Write-off" : "Restock",
+        iconBg: entry.quantityDelta < 0 ? "rgba(248,113,113,0.14)" : "rgba(74,132,244,0.14)",
+        iconColor: entry.quantityDelta < 0 ? "red.500" : "brand.600",
       })),
       ...(seller.activeShift
         ? [
@@ -2529,11 +2554,22 @@ export function AdminDashboardScreen({
               title: seller.activeShift.status === "paused" ? "Shift paused" : "Shift active",
               meta: `${seller.activeShift.storeName} · started ${formatDateTime(seller.activeShift.startedAt)}`,
               date: seller.activeShift.startedAt,
-              tone: seller.activeShift.status === "paused" ? "orange" : "blue",
+              icon: LuClock3,
+              iconLabel: "Shift",
+              iconBg: seller.activeShift.status === "paused" ? "rgba(251,191,36,0.18)" : "rgba(74,132,244,0.14)",
+              iconColor: seller.activeShift.status === "paused" ? "orange.500" : "brand.600",
             },
           ]
         : []),
     ].sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
+    const activityPageSize = 6;
+    const activityTotalPages = Math.max(1, Math.ceil(activityItems.length / activityPageSize));
+    const safeActivityPage = Math.min(staffActivityPage, activityTotalPages - 1);
+    const visibleActivityItems = activityItems.slice(
+      safeActivityPage * activityPageSize,
+      safeActivityPage * activityPageSize + activityPageSize
+    );
+    const commissionDraft = staffCommissionDrafts[seller.id] ?? "0";
 
     return (
       <VStack spacing={4} align="stretch">
@@ -2637,7 +2673,9 @@ export function AdminDashboardScreen({
                       <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                         Started
                       </Text>
-                      <Text mt={1} fontWeight="900">{formatDateTime(seller.activeShift.startedAt)}</Text>
+                      <Text mt={1} fontWeight="900" fontSize="xl">
+                        {formatSalesTime(seller.activeShift.startedAt)}
+                      </Text>
                     </Box>
                     <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                       <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
@@ -2663,15 +2701,34 @@ export function AdminDashboardScreen({
                   </Text>
                 </HStack>
                 {sellerSales.slice(0, 5).map((sale) => (
-                  <HStack key={sale.id} justify="space-between" align="start">
-                    <VStack align="start" spacing={0}>
-                      <Text fontWeight="800">{sale.store?.name ?? "Unknown store"}</Text>
-                      <Text fontSize="xs" color="surface.500">
-                        {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
-                      </Text>
-                    </VStack>
-                    <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
-                  </HStack>
+                  <Box
+                    key={sale.id}
+                    as="button"
+                    type="button"
+                    textAlign="left"
+                    border={0}
+                    bg="transparent"
+                    onClick={() => {
+                      setSelectedAdminSaleId(sale.id);
+                      setActiveTab("sales");
+                      scrollToSectionTop();
+                    }}
+                  >
+                    <HStack justify="space-between" align="start">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="800">{sale.store?.name ?? "Unknown store"}</Text>
+                        <Text fontSize="xs" color="surface.500">
+                          {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
+                        </Text>
+                      </VStack>
+                      <VStack align="end" spacing={0}>
+                        <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
+                        <Text fontSize="xs" color="brand.500" fontWeight="800">
+                          Open receipt
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </Box>
                 ))}
                 {sellerSales.length === 0 ? (
                   <Text color="surface.500" fontSize="sm">
@@ -2685,10 +2742,13 @@ export function AdminDashboardScreen({
 
         {staffDetailMode === "profile" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
-              <Text fontWeight="900" fontSize="lg">
-                Profile Management
-              </Text>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="center">
+                <Text fontWeight="900" fontSize="lg">
+                  Profile
+                </Text>
+                <StatusPill label={seller.isActive ? "Active" : "Inactive"} tone={seller.isActive ? "green" : "red"} />
+              </HStack>
               <SimpleGrid columns={2} spacing={3}>
                 <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
@@ -2704,39 +2764,59 @@ export function AdminDashboardScreen({
                 </Box>
               </SimpleGrid>
 
-              <Select
-                value={staffAssignments[seller.id] ?? ""}
-                onChange={(event) =>
-                  setStaffAssignments((current) => ({
-                    ...current,
-                    [seller.id]: event.target.value,
-                  }))
-                }
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-              >
-                <option value="" disabled>
-                  Select assigned store
-                </option>
-                {stores
-                  .filter((store) => store.isActive)
-                  .map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-              </Select>
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                  Assigned Store
+                </Text>
+                <Select
+                  value={staffAssignments[seller.id] ?? ""}
+                  onChange={(event) =>
+                    setStaffAssignments((current) => ({
+                      ...current,
+                      [seller.id]: event.target.value,
+                    }))
+                  }
+                  h="46px"
+                  borderRadius="16px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                  fontWeight="800"
+                >
+                  <option value="" disabled>
+                    Select assigned store
+                  </option>
+                  {stores
+                    .filter((store) => store.isActive)
+                    .map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                </Select>
+              </VStack>
 
-              <Input
-                value="0"
-                isReadOnly
-                inputMode="decimal"
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-                placeholder="Commission %"
-              />
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                  Commission %
+                </Text>
+                <Input
+                  value={commissionDraft}
+                  onChange={(event) =>
+                    setStaffCommissionDrafts((current) => ({
+                      ...current,
+                      [seller.id]: event.target.value,
+                    }))
+                  }
+                  inputMode="decimal"
+                  h="46px"
+                  maxW="128px"
+                  borderRadius="16px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                  fontWeight="900"
+                  placeholder="0"
+                />
+              </VStack>
               <Text fontSize="sm" color="surface.500" lineHeight="1.45">
                 Commission editing is prepared visually. The next backend step is to persist a personal commission rate and feed it into shift reports.
               </Text>
@@ -2783,7 +2863,7 @@ export function AdminDashboardScreen({
                     <VStack align="start" spacing={0}>
                       <Text fontWeight="900">Current shift</Text>
                       <Text fontSize="sm" color="surface.500">
-                        {seller.activeShift.storeName} · started {formatDateTime(seller.activeShift.startedAt)}
+                        {seller.activeShift.storeName} · started {formatSalesTime(seller.activeShift.startedAt)}
                       </Text>
                     </VStack>
                     <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
@@ -2809,25 +2889,72 @@ export function AdminDashboardScreen({
                   Activity Feed
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {activityItems.length} loaded
+                  {activityItems.length} actions
                 </Text>
               </HStack>
-              {activityItems.slice(0, 12).map((item) => (
+              {visibleActivityItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
                 <Box key={item.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                   <HStack justify="space-between" align="start">
-                    <VStack align="start" spacing={0}>
-                      <Text fontWeight="900">{item.title}</Text>
-                      <Text fontSize="sm" color="surface.500">
-                        {item.meta}
-                      </Text>
-                      <Text fontSize="xs" color="surface.400" fontWeight="700">
-                        {formatDateTime(item.date)}
-                      </Text>
-                    </VStack>
-                    <StatusPill label={item.tone} tone={item.tone as "green" | "red" | "blue" | "orange" | "gray"} />
+                    <HStack spacing={3} align="start" minW={0}>
+                      <Box
+                        w="42px"
+                        h="42px"
+                        borderRadius="16px"
+                        display="grid"
+                        placeItems="center"
+                        bg={item.iconBg}
+                        color={item.iconColor}
+                        flexShrink={0}
+                      >
+                        <Box as={Icon} boxSize={6} strokeWidth={2.5} />
+                      </Box>
+                      <VStack align="start" spacing={0} minW={0}>
+                        <Text fontWeight="900">{item.title}</Text>
+                        <Text fontSize="sm" color="surface.500" noOfLines={2}>
+                          {item.meta}
+                        </Text>
+                        <Text fontSize="xs" color="surface.400" fontWeight="700">
+                          {formatDateTime(item.date)}
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontSize="xs" color="surface.400" fontWeight="900" textTransform="uppercase">
+                      {item.iconLabel}
+                    </Text>
                   </HStack>
                 </Box>
-              ))}
+                );
+              })}
+              {activityItems.length > activityPageSize ? (
+                <HStack justify="space-between" pt={1}>
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    isDisabled={safeActivityPage === 0}
+                    onClick={() => setStaffActivityPage((current) => Math.max(0, current - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Text color="surface.500" fontSize="sm" fontWeight="800">
+                    {safeActivityPage + 1} / {activityTotalPages}
+                  </Text>
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="surface.200"
+                    isDisabled={safeActivityPage >= activityTotalPages - 1}
+                    onClick={() => setStaffActivityPage((current) => Math.min(activityTotalPages - 1, current + 1))}
+                  >
+                    Next
+                  </Button>
+                </HStack>
+              ) : null}
               {activityItems.length === 0 ? (
                 <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                   <Text fontWeight="900">No loaded activity yet</Text>
