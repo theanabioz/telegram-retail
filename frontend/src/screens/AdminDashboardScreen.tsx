@@ -2033,8 +2033,11 @@ export function AdminDashboardScreen({
   };
 
   const renderInventory = () => {
-    const activeInventorySnapshot =
-      (selectedInventoryStoreId ? inventoryCache[selectedInventoryStoreId] : null) ?? inventoryView;
+    const trustedInventorySnapshot =
+      selectedInventoryStoreId && trustedInventoryStoreIds[selectedInventoryStoreId]
+        ? inventoryCache[selectedInventoryStoreId]
+        : null;
+    const activeInventorySnapshot = trustedInventorySnapshot ?? inventoryView;
     const visibleInventoryItems = activeInventorySnapshot.items;
     const visibleInventoryHistory = activeInventorySnapshot.history;
     const visibleProductCatalog = productCatalogMode === "archive" ? archivedProducts : products;
