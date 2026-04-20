@@ -38,6 +38,7 @@ type SellerHomeState = {
   shiftDetails: ShiftDetailsResponse | null;
   shiftDetailsLoading: boolean;
   shiftDetailsById: Record<string, ShiftDetailsResponse>;
+  pendingStockProductIds: Record<string, true>;
   pendingShiftMutationId: number | null;
   expectedShiftStatus: "active" | "paused" | "inactive" | null;
   shiftBootstrapAttempts: number;
@@ -265,6 +266,37 @@ function resolveCurrentToken(stateToken: string | null) {
   return getStoredToken() ?? stateToken;
 }
 
+function buildOptimisticInventoryMovement(params: {
+  productId: string;
+  productName: string;
+  quantityDelta: number;
+  balanceAfter: number;
+  reason: string;
+  operatorName: string;
+}) {
+  return {
+    id: `optimistic-inventory-${params.productId}-${Date.now()}`,
+    movementType: params.quantityDelta >= 0 ? "Restock" : "Write-off",
+    quantityDelta: params.quantityDelta,
+    balanceAfter: params.balanceAfter,
+    reason: params.reason,
+    createdAt: new Date().toISOString(),
+    product: {
+      id: params.productId,
+      name: params.productName,
+      sku: "",
+    },
+    actor: {
+      id: "optimistic-actor",
+      full_name: params.operatorName,
+      role: "seller" as const,
+    },
+    saleId: null,
+    returnId: null,
+    shiftId: null,
+  };
+}
+
 function clearShiftBootstrapRetryTimer() {
   if (shiftBootstrapRetryTimer !== null) {
     window.clearTimeout(shiftBootstrapRetryTimer);
@@ -332,6 +364,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   shiftDetails: null,
   shiftDetailsLoading: false,
   shiftDetailsById: {},
+  pendingStockProductIds: {},
   pendingShiftMutationId: null,
   expectedShiftStatus: null,
   shiftBootstrapAttempts: 0,
@@ -1041,7 +1074,41 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previousProducts = get().products;
+    const previousInventoryHistory = get().inventoryHistory;
+    const product = previousProducts.find((item) => item.id === productId);
+
+    if (!product) {
+      set({ error: "Product not found" });
+      return;
+    }
+
+    const nextStock = product.stock + quantity;
+    const optimisticMovement = buildOptimisticInventoryMovement({
+      productId,
+      productName: product.name,
+      quantityDelta: quantity,
+      balanceAfter: nextStock,
+      reason,
+      operatorName: get().operatorName,
+    });
+
+    set((current) => ({
+      error: null,
+      products: current.products.map((item) =>
+        item.id === productId
+          ? {
+              ...item,
+              stock: nextStock,
+            }
+          : item
+      ),
+      inventoryHistory: [optimisticMovement, ...current.inventoryHistory],
+      pendingStockProductIds: {
+        ...current.pendingStockProductIds,
+        [productId]: true,
+      },
+    }));
 
     try {
       await apiPost(
@@ -1053,14 +1120,50 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         },
         token
       );
+
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        catalog: startup.catalog
+          ? {
+              ...startup.catalog,
+              products: startup.catalog.products.map((item) =>
+                item.id === productId
+                  ? {
+                      ...item,
+                      stock: nextStock,
+                    }
+                  : item
+              ),
+            }
+          : startup.catalog,
+        inventoryHistory: startup.inventoryHistory
+          ? {
+              ...startup.inventoryHistory,
+              items: [optimisticMovement, ...startup.inventoryHistory.items],
+            }
+          : startup.inventoryHistory,
+      }));
+
       triggerNotification("success");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      set((current) => {
+        const nextPending = { ...current.pendingStockProductIds };
+        delete nextPending[productId];
+        return {
+          pendingStockProductIds: nextPending,
+          error: null,
+        };
+      });
     } catch (error) {
       triggerNotification("error");
-      set({
-        actionLoading: false,
-        error: error instanceof Error ? error.message : "Failed to restock product",
+      set((current) => {
+        const nextPending = { ...current.pendingStockProductIds };
+        delete nextPending[productId];
+        return {
+          products: previousProducts,
+          inventoryHistory: previousInventoryHistory,
+          pendingStockProductIds: nextPending,
+          error: error instanceof Error ? error.message : "Failed to restock product",
+        };
       });
     }
   },
@@ -1072,7 +1175,41 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    set({ actionLoading: true, error: null });
+    const previousProducts = get().products;
+    const previousInventoryHistory = get().inventoryHistory;
+    const product = previousProducts.find((item) => item.id === productId);
+
+    if (!product) {
+      set({ error: "Product not found" });
+      return;
+    }
+
+    const nextStock = Math.max(0, product.stock - quantity);
+    const optimisticMovement = buildOptimisticInventoryMovement({
+      productId,
+      productName: product.name,
+      quantityDelta: -quantity,
+      balanceAfter: nextStock,
+      reason,
+      operatorName: get().operatorName,
+    });
+
+    set((current) => ({
+      error: null,
+      products: current.products.map((item) =>
+        item.id === productId
+          ? {
+              ...item,
+              stock: nextStock,
+            }
+          : item
+      ),
+      inventoryHistory: [optimisticMovement, ...current.inventoryHistory],
+      pendingStockProductIds: {
+        ...current.pendingStockProductIds,
+        [productId]: true,
+      },
+    }));
 
     try {
       await apiPost(
@@ -1084,14 +1221,50 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         },
         token
       );
+
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        catalog: startup.catalog
+          ? {
+              ...startup.catalog,
+              products: startup.catalog.products.map((item) =>
+                item.id === productId
+                  ? {
+                      ...item,
+                      stock: nextStock,
+                    }
+                  : item
+              ),
+            }
+          : startup.catalog,
+        inventoryHistory: startup.inventoryHistory
+          ? {
+              ...startup.inventoryHistory,
+              items: [optimisticMovement, ...startup.inventoryHistory.items],
+            }
+          : startup.inventoryHistory,
+      }));
+
       triggerNotification("warning");
-      set({ actionLoading: false });
-      await get().bootstrap();
+      set((current) => {
+        const nextPending = { ...current.pendingStockProductIds };
+        delete nextPending[productId];
+        return {
+          pendingStockProductIds: nextPending,
+          error: null,
+        };
+      });
     } catch (error) {
       triggerNotification("error");
-      set({
-        actionLoading: false,
-        error: error instanceof Error ? error.message : "Failed to write off product",
+      set((current) => {
+        const nextPending = { ...current.pendingStockProductIds };
+        delete nextPending[productId];
+        return {
+          products: previousProducts,
+          inventoryHistory: previousInventoryHistory,
+          pendingStockProductIds: nextPending,
+          error: error instanceof Error ? error.message : "Failed to write off product",
+        };
       });
     }
   },

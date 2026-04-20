@@ -138,6 +138,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     mode,
     operatorName,
     pauseShift,
+    pendingStockProductIds,
     products,
     removeDraftItem,
     restockProduct,
@@ -1275,7 +1276,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontSize="sm"
                     fontWeight="800"
                     onClick={() => runStockOperation(item.id, "restock")}
-                    isLoading={actionLoading}
+                    isLoading={Boolean(pendingStockProductIds[item.id])}
+                    isDisabled={Boolean(pendingStockProductIds[item.id])}
                     leftIcon={<Box as={HiOutlineArchiveBox} boxSize={5} />}
                     _active={{ transform: "scale(0.96)", bg: "surface.50" }}
                   >
@@ -1292,7 +1294,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontSize="sm"
                     fontWeight="800"
                     onClick={() => runStockOperation(item.id, "writeoff")}
-                    isLoading={actionLoading}
+                    isLoading={Boolean(pendingStockProductIds[item.id])}
+                    isDisabled={Boolean(pendingStockProductIds[item.id])}
                     leftIcon={<Box as={HiOutlineTrash} boxSize={5} />}
                     _active={{ transform: "scale(0.96)", bg: "red.50" }}
                   >
