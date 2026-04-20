@@ -85,6 +85,7 @@ type StaffDetailMode = "overview" | "profile" | "worklog" | "activity";
 type StaffSeller = AdminStaffResponse["sellers"][number];
 type StoreDetailMode = "overview" | "profile" | "staff" | "activity";
 type TeamStore = AdminStoresResponse["stores"][number];
+type TeamVirtualKeyboardField = "storeName" | "storeAddress" | "sellerName" | "sellerTelegramId";
 
 function getCachedAdminStartup() {
   try {
@@ -343,6 +344,7 @@ export function AdminDashboardScreen({
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [showNewSellerModal, setShowNewSellerModal] = useState(false);
+  const [teamKeyboardField, setTeamKeyboardField] = useState<TeamVirtualKeyboardField>("storeName");
   const [newSeller, setNewSeller] = useState({
     fullName: "",
     telegramId: "",
@@ -1283,11 +1285,14 @@ export function AdminDashboardScreen({
                 borderRadius="999px"
                 bg="surface.900"
                 color="white"
-                _hover={{ bg: "surface.700" }}
-                onClick={() => setShowNewStoreModal(true)}
-              >
-                New Store
-              </Button>
+              _hover={{ bg: "surface.700" }}
+              onClick={() => {
+                setTeamKeyboardField("storeName");
+                setShowNewStoreModal(true);
+              }}
+            >
+              New Store
+            </Button>
             </HStack>
           </HStack>
 
@@ -2847,7 +2852,10 @@ export function AdminDashboardScreen({
               bg="surface.900"
               color="white"
               _hover={{ bg: "surface.700" }}
-              onClick={() => setShowNewSellerModal(true)}
+              onClick={() => {
+                setTeamKeyboardField("sellerName");
+                setShowNewSellerModal(true);
+              }}
             >
               New Seller
             </Button>
@@ -3413,6 +3421,219 @@ export function AdminDashboardScreen({
     );
   };
 
+  const getTeamKeyboardValue = (field: TeamVirtualKeyboardField) => {
+    if (field === "storeName") {
+      return newStoreName;
+    }
+
+    if (field === "storeAddress") {
+      return newStoreAddress;
+    }
+
+    if (field === "sellerName") {
+      return newSeller.fullName;
+    }
+
+    return newSeller.telegramId;
+  };
+
+  const setTeamKeyboardValue = (field: TeamVirtualKeyboardField, value: string) => {
+    if (field === "storeName") {
+      setNewStoreName(value);
+      return;
+    }
+
+    if (field === "storeAddress") {
+      setNewStoreAddress(value);
+      return;
+    }
+
+    if (field === "sellerName") {
+      setNewSeller((current) => ({ ...current, fullName: value }));
+      return;
+    }
+
+    setNewSeller((current) => ({ ...current, telegramId: value.replace(/\D/g, "") }));
+  };
+
+  const pressTeamKeyboardKey = (key: string) => {
+    const value = getTeamKeyboardValue(teamKeyboardField);
+
+    if (key === "delete") {
+      setTeamKeyboardValue(teamKeyboardField, value.slice(0, -1));
+      return;
+    }
+
+    if (key === "clear") {
+      setTeamKeyboardValue(teamKeyboardField, "");
+      return;
+    }
+
+    if (key === "space") {
+      if (teamKeyboardField !== "sellerTelegramId" && value && !value.endsWith(" ")) {
+        setTeamKeyboardValue(teamKeyboardField, `${value} `);
+      }
+      return;
+    }
+
+    if (teamKeyboardField === "sellerTelegramId") {
+      if (/^\d$/.test(key) && value.length < 16) {
+        setTeamKeyboardValue(teamKeyboardField, `${value}${key}`);
+      }
+      return;
+    }
+
+    const shouldUppercase = !value || value.endsWith(" ");
+    const nextChar = key.length === 1 && /[a-z]/i.test(key)
+      ? shouldUppercase
+        ? key.toUpperCase()
+        : key.toLowerCase()
+      : key;
+
+    if (value.length < 80) {
+      setTeamKeyboardValue(teamKeyboardField, `${value}${nextChar}`);
+    }
+  };
+
+  const renderTeamVirtualField = (input: {
+    field: TeamVirtualKeyboardField;
+    label: string;
+    value: string;
+    placeholder: string;
+  }) => {
+    const isActive = teamKeyboardField === input.field;
+
+    return (
+      <VStack align="stretch" spacing={2}>
+        <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+          {input.label}
+        </Text>
+        <Button
+          h="52px"
+          justifyContent="flex-start"
+          borderRadius="18px"
+          bg="surface.50"
+          border="1px solid"
+          borderColor={isActive ? "brand.400" : "rgba(226,224,218,0.95)"}
+          color={input.value ? "surface.900" : "surface.400"}
+          fontWeight="800"
+          boxShadow={isActive ? "0 0 0 3px rgba(74,132,244,0.12)" : "none"}
+          _hover={{ bg: "surface.50" }}
+          _active={{ transform: "scale(0.99)" }}
+          onClick={() => setTeamKeyboardField(input.field)}
+        >
+          <Text noOfLines={1}>{input.value || input.placeholder}</Text>
+        </Button>
+      </VStack>
+    );
+  };
+
+  const renderTeamVirtualKeyboard = () => {
+    const isNumeric = teamKeyboardField === "sellerTelegramId";
+    const numericKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "delete"];
+    const alphaRows = [
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+      ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
+      ["z", "x", "c", "v", "b", "n", "m"],
+    ];
+
+    if (isNumeric) {
+      return (
+        <SimpleGrid columns={3} spacing={3}>
+          {numericKeys.map((key) => (
+            <Button
+              key={key}
+              h="56px"
+              borderRadius="20px"
+              bg={key === "delete" || key === "clear" ? "surface.50" : "white"}
+              color="surface.900"
+              fontSize={key === "delete" || key === "clear" ? "sm" : "2xl"}
+              fontWeight="800"
+              border="1px solid"
+              borderColor="surface.100"
+              _hover={{ bg: "surface.50" }}
+              _active={{ transform: "scale(0.92)", bg: "surface.100" }}
+              onClick={() => pressTeamKeyboardKey(key)}
+            >
+              {key === "delete" ? "Del" : key === "clear" ? "Clear" : key}
+            </Button>
+          ))}
+        </SimpleGrid>
+      );
+    }
+
+    return (
+      <VStack align="stretch" spacing={2}>
+        {alphaRows.map((row, index) => (
+          <HStack key={index} spacing={1.5} justify="center">
+            {row.map((key) => (
+              <Button
+                key={key}
+                h="38px"
+                minW={index === 3 ? "34px" : "30px"}
+                px={0}
+                borderRadius="12px"
+                bg="white"
+                color="surface.900"
+                fontSize="sm"
+                fontWeight="900"
+                border="1px solid"
+                borderColor="surface.100"
+                _hover={{ bg: "surface.50" }}
+                _active={{ transform: "scale(0.92)", bg: "surface.100" }}
+                onClick={() => pressTeamKeyboardKey(key)}
+              >
+                {key.toUpperCase()}
+              </Button>
+            ))}
+          </HStack>
+        ))}
+        <HStack spacing={2}>
+          <Button
+            flex="1"
+            h="44px"
+            borderRadius="16px"
+            bg="surface.50"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressTeamKeyboardKey("clear")}
+          >
+            Clear
+          </Button>
+          <Button
+            flex="2"
+            h="44px"
+            borderRadius="16px"
+            bg="white"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressTeamKeyboardKey("space")}
+          >
+            Space
+          </Button>
+          <Button
+            flex="1"
+            h="44px"
+            borderRadius="16px"
+            bg="surface.50"
+            color="surface.800"
+            fontWeight="800"
+            border="1px solid"
+            borderColor="surface.100"
+            onClick={() => pressTeamKeyboardKey("delete")}
+          >
+            Del
+          </Button>
+        </HStack>
+      </VStack>
+    );
+  };
+
   const renderTeamCreationModals = () => (
     <>
       {showNewStoreModal ? (
@@ -3470,37 +3691,23 @@ export function AdminDashboardScreen({
                 </Button>
               </HStack>
 
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Store name
-                </Text>
-                <Input
-                  value={newStoreName}
-                  onChange={(event) => setNewStoreName(event.target.value)}
-                  placeholder="Central Mall Store"
-                  borderRadius="18px"
-                  bg="surface.50"
-                  borderColor="rgba(226,224,218,0.95)"
-                  h="52px"
-                  fontWeight="800"
-                />
-              </VStack>
+              {renderTeamVirtualField({
+                field: "storeName",
+                label: "Store name",
+                value: newStoreName,
+                placeholder: "Central Mall Store",
+              })}
 
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Address
-                </Text>
-                <Input
-                  value={newStoreAddress}
-                  onChange={(event) => setNewStoreAddress(event.target.value)}
-                  placeholder="Address or short location note"
-                  borderRadius="18px"
-                  bg="surface.50"
-                  borderColor="rgba(226,224,218,0.95)"
-                  h="52px"
-                  fontWeight="800"
-                />
-              </VStack>
+              {renderTeamVirtualField({
+                field: "storeAddress",
+                label: "Address",
+                value: newStoreAddress,
+                placeholder: "Address or short location note",
+              })}
+
+              <Box bg="rgba(246,244,239,0.96)" borderRadius="24px" px={3} py={3} border="1px solid" borderColor="rgba(223,219,210,0.78)">
+                {renderTeamVirtualKeyboard()}
+              </Box>
 
               <Button
                 borderRadius="18px"
@@ -3573,42 +3780,19 @@ export function AdminDashboardScreen({
                 </Button>
               </HStack>
 
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Full name
-                </Text>
-                <Input
-                  value={newSeller.fullName}
-                  onChange={(event) =>
-                    setNewSeller((current) => ({ ...current, fullName: event.target.value }))
-                  }
-                  placeholder="John Seller"
-                  borderRadius="18px"
-                  bg="surface.50"
-                  borderColor="rgba(226,224,218,0.95)"
-                  h="52px"
-                  fontWeight="800"
-                />
-              </VStack>
+              {renderTeamVirtualField({
+                field: "sellerName",
+                label: "Full name",
+                value: newSeller.fullName,
+                placeholder: "John Seller",
+              })}
 
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Telegram ID
-                </Text>
-                <Input
-                  value={newSeller.telegramId}
-                  onChange={(event) =>
-                    setNewSeller((current) => ({ ...current, telegramId: event.target.value.replace(/\D/g, "") }))
-                  }
-                  inputMode="numeric"
-                  placeholder="123456789"
-                  borderRadius="18px"
-                  bg="surface.50"
-                  borderColor="rgba(226,224,218,0.95)"
-                  h="52px"
-                  fontWeight="800"
-                />
-              </VStack>
+              {renderTeamVirtualField({
+                field: "sellerTelegramId",
+                label: "Telegram ID",
+                value: newSeller.telegramId,
+                placeholder: "123456789",
+              })}
 
               <VStack align="stretch" spacing={2}>
                 <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
@@ -3659,6 +3843,10 @@ export function AdminDashboardScreen({
                   );
                 })}
               </SimpleGrid>
+
+              <Box bg="rgba(246,244,239,0.96)" borderRadius="24px" px={3} py={3} border="1px solid" borderColor="rgba(223,219,210,0.78)">
+                {renderTeamVirtualKeyboard()}
+              </Box>
 
               <Button
                 borderRadius="18px"
