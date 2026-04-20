@@ -152,6 +152,25 @@ function getSalesPeriodRange(period: Exclude<SalesPeriod, "custom">) {
   };
 }
 
+function getMatchingPresetSalesPeriod(filters: AdminSalesOverviewResponse["filters"] | null) {
+  if (!filters || filters.storeId || filters.sellerId || filters.saleStatus !== "all") {
+    return null;
+  }
+
+  const normalizedFrom = filters.dateFrom ? toDateInputValue(new Date(filters.dateFrom)) : "";
+  const normalizedTo = filters.dateTo ? toDateInputValue(new Date(filters.dateTo)) : "";
+
+  for (const period of ["today", "week", "month"] as const) {
+    const range = getSalesPeriodRange(period);
+
+    if (range.from === normalizedFrom && range.to === normalizedTo) {
+      return period;
+    }
+  }
+
+  return null;
+}
+
 function formatSalesTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
@@ -319,6 +338,7 @@ export function AdminDashboardScreen({
     archivedProducts,
     inventoryItems,
     inventoryHistory,
+    salesFilters,
     salesStores,
     salesSellers,
     salesOverview,
@@ -798,47 +818,46 @@ export function AdminDashboardScreen({
   }, [salesOverview, returnsOverview]);
 
   useEffect(() => {
-    if (
-      salesPeriod !== "custom" &&
-      !salesStoreFilter &&
-      !salesSellerFilter &&
-      salesStatusFilter === "all"
-    ) {
-      const summary: SalesPeriodSummary = {
-        revenue: Number(salesOverview.reduce((total, sale) => total + sale.totalAmount, 0).toFixed(2)),
-        salesCount: salesOverview.length,
-        cashTotal: Number(
-          salesOverview
-            .filter((sale) => sale.paymentMethod === "cash")
-            .reduce((total, sale) => total + sale.totalAmount, 0)
-            .toFixed(2)
-        ),
-        cardTotal: Number(
-          salesOverview
-            .filter((sale) => sale.paymentMethod === "card")
-            .reduce((total, sale) => total + sale.totalAmount, 0)
-            .toFixed(2)
-        ),
-        returnsTotal: Number(returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0).toFixed(2)),
-        returnsCount: returnsOverview.length,
-        returnedUnits: returnsOverview.reduce(
-          (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
-          0
-        ),
-        averageReturn: Number(
-          (
-            returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0) /
-            Math.max(returnsOverview.length, 1)
-          ).toFixed(2)
-        ),
-      };
+    const matchedPeriod = getMatchingPresetSalesPeriod(salesFilters);
 
-      setSalesSummaryCache((current) => ({
-        ...current,
-        [salesPeriod]: summary,
-      }));
+    if (!matchedPeriod) {
+      return;
     }
-  }, [returnsOverview, salesOverview, salesPeriod, salesSellerFilter, salesStatusFilter, salesStoreFilter]);
+
+    const summary: SalesPeriodSummary = {
+      revenue: Number(salesOverview.reduce((total, sale) => total + sale.totalAmount, 0).toFixed(2)),
+      salesCount: salesOverview.length,
+      cashTotal: Number(
+        salesOverview
+          .filter((sale) => sale.paymentMethod === "cash")
+          .reduce((total, sale) => total + sale.totalAmount, 0)
+          .toFixed(2)
+      ),
+      cardTotal: Number(
+        salesOverview
+          .filter((sale) => sale.paymentMethod === "card")
+          .reduce((total, sale) => total + sale.totalAmount, 0)
+          .toFixed(2)
+      ),
+      returnsTotal: Number(returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0).toFixed(2)),
+      returnsCount: returnsOverview.length,
+      returnedUnits: returnsOverview.reduce(
+        (total, entry) => total + entry.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
+        0
+      ),
+      averageReturn: Number(
+        (
+          returnsOverview.reduce((total, entry) => total + entry.totalAmount, 0) /
+          Math.max(returnsOverview.length, 1)
+        ).toFixed(2)
+      ),
+    };
+
+    setSalesSummaryCache((current) => ({
+      ...current,
+      [matchedPeriod]: summary,
+    }));
+  }, [returnsOverview, salesFilters, salesOverview]);
 
   useEffect(() => {
     const snapshot = { items: inventoryItems, history: inventoryHistory };
@@ -4877,6 +4896,12 @@ export function AdminDashboardScreen({
                     borderColor={isActive ? "rgba(74,132,244,0.24)" : "transparent"}
                     _hover={{ bg: isActive ? "rgba(74,132,244,0.14)" : "rgba(232,231,226,0.96)" }}
                     onClick={() => {
+                      const cachedSnapshot = inventoryCache[store.id];
+                      if (cachedSnapshot) {
+                        setInventoryView(cachedSnapshot);
+                        setInventorySoftRefreshing(false);
+                      }
+                      setSelectedInventoryItemId(null);
                       setSelectedInventoryStoreId(store.id);
                       setShowInventoryStoreSelector(false);
                     }}
