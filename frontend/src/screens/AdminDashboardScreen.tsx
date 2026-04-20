@@ -345,6 +345,7 @@ export function AdminDashboardScreen({
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [showNewSellerModal, setShowNewSellerModal] = useState(false);
   const [teamKeyboardField, setTeamKeyboardField] = useState<TeamVirtualKeyboardField>("storeName");
+  const [teamKeyboardCapsLock, setTeamKeyboardCapsLock] = useState(false);
   const [newSeller, setNewSeller] = useState({
     fullName: "",
     telegramId: "",
@@ -1288,6 +1289,7 @@ export function AdminDashboardScreen({
               _hover={{ bg: "surface.700" }}
               onClick={() => {
                 setTeamKeyboardField("storeName");
+                setTeamKeyboardCapsLock(false);
                 setShowNewStoreModal(true);
               }}
             >
@@ -2854,6 +2856,7 @@ export function AdminDashboardScreen({
               _hover={{ bg: "surface.700" }}
               onClick={() => {
                 setTeamKeyboardField("sellerName");
+                setTeamKeyboardCapsLock(false);
                 setShowNewSellerModal(true);
               }}
             >
@@ -3476,6 +3479,11 @@ export function AdminDashboardScreen({
       return;
     }
 
+    if (key === "caps") {
+      setTeamKeyboardCapsLock((current) => !current);
+      return;
+    }
+
     if (teamKeyboardField === "sellerTelegramId") {
       if (/^\d$/.test(key) && value.length < 16) {
         setTeamKeyboardValue(teamKeyboardField, `${value}${key}`);
@@ -3483,7 +3491,7 @@ export function AdminDashboardScreen({
       return;
     }
 
-    const shouldUppercase = !value || value.endsWith(" ");
+    const shouldUppercase = teamKeyboardCapsLock || !value || value.endsWith(" ");
     const nextChar = key.length === 1 && /[a-z]/i.test(key)
       ? shouldUppercase
         ? key.toUpperCase()
@@ -3540,11 +3548,11 @@ export function AdminDashboardScreen({
 
     if (isNumeric) {
       return (
-        <SimpleGrid columns={3} spacing={3}>
+        <SimpleGrid columns={3} spacing={2.5}>
           {numericKeys.map((key) => (
             <Button
               key={key}
-              h="56px"
+              h="64px"
               borderRadius="20px"
               bg={key === "delete" || key === "clear" ? "surface.50" : "white"}
               color="surface.900"
@@ -3564,19 +3572,20 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack align="stretch" spacing={2}>
+      <VStack align="stretch" spacing={2.5} w="full">
         {alphaRows.map((row, index) => (
-          <HStack key={index} spacing={1.5} justify="center">
+          <HStack key={index} spacing={1.5} justify="center" w="full">
             {row.map((key) => (
               <Button
                 key={key}
-                h="38px"
-                minW={index === 3 ? "34px" : "30px"}
+                h="44px"
+                flex="1"
+                minW={0}
                 px={0}
-                borderRadius="12px"
+                borderRadius="14px"
                 bg="white"
                 color="surface.900"
-                fontSize="sm"
+                fontSize={index === 0 ? "sm" : "md"}
                 fontWeight="900"
                 border="1px solid"
                 borderColor="surface.100"
@@ -3592,7 +3601,20 @@ export function AdminDashboardScreen({
         <HStack spacing={2}>
           <Button
             flex="1"
-            h="44px"
+            h="50px"
+            borderRadius="16px"
+            bg={teamKeyboardCapsLock ? "brand.500" : "surface.50"}
+            color={teamKeyboardCapsLock ? "white" : "surface.800"}
+            fontWeight="800"
+            border="1px solid"
+            borderColor={teamKeyboardCapsLock ? "brand.500" : "surface.100"}
+            onClick={() => pressTeamKeyboardKey("caps")}
+          >
+            Caps
+          </Button>
+          <Button
+            flex="1"
+            h="50px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3605,7 +3627,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="2"
-            h="44px"
+            h="50px"
             borderRadius="16px"
             bg="white"
             color="surface.800"
@@ -3618,7 +3640,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="44px"
+            h="50px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3655,7 +3677,8 @@ export function AdminDashboardScreen({
             right={0}
             bottom={0}
             w="100%"
-            maxH="88vh"
+            h="calc(100vh - 18px)"
+            maxH="calc(100vh - 18px)"
             bg="white"
             borderTopRadius="32px"
             boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
@@ -3669,7 +3692,7 @@ export function AdminDashboardScreen({
               <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
             </Box>
 
-            <VStack align="stretch" spacing={4} px={5} pt={2} pb="calc(20px + env(safe-area-inset-bottom, 0px))" overflowY="auto">
+            <VStack align="stretch" spacing={4} px={5} pt={2} pb={4} overflowY="auto" flex="1">
               <HStack justify="space-between" align="center" mb={2}>
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
@@ -3705,11 +3728,23 @@ export function AdminDashboardScreen({
                 placeholder: "Address or short location note",
               })}
 
-              <Box bg="rgba(246,244,239,0.96)" borderRadius="24px" px={3} py={3} border="1px solid" borderColor="rgba(223,219,210,0.78)">
+              <Box
+                bg="rgba(246,244,239,0.96)"
+                borderRadius="24px"
+                mx={-3}
+                px={2}
+                py={3}
+                border="1px solid"
+                borderColor="rgba(223,219,210,0.78)"
+              >
                 {renderTeamVirtualKeyboard()}
               </Box>
+            </VStack>
 
+            <Box px={5} pt={3} pb="calc(14px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
               <Button
+                w="full"
+                h="56px"
                 borderRadius="18px"
                 bg="surface.900"
                 color="white"
@@ -3720,7 +3755,7 @@ export function AdminDashboardScreen({
               >
                 Create Store
               </Button>
-            </VStack>
+            </Box>
           </Box>
         </Box>
       ) : null}
@@ -3744,7 +3779,8 @@ export function AdminDashboardScreen({
             right={0}
             bottom={0}
             w="100%"
-            maxH="88vh"
+            h="calc(100vh - 18px)"
+            maxH="calc(100vh - 18px)"
             bg="white"
             borderTopRadius="32px"
             boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
@@ -3758,7 +3794,7 @@ export function AdminDashboardScreen({
               <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
             </Box>
 
-            <VStack align="stretch" spacing={4} px={5} pt={2} pb="calc(20px + env(safe-area-inset-bottom, 0px))" overflowY="auto">
+            <VStack align="stretch" spacing={4} px={5} pt={2} pb={4} overflowY="auto" flex="1">
               <HStack justify="space-between" align="center" mb={2}>
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
@@ -3844,11 +3880,23 @@ export function AdminDashboardScreen({
                 })}
               </SimpleGrid>
 
-              <Box bg="rgba(246,244,239,0.96)" borderRadius="24px" px={3} py={3} border="1px solid" borderColor="rgba(223,219,210,0.78)">
+              <Box
+                bg="rgba(246,244,239,0.96)"
+                borderRadius="24px"
+                mx={-3}
+                px={2}
+                py={3}
+                border="1px solid"
+                borderColor="rgba(223,219,210,0.78)"
+              >
                 {renderTeamVirtualKeyboard()}
               </Box>
+            </VStack>
 
+            <Box px={5} pt={3} pb="calc(14px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -12px 28px rgba(18,18,18,0.05)">
               <Button
+                w="full"
+                h="56px"
                 borderRadius="18px"
                 bg="surface.900"
                 color="white"
@@ -3859,7 +3907,7 @@ export function AdminDashboardScreen({
               >
                 Create Seller
               </Button>
-            </VStack>
+            </Box>
           </Box>
         </Box>
       ) : null}
