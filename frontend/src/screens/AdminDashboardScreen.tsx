@@ -419,8 +419,6 @@ export function AdminDashboardScreen({
     activeTab === "inventory" && selectedInventoryHeaderItem
       ? inventoryStores.find((store) => store.id === selectedInventoryStoreId)?.name ??
         selectedInventoryHeaderItem.storeName
-      : activeTab === "team" && selectedStaffSeller
-        ? selectedStaffSeller.fullName
       : null;
 
   useTelegramBackButton(
@@ -2607,23 +2605,6 @@ export function AdminDashboardScreen({
               <StatusPill label={status.label} tone={status.tone} />
             </HStack>
 
-            <SimpleGrid columns={2} spacing={3}>
-              {[
-                { label: "Revenue", value: formatEur(seller.revenue) },
-                { label: "Sales", value: String(seller.salesCount) },
-                { label: "Commission", value: "0%" },
-                { label: "Last Sale", value: seller.lastSaleAt ? formatDateTime(seller.lastSaleAt) : "No activity" },
-              ].map((card) => (
-                <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    {card.label}
-                  </Text>
-                  <Text mt={1} fontWeight="900" fontSize={card.label === "Last Sale" ? "sm" : "xl"} noOfLines={2}>
-                    {card.value}
-                  </Text>
-                </Box>
-              ))}
-            </SimpleGrid>
           </VStack>
         </Box>
 
@@ -2659,6 +2640,24 @@ export function AdminDashboardScreen({
 
         {staffDetailMode === "overview" ? (
           <VStack spacing={4} align="stretch">
+            <SimpleGrid columns={2} spacing={3}>
+              {[
+                { label: "Revenue", value: formatEur(seller.revenue) },
+                { label: "Sales", value: String(seller.salesCount) },
+                { label: "Commission", value: "0%" },
+                { label: "Last Sale", value: seller.lastSaleAt ? formatDateTime(seller.lastSaleAt) : "No activity" },
+              ].map((card) => (
+                <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    {card.label}
+                  </Text>
+                  <Text mt={2} fontWeight="900" fontSize={card.label === "Last Sale" ? "sm" : "2xl"} noOfLines={2}>
+                    {card.value}
+                  </Text>
+                </Box>
+              ))}
+            </SimpleGrid>
+
             {seller.activeShift ? (
               <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
                 <VStack align="stretch" spacing={3}>
