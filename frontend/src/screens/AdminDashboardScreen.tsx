@@ -1827,7 +1827,6 @@ export function AdminDashboardScreen({
           </Box>
         ) : null}
         </VStack>
-        {renderProductCreationModal()}
       </>
     );
   };
@@ -2617,7 +2616,8 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack spacing={4} align="stretch">
+      <>
+        <VStack spacing={4} align="stretch">
         <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
           <HStack spacing={2}>
             {(["stock", "products"] as InventoryMode[]).map((mode) => {
@@ -2814,7 +2814,9 @@ export function AdminDashboardScreen({
             </Box>
           </VStack>
         )}
-      </VStack>
+        </VStack>
+        {renderProductCreationModal()}
+      </>
     );
   };
 
