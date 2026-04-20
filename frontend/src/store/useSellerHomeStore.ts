@@ -39,7 +39,7 @@ type SellerHomeState = {
   shiftDetailsLoading: boolean;
   shiftDetailsById: Record<string, ShiftDetailsResponse>;
   token: string | null;
-  bootstrap: () => Promise<void>;
+  bootstrap: (options?: { skipCache?: boolean }) => Promise<void>;
   startShift: () => Promise<void>;
   pauseShift: () => Promise<void>;
   resumeShift: () => Promise<void>;
@@ -309,7 +309,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   shiftDetailsById: {},
   token: getStoredToken(),
 
-  bootstrap: async () => {
+  bootstrap: async (options) => {
     set({ error: null });
     let usedCachedStartup = false;
 
@@ -335,7 +335,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         set({ token });
       }
 
-      const cachedStartup = readSellerStartupCache(token);
+      const cachedStartup = options?.skipCache ? null : readSellerStartupCache(token);
       if (cachedStartup) {
         usedCachedStartup = true;
         set(buildSellerStartupState(cachedStartup, token));
@@ -413,7 +413,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     try {
       await apiPost("/shifts/start", { storeId }, token);
       triggerNotification("success");
-      void get().bootstrap();
+      void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
       set({
@@ -448,7 +448,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       await apiPost("/shifts/pause", {}, token);
-      void get().bootstrap();
+      void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
       set({
@@ -485,7 +485,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     try {
       await apiPost("/shifts/resume", {}, token);
       triggerNotification("success");
-      void get().bootstrap();
+      void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
       set({
@@ -525,7 +525,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     try {
       await apiPost("/shifts/stop", {}, token);
       triggerNotification("warning");
-      void get().bootstrap();
+      void get().bootstrap({ skipCache: true });
     } catch (error) {
       triggerNotification("error");
       set({
