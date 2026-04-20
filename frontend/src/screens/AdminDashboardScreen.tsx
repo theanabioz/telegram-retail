@@ -2887,14 +2887,13 @@ export function AdminDashboardScreen({
                         Default {formatEur(item.defaultPrice)} · Updated {formatShortDate(item.updatedAt)}
                       </Text>
                     </VStack>
-                    <VStack align="end" spacing={1}>
-                      <Text fontWeight="900" fontSize="lg">
+                    <VStack align="center" justify="center" spacing={0} minW="56px" flexShrink={0} alignSelf="stretch">
+                      <Text fontWeight="900" fontSize="2xl" lineHeight="1">
                         {item.stockQuantity}
                       </Text>
-                      <StatusPill
-                        label={item.isEnabled ? "Enabled" : "Disabled"}
-                        tone={item.isEnabled ? (item.stockQuantity <= 10 ? "orange" : "green") : "red"}
-                      />
+                      <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.08em">
+                        Units
+                      </Text>
                     </VStack>
                   </HStack>
                 </Box>
