@@ -79,6 +79,7 @@ type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
 type InventoryMode = "stock" | "products";
 type InventoryDetailMode = "overview" | "settings" | "stock";
+type ProductDetailMode = "overview" | "settings" | "stores";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
@@ -310,6 +311,8 @@ export function AdminDashboardScreen({
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("stock");
   const [inventoryDetailMode, setInventoryDetailMode] = useState<InventoryDetailMode>("overview");
   const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [productDetailMode, setProductDetailMode] = useState<ProductDetailMode>("overview");
   const [inventoryView, setInventoryView] = useState<InventorySnapshot>(() => {
     const cachedStartup = getCachedAdminStartup();
     return {
@@ -359,6 +362,8 @@ export function AdminDashboardScreen({
     sku: "",
     defaultPrice: "",
   });
+  const [newProductIsActive, setNewProductIsActive] = useState(true);
+  const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState(
     () => getCachedAdminStartup()?.inventory.selectedStoreId ?? ""
   );
@@ -377,6 +382,9 @@ export function AdminDashboardScreen({
   >({});
   const [productEdits, setProductEdits] = useState<
     Record<string, { name: string; sku: string; defaultPrice: string; isActive: boolean }>
+  >({});
+  const [productStoreEdits, setProductStoreEdits] = useState<
+    Record<string, { price: string; isEnabled: boolean }>
   >({});
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
@@ -415,6 +423,8 @@ export function AdminDashboardScreen({
     if (tab === "inventory") {
       setSelectedInventoryItemId(null);
       setInventoryDetailMode("overview");
+      setSelectedProductId(null);
+      setProductDetailMode("overview");
     }
 
     if (tab === "team") {
@@ -437,6 +447,8 @@ export function AdminDashboardScreen({
   const adminPageTitle =
     activeTab === "inventory" && selectedInventoryItemId
       ? "Product Details"
+      : activeTab === "inventory" && selectedProductId
+        ? "Product Details"
       : activeTab === "team" && selectedStaffSeller
         ? "Seller Details"
         : activeTab === "team" && selectedTeamStore
@@ -450,13 +462,15 @@ export function AdminDashboardScreen({
     activeTab === "inventory" && selectedInventoryHeaderItem
       ? inventoryStores.find((store) => store.id === selectedInventoryStoreId)?.name ??
         selectedInventoryHeaderItem.storeName
+      : activeTab === "inventory" && selectedProductId
+        ? "Product catalog"
       : null;
 
   useTelegramBackButton(
     activeTab === "sales"
       ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
       : activeTab === "inventory"
-        ? Boolean(selectedInventoryItemId)
+        ? Boolean(selectedInventoryItemId || selectedProductId)
         : activeTab === "team"
           ? Boolean(selectedStaffSeller || selectedTeamStore)
           : false,
@@ -474,6 +488,12 @@ export function AdminDashboardScreen({
       if (activeTab === "inventory" && selectedInventoryItemId) {
         setSelectedInventoryItemId(null);
         setInventoryDetailMode("overview");
+        return;
+      }
+
+      if (activeTab === "inventory" && selectedProductId) {
+        setSelectedProductId(null);
+        setProductDetailMode("overview");
         return;
       }
 
@@ -700,6 +720,23 @@ export function AdminDashboardScreen({
   }, [staff]);
 
   useEffect(() => {
+    setProductStoreEdits((current) => {
+      const next = { ...current };
+
+      for (const product of products) {
+        for (const setting of product.storeSettings) {
+          next[setting.storeProductId] ??= {
+            price: setting.storePrice.toFixed(2),
+            isEnabled: setting.isEnabled,
+          };
+        }
+      }
+
+      return next;
+    });
+  }, [products]);
+
+  useEffect(() => {
     if (!selectedInventoryStoreId && inventoryStores.length > 0) {
       const firstActiveStore = inventoryStores.find((store) => store.isActive) ?? inventoryStores[0];
       setSelectedInventoryStoreId(firstActiveStore.id);
@@ -904,10 +941,12 @@ export function AdminDashboardScreen({
       name: newProduct.name,
       sku: newProduct.sku.trim() || generateInternalProductCode(newProduct.name),
       defaultPrice: parsedPrice,
-      isActive: true,
+      isActive: newProductIsActive,
     });
 
     setNewProduct({ name: "", sku: "", defaultPrice: "" });
+    setNewProductIsActive(true);
+    setShowNewProductModal(false);
     if (selectedInventoryStoreId) {
       await loadInventory(selectedInventoryStoreId);
     }
@@ -943,6 +982,31 @@ export function AdminDashboardScreen({
 
     await deleteProduct(productId);
 
+    if (selectedInventoryStoreId) {
+      await loadInventory(selectedInventoryStoreId);
+    }
+  };
+
+  const handleSaveProductStoreSetting = async (storeProductId: string) => {
+    const draft = productStoreEdits[storeProductId];
+
+    if (!draft) {
+      return;
+    }
+
+    const parsedPrice = parseDecimalInput(draft.price);
+
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      window.alert("Enter a valid price. You can use either 12.50 or 12,50.");
+      return;
+    }
+
+    await updateStoreProduct(storeProductId, {
+      price: parsedPrice,
+      isEnabled: draft.isEnabled,
+    });
+
+    await loadProducts();
     if (selectedInventoryStoreId) {
       await loadInventory(selectedInventoryStoreId);
     }
@@ -1407,7 +1471,8 @@ export function AdminDashboardScreen({
     );
 
     return (
-      <VStack spacing={4} align="stretch">
+      <>
+        <VStack spacing={4} align="stretch">
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
           <VStack align="stretch" spacing={4}>
             {!supportsTelegramBackButton ? (
@@ -1758,7 +1823,9 @@ export function AdminDashboardScreen({
             </VStack>
           </Box>
         ) : null}
-      </VStack>
+        </VStack>
+        {renderProductCreationModal()}
+      </>
     );
   };
 
@@ -1768,6 +1835,9 @@ export function AdminDashboardScreen({
     const selectedStore = inventoryStores.find((store) => store.id === selectedInventoryStoreId) ?? null;
     const selectedItem = selectedInventoryItemId
       ? visibleInventoryItems.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
+      : null;
+    const selectedProduct = selectedProductId
+      ? products.find((product) => product.id === selectedProductId) ?? null
       : null;
     const totalUnits = visibleInventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
     const lowStockCount = visibleInventoryItems.filter((item) => item.stockQuantity <= 10).length;
@@ -1842,6 +1912,306 @@ export function AdminDashboardScreen({
         iconColor: "surface.600",
       };
     };
+
+    if (inventoryMode === "products" && selectedProduct) {
+      const draft = productEdits[selectedProduct.id] ?? {
+        name: selectedProduct.name,
+        sku: selectedProduct.sku,
+        defaultPrice: selectedProduct.defaultPrice.toFixed(2),
+        isActive: selectedProduct.isActive,
+      };
+
+      return (
+        <VStack spacing={4} align="stretch">
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
+              {!supportsTelegramBackButton ? (
+                <HStack justify="flex-start">
+                  <Button
+                    size="sm"
+                    borderRadius="14px"
+                    variant="outline"
+                    borderColor="var(--app-border)"
+                    onClick={() => {
+                      setSelectedProductId(null);
+                      setProductDetailMode("overview");
+                    }}
+                  >
+                    Back
+                  </Button>
+                </HStack>
+              ) : null}
+
+              <HStack justify="space-between" align="center" gap={3}>
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" fontSize="xl" noOfLines={2}>
+                    {selectedProduct.name}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                    {selectedProduct.enabledStoreCount} stores enabled
+                  </Text>
+                </VStack>
+                <StatusPill label={selectedProduct.isActive ? "Active" : "Inactive"} tone={selectedProduct.isActive ? "green" : "red"} />
+              </HStack>
+            </VStack>
+          </Box>
+
+          <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+            <HStack spacing={2}>
+              {(["overview", "settings", "stores"] as ProductDetailMode[]).map((mode) => {
+                const isActive = productDetailMode === mode;
+
+                return (
+                  <Button
+                    key={mode}
+                    flex="1"
+                    size="sm"
+                    borderRadius="999px"
+                    bg={isActive ? "surface.900" : "transparent"}
+                    color={isActive ? "white" : "surface.500"}
+                    _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                    onClick={() => setProductDetailMode(mode)}
+                  >
+                    {mode === "overview" ? "Overview" : mode === "settings" ? "Settings" : "Stores"}
+                  </Button>
+                );
+              })}
+            </HStack>
+          </Box>
+
+          {productDetailMode === "overview" ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <SimpleGrid columns={2} spacing={3}>
+                  {[
+                    { label: "Default Price", value: formatEur(selectedProduct.defaultPrice) },
+                    { label: "Status", value: selectedProduct.isActive ? "Active" : "Inactive" },
+                    { label: "Stores Enabled", value: `${selectedProduct.enabledStoreCount}` },
+                    { label: "Updated", value: formatShortDate(selectedProduct.updatedAt) },
+                  ].map((card) => (
+                    <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                        {card.label}
+                      </Text>
+                      <Text fontWeight="900" fontSize="xl" mt={1}>
+                        {card.value}
+                      </Text>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+              </VStack>
+            </Box>
+          ) : null}
+
+          {productDetailMode === "settings" ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <VStack align="stretch" spacing={2}>
+                  <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                    Product name
+                  </Text>
+                  <Input
+                    value={draft.name}
+                    onChange={(event) =>
+                      setProductEdits((current) => ({
+                        ...current,
+                        [selectedProduct.id]: { ...draft, name: event.target.value },
+                      }))
+                    }
+                    placeholder="Product name"
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
+                  />
+                </VStack>
+
+                <VStack align="stretch" spacing={2}>
+                  <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                    Default price
+                  </Text>
+                  <Input
+                    value={draft.defaultPrice}
+                    onChange={(event) =>
+                      setProductEdits((current) => ({
+                        ...current,
+                        [selectedProduct.id]: { ...draft, defaultPrice: event.target.value },
+                      }))
+                    }
+                    placeholder="Default price"
+                    inputMode="decimal"
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
+                  />
+                </VStack>
+
+                <SimpleGrid columns={2} spacing={2}>
+                  <Button
+                    borderRadius="16px"
+                    bg={draft.isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
+                    color={draft.isActive ? "white" : "surface.800"}
+                    _hover={{ bg: draft.isActive ? "brand.600" : "rgba(225,223,218,0.95)" }}
+                    onClick={() =>
+                      setProductEdits((current) => ({
+                        ...current,
+                        [selectedProduct.id]: { ...draft, isActive: true },
+                      }))
+                    }
+                  >
+                    Active
+                  </Button>
+                  <Button
+                    borderRadius="16px"
+                    bg={!draft.isActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
+                    color={!draft.isActive ? "red.500" : "surface.800"}
+                    _hover={{ bg: !draft.isActive ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)" }}
+                    onClick={() =>
+                      setProductEdits((current) => ({
+                        ...current,
+                        [selectedProduct.id]: { ...draft, isActive: false },
+                      }))
+                    }
+                  >
+                    Inactive
+                  </Button>
+                </SimpleGrid>
+
+                <Button
+                  h="52px"
+                  borderRadius="18px"
+                  bg="surface.900"
+                  color="white"
+                  _hover={{ bg: "surface.700" }}
+                  isLoading={mutating}
+                  onClick={() => void handleSaveProduct(selectedProduct.id)}
+                >
+                  Save Product
+                </Button>
+
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="ghost"
+                  color="red.500"
+                  _hover={{ bg: "rgba(248,113,113,0.12)" }}
+                  isLoading={mutating}
+                  onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
+                >
+                  Delete Product
+                </Button>
+              </VStack>
+            </Box>
+          ) : null}
+
+          {productDetailMode === "stores" ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="lg">
+                    Store Availability
+                  </Text>
+                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                    Enable the product and set store-specific pricing.
+                  </Text>
+                </VStack>
+
+                {selectedProduct.storeSettings.map((setting) => {
+                  const storeDraft = productStoreEdits[setting.storeProductId] ?? {
+                    price: setting.storePrice.toFixed(2),
+                    isEnabled: setting.isEnabled,
+                  };
+                  const storeInfo = stores.find((store) => store.id === setting.storeId);
+
+                  return (
+                    <Box key={setting.storeProductId} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <VStack align="stretch" spacing={3}>
+                        <HStack justify="space-between" align="center" gap={3}>
+                          <VStack align="start" spacing={0} minW={0}>
+                            <Text fontWeight="900" noOfLines={1}>
+                              {setting.storeName}
+                            </Text>
+                            <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                              {storeInfo?.address?.trim() || "Store location not specified"}
+                            </Text>
+                          </VStack>
+                          <StatusPill label={storeDraft.isEnabled ? "Enabled" : "Disabled"} tone={storeDraft.isEnabled ? "green" : "red"} />
+                        </HStack>
+
+                        <VStack align="stretch" spacing={2}>
+                          <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                            Store price
+                          </Text>
+                          <Input
+                            value={storeDraft.price}
+                            onChange={(event) =>
+                              setProductStoreEdits((current) => ({
+                                ...current,
+                                [setting.storeProductId]: {
+                                  ...storeDraft,
+                                  price: event.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Store price"
+                            inputMode="decimal"
+                            borderRadius="16px"
+                            bg="white"
+                            borderColor="rgba(226,224,218,0.95)"
+                          />
+                        </VStack>
+
+                        <SimpleGrid columns={2} spacing={2}>
+                          <Button
+                            borderRadius="16px"
+                            bg={storeDraft.isEnabled ? "brand.500" : "rgba(241,240,236,0.95)"}
+                            color={storeDraft.isEnabled ? "white" : "surface.800"}
+                            _hover={{ bg: storeDraft.isEnabled ? "brand.600" : "rgba(225,223,218,0.95)" }}
+                            onClick={() =>
+                              setProductStoreEdits((current) => ({
+                                ...current,
+                                [setting.storeProductId]: { ...storeDraft, isEnabled: true },
+                              }))
+                            }
+                          >
+                            Enabled
+                          </Button>
+                          <Button
+                            borderRadius="16px"
+                            bg={!storeDraft.isEnabled ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
+                            color={!storeDraft.isEnabled ? "red.500" : "surface.800"}
+                            _hover={{ bg: !storeDraft.isEnabled ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)" }}
+                            onClick={() =>
+                              setProductStoreEdits((current) => ({
+                                ...current,
+                                [setting.storeProductId]: { ...storeDraft, isEnabled: false },
+                              }))
+                            }
+                          >
+                            Disabled
+                          </Button>
+                        </SimpleGrid>
+
+                        <Button
+                          h="48px"
+                          borderRadius="16px"
+                          bg="surface.900"
+                          color="white"
+                          _hover={{ bg: "surface.700" }}
+                          isLoading={mutating}
+                          onClick={() => void handleSaveProductStoreSetting(setting.storeProductId)}
+                        >
+                          Save Store Settings
+                        </Button>
+                      </VStack>
+                    </Box>
+                  );
+                })}
+              </VStack>
+            </Box>
+          ) : null}
+        </VStack>
+      );
+    }
 
     if (selectedItem) {
       const draft = inventoryEdits[selectedItem.storeProductId] ?? {
@@ -2378,46 +2748,6 @@ export function AdminDashboardScreen({
           <VStack spacing={4} align="stretch">
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="lg">
-                    Add Product
-                  </Text>
-                  <Text color="surface.500" fontSize="sm">
-                    New products appear in every store with zero stock.
-                  </Text>
-                </VStack>
-                <Input
-                  value={newProduct.name}
-                  onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Product name"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
-                <Input
-                  value={newProduct.defaultPrice}
-                  onChange={(event) => setNewProduct((current) => ({ ...current, defaultPrice: event.target.value }))}
-                  placeholder="Default price"
-                  inputMode="decimal"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
-                <Button
-                  borderRadius="18px"
-                  bg="brand.500"
-                  color="white"
-                  _hover={{ bg: "brand.600" }}
-                  isLoading={mutating}
-                  onClick={() => void handleCreateProduct()}
-                >
-                  Add Product
-                </Button>
-              </VStack>
-            </Box>
-
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
                     Product Catalog
@@ -2428,94 +2758,51 @@ export function AdminDashboardScreen({
                 </HStack>
 
                 {sortedProducts.map((product) => {
-                  const draft = productEdits[product.id] ?? {
-                    name: product.name,
-                    sku: product.sku,
-                    defaultPrice: product.defaultPrice.toFixed(2),
-                    isActive: product.isActive,
-                  };
-
                   return (
-                    <Box key={product.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                      <VStack align="stretch" spacing={3}>
-                        <HStack justify="space-between">
-                          <VStack align="start" spacing={0}>
-                            <Text fontWeight="900">{product.name}</Text>
-                            <Text fontSize="sm" color="surface.500">
-                              Default {formatEur(product.defaultPrice)}
-                            </Text>
-                          </VStack>
-                          <StatusPill label={product.isActive ? "Active" : "Inactive"} tone={product.isActive ? "green" : "red"} />
-                        </HStack>
-                        <Input
-                          value={draft.name}
-                          onChange={(event) =>
-                            setProductEdits((current) => ({
-                              ...current,
-                              [product.id]: { ...draft, name: event.target.value },
-                            }))
-                          }
-                          placeholder="Product name"
-                          borderRadius="14px"
-                          bg="white"
-                          borderColor="rgba(226,224,218,0.95)"
-                        />
-                        <Input
-                          value={draft.defaultPrice}
-                          onChange={(event) =>
-                            setProductEdits((current) => ({
-                              ...current,
-                              [product.id]: { ...draft, defaultPrice: event.target.value },
-                            }))
-                          }
-                          placeholder="Default price"
-                          inputMode="decimal"
-                          borderRadius="14px"
-                          bg="white"
-                          borderColor="rgba(226,224,218,0.95)"
-                        />
-                        <Button
-                          size="sm"
-                          borderRadius="14px"
-                          bg={draft.isActive ? "rgba(34,197,94,0.12)" : "rgba(248,113,113,0.14)"}
-                          color={draft.isActive ? "green.600" : "red.500"}
-                          _hover={{
-                            bg: draft.isActive ? "rgba(34,197,94,0.18)" : "rgba(248,113,113,0.2)",
-                          }}
-                          onClick={() =>
-                            setProductEdits((current) => ({
-                              ...current,
-                              [product.id]: { ...draft, isActive: !draft.isActive },
-                            }))
-                          }
-                        >
-                          {draft.isActive ? "Active" : "Inactive"}
-                        </Button>
-                        <Button
-                          borderRadius="16px"
-                          bg="surface.900"
-                          color="white"
-                          _hover={{ bg: "surface.700" }}
-                          isLoading={mutating}
-                          onClick={() => void handleSaveProduct(product.id)}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          borderRadius="14px"
-                          variant="ghost"
-                          color="red.500"
-                          _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                          isLoading={mutating}
-                          onClick={() => void handleDeleteProduct(product.id, product.name)}
-                        >
-                          Delete Product
-                        </Button>
-                      </VStack>
+                    <Box
+                      key={product.id}
+                      as="button"
+                      type="button"
+                      textAlign="left"
+                      bg={panelMutedSurface}
+                      borderRadius="18px"
+                      px={3}
+                      py={3}
+                      onClick={() => {
+                        setSelectedProductId(product.id);
+                        setProductDetailMode("overview");
+                        scrollToSectionTop();
+                      }}
+                    >
+                      <HStack justify="space-between" align="center" gap={3}>
+                        <VStack align="start" spacing={0} minW={0}>
+                          <Text fontWeight="900" noOfLines={1}>
+                            {product.name}
+                          </Text>
+                          <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                            Default {formatEur(product.defaultPrice)}
+                          </Text>
+                          <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
+                            {product.enabledStoreCount} stores enabled
+                          </Text>
+                        </VStack>
+                        <StatusPill label={product.isActive ? "Active" : "Inactive"} tone={product.isActive ? "green" : "red"} />
+                      </HStack>
                     </Box>
                   );
                 })}
+
+                <Button
+                  w="full"
+                  h="52px"
+                  borderRadius="18px"
+                  bg="surface.900"
+                  color="white"
+                  _hover={{ bg: "surface.700" }}
+                  onClick={() => setShowNewProductModal(true)}
+                >
+                  New Product
+                </Button>
               </VStack>
             </Box>
           </VStack>
@@ -4106,6 +4393,137 @@ export function AdminDashboardScreen({
       ) : null}
     </>
   );
+
+  const renderProductCreationModal = () =>
+    showNewProductModal ? (
+      <Box position="fixed" inset={0} zIndex={1400}>
+        <Box
+          position="absolute"
+          inset={0}
+          bg="rgba(14, 12, 10, 0.4)"
+          overscrollBehavior="none"
+          style={{ touchAction: "none" }}
+          onClick={() => setShowNewProductModal(false)}
+        />
+        <Box
+          role="dialog"
+          aria-modal="true"
+          aria-label="New Product"
+          position="absolute"
+          left={0}
+          right={0}
+          bottom={0}
+          w="100%"
+          maxH="82vh"
+          bg="white"
+          borderTopRadius="32px"
+          boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
+          overscrollBehavior="contain"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowNewProductModal(false)} cursor="pointer">
+            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+          </Box>
+
+          <VStack align="stretch" spacing={3} px={4} pt={1} pb={3}>
+            <HStack justify="space-between" align="center">
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
+                  New Product
+                </Text>
+                <Text color="surface.500" fontSize="xs" fontWeight="700">
+                  Create a product and make it available across stores.
+                </Text>
+              </VStack>
+              <Button
+                aria-label="Close new product modal"
+                minW="42px"
+                h="42px"
+                px={0}
+                borderRadius="999px"
+                bg="surface.50"
+                color="surface.700"
+                fontSize="24px"
+                lineHeight="1"
+                fontWeight="700"
+                _hover={{ bg: "rgba(232,231,226,0.95)" }}
+                onClick={() => setShowNewProductModal(false)}
+              >
+                ×
+              </Button>
+            </HStack>
+
+            <VStack align="stretch" spacing={2}>
+              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                Product name
+              </Text>
+              <Input
+                value={newProduct.name}
+                onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Product name"
+                borderRadius="18px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+              />
+            </VStack>
+
+            <VStack align="stretch" spacing={2}>
+              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                Default price
+              </Text>
+              <Input
+                value={newProduct.defaultPrice}
+                onChange={(event) => setNewProduct((current) => ({ ...current, defaultPrice: event.target.value }))}
+                placeholder="Default price"
+                inputMode="decimal"
+                borderRadius="18px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+              />
+            </VStack>
+
+            <SimpleGrid columns={2} spacing={2}>
+              <Button
+                borderRadius="16px"
+                bg={newProductIsActive ? "brand.500" : "rgba(241,240,236,0.95)"}
+                color={newProductIsActive ? "white" : "surface.800"}
+                _hover={{ bg: newProductIsActive ? "brand.600" : "rgba(225,223,218,0.95)" }}
+                onClick={() => setNewProductIsActive(true)}
+              >
+                Active
+              </Button>
+              <Button
+                borderRadius="16px"
+                bg={!newProductIsActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
+                color={!newProductIsActive ? "red.500" : "surface.800"}
+                _hover={{ bg: !newProductIsActive ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)" }}
+                onClick={() => setNewProductIsActive(false)}
+              >
+                Inactive
+              </Button>
+            </SimpleGrid>
+          </VStack>
+
+          <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
+            <Button
+              w="full"
+              h="52px"
+              borderRadius="18px"
+              bg="surface.900"
+              color="white"
+              _hover={{ bg: "surface.700" }}
+              isLoading={mutating}
+              onClick={() => void handleCreateProduct()}
+            >
+              Create Product
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    ) : null;
 
   const renderTeam = () => {
     if (selectedStaffSeller) {

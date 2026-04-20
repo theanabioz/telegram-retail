@@ -473,12 +473,10 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     set({ mutating: true, error: null });
 
     try {
-      const data = await apiPost<AdminProductMutationResponse>("/admin/products", input, token);
+      await apiPost<AdminProductMutationResponse>("/admin/products", input, token);
       triggerNotification("success");
-      set((current) => ({
-        products: [data.product, ...current.products.filter((product) => product.id !== data.product.id)],
-      }));
-      await get().loadInventory();
+      const currentStoreId = get().inventoryItems[0]?.storeId;
+      await Promise.all([get().loadProducts(), get().loadInventory(currentStoreId)]);
       set({ mutating: false, error: null });
     } catch (error) {
       triggerNotification("error");

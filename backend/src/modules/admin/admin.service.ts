@@ -38,6 +38,46 @@ function startOfTodayIso() {
   return start.toISOString();
 }
 
+function buildAdminProductsPayload(input: {
+  products: Awaited<ReturnType<typeof listProducts>>;
+  stores: Awaited<ReturnType<typeof listAdminStores>>;
+  storeProducts: Awaited<ReturnType<typeof listAdminStoreProducts>>;
+}) {
+  const storeMap = new Map(input.stores.map((store) => [store.id, store]));
+  const storeProductsByProduct = input.storeProducts.reduce<Map<string, typeof input.storeProducts>>((map, row) => {
+    const rows = map.get(row.product_id) ?? [];
+    rows.push(row);
+    map.set(row.product_id, rows);
+    return map;
+  }, new Map());
+
+  return input.products.map((product) => {
+    const storeSettings = (storeProductsByProduct.get(product.id) ?? [])
+      .map((row) => ({
+        storeProductId: row.id,
+        storeId: row.store_id,
+        storeName: storeMap.get(row.store_id)?.name ?? "Unknown store",
+        storeActive: storeMap.get(row.store_id)?.is_active ?? false,
+        storePrice: Number(row.price),
+        isEnabled: row.is_enabled,
+        updatedAt: row.updated_at,
+      }))
+      .sort((left, right) => left.storeName.localeCompare(right.storeName));
+
+    return {
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      defaultPrice: Number(product.default_price),
+      isActive: product.is_active,
+      enabledStoreCount: storeSettings.filter((setting) => setting.isEnabled).length,
+      storeSettings,
+      createdAt: product.created_at,
+      updatedAt: product.updated_at,
+    };
+  });
+}
+
 export async function getAdminDashboard(input: {
   recentSalesLimit: number;
   lowStockLimit: number;
@@ -517,15 +557,7 @@ export async function getAdminInventory(input: {
       name: store.name,
       isActive: store.is_active,
     })),
-    products: products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      defaultPrice: Number(product.default_price),
-      isActive: product.is_active,
-      createdAt: product.created_at,
-      updatedAt: product.updated_at,
-    })),
+    products: buildAdminProductsPayload({ products, stores, storeProducts }),
     selectedStoreId: input.storeId ?? null,
     items,
     history: history.map((entry) => ({
@@ -545,18 +577,14 @@ export async function getAdminInventory(input: {
 }
 
 export async function getAdminProducts() {
-  const products = await listProducts();
+  const [products, stores, storeProducts] = await Promise.all([
+    listProducts(),
+    listAdminStores(),
+    listAdminStoreProducts(),
+  ]);
 
   return {
-    products: products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      defaultPrice: Number(product.default_price),
-      isActive: product.is_active,
-      createdAt: product.created_at,
-      updatedAt: product.updated_at,
-    })),
+    products: buildAdminProductsPayload({ products, stores, storeProducts }),
   };
 }
 

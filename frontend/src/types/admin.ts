@@ -169,6 +169,16 @@ export type AdminProductsResponse = {
     sku: string;
     defaultPrice: number;
     isActive: boolean;
+    enabledStoreCount: number;
+    storeSettings: Array<{
+      storeProductId: string;
+      storeId: string;
+      storeName: string;
+      storeActive: boolean;
+      storePrice: number;
+      isEnabled: boolean;
+      updatedAt: string;
+    }>;
     createdAt: string;
     updatedAt: string;
   }>;
