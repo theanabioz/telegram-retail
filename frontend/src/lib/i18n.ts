@@ -28,7 +28,7 @@ const translations = {
     "checkout.startShiftTitle": "Start your shift to unlock live sales",
     "checkout.startShiftDescription":
       "The app is connected to the real backend. Once the shift is open, products and cart switch from demo mode to live mode.",
-    "draftCart.title": "Draft Cart",
+    "draftCart.title": "Cart",
     "draftCart.productsAdded": "products added",
     "draftCart.totalAmount": "Total Amount",
     "draftCart.cash": "Cash",
@@ -157,7 +157,7 @@ const translations = {
     "checkout.startShiftTitle": "Начните смену, чтобы открыть живые продажи",
     "checkout.startShiftDescription":
       "Приложение подключено к реальному backend. Как только смена откроется, товары и корзина переключатся из демо в live режим.",
-    "draftCart.title": "Черновая корзина",
+    "draftCart.title": "Корзина",
     "draftCart.productsAdded": "товаров добавлено",
     "draftCart.totalAmount": "Итого",
     "draftCart.cash": "Наличные",
@@ -185,7 +185,7 @@ const translations = {
     "orders.noSalesDescription": "Завершенные продажи и возвраты появятся здесь.",
     "receipt.qty": "Кол-во",
     "receipt.discount": "Скидка",
-    "receipt.subtotal": "Подытог",
+    "receipt.subtotal": "Сумма",
     "receipt.total": "Итого",
     "receipt.saleId": "ID продажи",
     "status.completed": "Завершено",
@@ -286,7 +286,7 @@ const translations = {
     "checkout.startShiftTitle": "Inicie o turno para desbloquear vendas reais",
     "checkout.startShiftDescription":
       "A aplicação está ligada ao backend real. Assim que o turno abrir, os produtos e o carrinho passam do modo demo para o modo real.",
-    "draftCart.title": "Carrinho rascunho",
+    "draftCart.title": "Carrinho",
     "draftCart.productsAdded": "produtos adicionados",
     "draftCart.totalAmount": "Total",
     "draftCart.cash": "Dinheiro",

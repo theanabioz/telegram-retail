@@ -116,6 +116,21 @@ function formatHeaderDate(value: Date) {
   });
 }
 
+function getRussianItemWord(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return "товар";
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "товара";
+  }
+
+  return "товаров";
+}
+
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
@@ -331,6 +346,30 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           ? t("screen.shiftReport")
           : t("nav.shift"),
     options: t("nav.settings"),
+  };
+
+  const formatCartItemsCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} ${getRussianItemWord(count)}`;
+    }
+
+    if (locale === "pt") {
+      return `${count} ${count === 1 ? "produto" : "produtos"}`;
+    }
+
+    return `${count} ${count === 1 ? "item" : "items"}`;
+  };
+
+  const formatCartAddedSummary = (count: number) => {
+    if (locale === "ru") {
+      return `${count === 1 ? "Добавлен" : "Добавлено"} ${count} ${getRussianItemWord(count)}`;
+    }
+
+    if (locale === "pt") {
+      return `${count === 1 ? "Adicionado" : "Adicionados"} ${count} ${count === 1 ? "produto" : "produtos"}`;
+    }
+
+    return `${count === 1 ? "Added" : "Added"} ${count} ${count === 1 ? "item" : "items"}`;
   };
 
   const groupedShiftHistory = useMemo(() => {
@@ -950,7 +989,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   {t("draftCart.title")}
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {draft.summary.itemsCount} {t("draftCart.productsAdded")}
+                  {formatCartAddedSummary(draft.summary.itemsCount)}
                 </Text>
               </VStack>
               <IconButton
@@ -1006,7 +1045,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Box>
           <VStack align="start" spacing={0}>
             <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
-              {draft.summary.itemsCount} {t("checkout.items")}
+              {formatCartItemsCount(draft.summary.itemsCount)}
             </Text>
             <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em">
               {t("checkout.viewCartDetails")}
