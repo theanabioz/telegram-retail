@@ -368,6 +368,15 @@ export async function getProductReferenceCounts(productId: string) {
 }
 
 export async function deleteAdminProduct(productId: string) {
+  const { error: movementError } = await supabaseAdmin
+    .from("inventory_movements")
+    .delete()
+    .eq("product_id", productId);
+
+  if (movementError) {
+    throw new HttpError(500, `Failed to delete product inventory history: ${movementError.message}`);
+  }
+
   const { error: inventoryError } = await supabaseAdmin
     .from("inventory")
     .delete()

@@ -529,11 +529,13 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       await Promise.all([get().loadProducts(), get().loadInventory(currentStoreId)]);
       set({ mutating: false, error: null });
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete product";
       triggerNotification("error");
       set({
         mutating: false,
-        error: error instanceof Error ? error.message : "Failed to delete product",
+        error: message,
       });
+      throw error instanceof Error ? error : new Error(message);
     }
   },
 }));

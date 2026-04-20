@@ -983,7 +983,21 @@ export function AdminDashboardScreen({
       return;
     }
 
-    await deleteProduct(productId);
+    try {
+      await deleteProduct(productId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete product";
+      window.alert(message);
+      return;
+    }
+
+    setSelectedProductId(null);
+    setProductDetailMode("overview");
+    setProductEdits((current) => {
+      const next = { ...current };
+      delete next[productId];
+      return next;
+    });
 
     if (selectedInventoryStoreId) {
       await loadInventory(selectedInventoryStoreId);
@@ -2654,43 +2668,43 @@ export function AdminDashboardScreen({
           ))}
         </SimpleGrid>
 
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={3}>
-            <HStack justify="space-between" align="center" gap={3}>
-              <VStack align="start" spacing={0}>
-                <Text fontWeight="900" fontSize="lg">
-                  {selectedStore?.name ?? "Select store"}
-                </Text>
-                <Text fontSize="sm" color="surface.500" fontWeight="700">
-                  {inventoryMode === "stock"
-                    ? `${visibleInventoryItems.length} products in this store`
-                    : `${products.length} catalog products`}
-                </Text>
-              </VStack>
-              {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
-            </HStack>
-            <HStack spacing={2} overflowX="auto" pb={1}>
-              {inventoryStores.map((store) => {
-                const isActive = selectedInventoryStoreId === store.id;
+        {inventoryMode === "stock" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between" align="center" gap={3}>
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="lg">
+                    {selectedStore?.name ?? "Select store"}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700">
+                    {visibleInventoryItems.length} products in this store
+                  </Text>
+                </VStack>
+                {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
+              </HStack>
+              <HStack spacing={2} overflowX="auto" pb={1}>
+                {inventoryStores.map((store) => {
+                  const isActive = selectedInventoryStoreId === store.id;
 
-                return (
-                  <Button
-                    key={store.id}
-                    size="sm"
-                    flexShrink={0}
-                    borderRadius="999px"
-                    bg={isActive ? "brand.500" : panelMutedSurface}
-                    color={isActive ? "white" : "surface.700"}
-                    _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
-                    onClick={() => setSelectedInventoryStoreId(store.id)}
-                  >
-                    {store.name}
-                  </Button>
-                );
-              })}
-            </HStack>
-          </VStack>
-        </Box>
+                  return (
+                    <Button
+                      key={store.id}
+                      size="sm"
+                      flexShrink={0}
+                      borderRadius="999px"
+                      bg={isActive ? "brand.500" : panelMutedSurface}
+                      color={isActive ? "white" : "surface.700"}
+                      _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
+                      onClick={() => setSelectedInventoryStoreId(store.id)}
+                    >
+                      {store.name}
+                    </Button>
+                  );
+                })}
+              </HStack>
+            </VStack>
+          </Box>
+        ) : null}
 
         {inventoryMode === "stock" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>

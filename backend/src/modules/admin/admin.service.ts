@@ -679,12 +679,12 @@ export async function deleteProduct(productId: string) {
   }
 
   const references = await getProductReferenceCounts(productId);
-  const hasHistory = references.saleItems > 0 || references.returnItems > 0 || references.inventoryMovements > 0;
+  const hasCommercialHistory = references.saleItems > 0 || references.returnItems > 0;
 
-  if (hasHistory) {
+  if (hasCommercialHistory) {
     throw new HttpError(
       409,
-      "Product has sales, returns or inventory history. Disable it instead to preserve reports."
+      "Product has sales or returns history. Disable it instead to preserve reports."
     );
   }
 
