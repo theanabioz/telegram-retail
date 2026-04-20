@@ -332,7 +332,7 @@ export function AdminDashboardScreen({
   });
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
-  const [teamMode, setTeamMode] = useState<TeamMode>("staff");
+  const [teamMode, setTeamMode] = useState<TeamMode>("stores");
   const [selectedStaffSellerId, setSelectedStaffSellerId] = useState<string | null>(null);
   const [staffDetailMode, setStaffDetailMode] = useState<StaffDetailMode>("overview");
   const [staffActivityPage, setStaffActivityPage] = useState(0);
@@ -3928,7 +3928,7 @@ export function AdminDashboardScreen({
         <VStack spacing={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
             <HStack spacing={2}>
-              {(["staff", "stores"] as TeamMode[]).map((mode) => {
+              {(["stores", "staff"] as TeamMode[]).map((mode) => {
                 const isActive = teamMode === mode;
 
                 return (
