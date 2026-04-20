@@ -2760,18 +2760,20 @@ export function AdminDashboardScreen({
           </HStack>
         </Box>
 
-        <SimpleGrid columns={2} spacing={3}>
-          {inventorySummaryCards.map((card) => (
-            <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
-                {card.label}
-              </Text>
-              <Text fontSize="2xl" fontWeight="900" mt={2}>
-                {card.value}
-              </Text>
-            </Box>
-          ))}
-        </SimpleGrid>
+        {inventoryMode === "stock" ? (
+          <SimpleGrid columns={2} spacing={3}>
+            {inventorySummaryCards.map((card) => (
+              <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+                <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
+                  {card.label}
+                </Text>
+                <Text fontSize="2xl" fontWeight="900" mt={2}>
+                  {card.value}
+                </Text>
+              </Box>
+            ))}
+          </SimpleGrid>
+        ) : null}
 
         {inventoryMode === "stock" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
