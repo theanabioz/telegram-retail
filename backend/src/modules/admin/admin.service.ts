@@ -517,10 +517,11 @@ export async function getAdminInventory(input: {
   storeId?: string;
   historyLimit: number;
 }) {
-  const [stores, products, storeProducts, inventoryRows, history] = await Promise.all([
+  const [stores, products, storeProducts, allStoreProducts, inventoryRows, history] = await Promise.all([
     listAdminStores(),
     listProducts(),
     listAdminStoreProducts(input.storeId),
+    listAdminStoreProducts(),
     listInventoryRows(),
     input.storeId ? listInventoryHistory(input.storeId, input.historyLimit) : Promise.resolve([]),
   ]);
@@ -557,7 +558,7 @@ export async function getAdminInventory(input: {
       name: store.name,
       isActive: store.is_active,
     })),
-    products: buildAdminProductsPayload({ products, stores, storeProducts }),
+    products: buildAdminProductsPayload({ products, stores, storeProducts: allStoreProducts }),
     selectedStoreId: input.storeId ?? null,
     items,
     history: history.map((entry) => ({
