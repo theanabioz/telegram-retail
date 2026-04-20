@@ -22,6 +22,7 @@ import type {
   AdminDashboardResponse,
   AdminInventoryResponse,
   AdminSalesOverviewResponse,
+  AdminStaffResponse,
   AdminStartupResponse,
 } from "../types/admin";
 
@@ -77,6 +78,8 @@ type InventoryMode = "stock" | "products";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
+type StaffDetailMode = "overview" | "profile" | "worklog" | "activity";
+type StaffSeller = AdminStaffResponse["sellers"][number];
 
 function getCachedAdminStartup() {
   try {
@@ -323,6 +326,8 @@ export function AdminDashboardScreen({
   const [inventorySoftRefreshing, setInventorySoftRefreshing] = useState(false);
   const [inventoryMovementTypes, setInventoryMovementTypes] = useState<Record<string, InventoryMovementType>>({});
   const [teamMode, setTeamMode] = useState<TeamMode>("staff");
+  const [selectedStaffSellerId, setSelectedStaffSellerId] = useState<string | null>(null);
+  const [staffDetailMode, setStaffDetailMode] = useState<StaffDetailMode>("overview");
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -352,6 +357,9 @@ export function AdminDashboardScreen({
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const softRefreshInFlightRef = useRef(false);
+  const selectedStaffSeller = selectedStaffSellerId
+    ? staff.find((seller) => seller.id === selectedStaffSellerId) ?? null
+    : null;
   const headerContextLabel =
     activeTab === "overview"
       ? "Live dashboard"
@@ -360,7 +368,9 @@ export function AdminDashboardScreen({
         : activeTab === "inventory"
           ? "Stock across stores"
           : activeTab === "team"
-            ? "Stores and staff"
+            ? selectedStaffSeller
+              ? "Seller management"
+              : "Stores and staff"
             : "Workspace settings";
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
@@ -377,6 +387,11 @@ export function AdminDashboardScreen({
       setSelectedInventoryItemId(null);
     }
 
+    if (tab === "team") {
+      setSelectedStaffSellerId(null);
+      setStaffDetailMode("overview");
+    }
+
     scrollToSectionTop();
   }, []);
 
@@ -388,6 +403,8 @@ export function AdminDashboardScreen({
   const adminPageTitle =
     activeTab === "inventory" && selectedInventoryItemId
       ? "Product Details"
+      : activeTab === "team" && selectedStaffSeller
+        ? "Seller Details"
       : adminTabTitle[activeTab];
 
   const selectedInventoryHeaderItem = selectedInventoryItemId
@@ -397,6 +414,8 @@ export function AdminDashboardScreen({
     activeTab === "inventory" && selectedInventoryHeaderItem
       ? inventoryStores.find((store) => store.id === selectedInventoryStoreId)?.name ??
         selectedInventoryHeaderItem.storeName
+      : activeTab === "team" && selectedStaffSeller
+        ? selectedStaffSeller.fullName
       : null;
 
   useTelegramBackButton(
@@ -404,7 +423,9 @@ export function AdminDashboardScreen({
       ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
       : activeTab === "inventory"
         ? Boolean(selectedInventoryItemId)
-        : false,
+        : activeTab === "team"
+          ? Boolean(selectedStaffSeller)
+          : false,
     () => {
       if (activeTab === "sales" && selectedAdminSaleId) {
         setSelectedAdminSaleId(null);
@@ -418,6 +439,12 @@ export function AdminDashboardScreen({
 
       if (activeTab === "inventory" && selectedInventoryItemId) {
         setSelectedInventoryItemId(null);
+        return;
+      }
+
+      if (activeTab === "team" && selectedStaffSeller) {
+        setSelectedStaffSellerId(null);
+        setStaffDetailMode("overview");
       }
     }
   );
@@ -2379,50 +2406,301 @@ export function AdminDashboardScreen({
     );
   };
 
+  const getSellerStatus = (seller: StaffSeller) => {
+    if (!seller.isActive) {
+      return { label: "Inactive", tone: "red" as const };
+    }
+
+    if (seller.activeShift?.status === "paused") {
+      return { label: "Paused", tone: "orange" as const };
+    }
+
+    if (seller.activeShift) {
+      return { label: "On Shift", tone: "blue" as const };
+    }
+
+    return { label: "Offline", tone: "gray" as const };
+  };
+
   const renderStaffSection = () => (
     <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
       <VStack align="stretch" spacing={3}>
-        <HStack justify="space-between">
-          <Text fontWeight="900" fontSize="lg">
-            Staff Directory
-          </Text>
-          <Text color="surface.500" fontWeight="700" fontSize="sm">
-            {staff.length} sellers
+        <HStack justify="space-between" align="center">
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="900" fontSize="lg">
+              Staff Directory
+            </Text>
+            <Text color="surface.500" fontSize="sm" fontWeight="700">
+              Tap a seller to manage profile, schedule and activity.
+            </Text>
+          </VStack>
+          <Text color="surface.500" fontWeight="800" fontSize="sm">
+            {staff.length}
           </Text>
         </HStack>
 
-        {staff.map((seller) => (
-          <Box key={seller.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-            <VStack align="stretch" spacing={3}>
-              <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="900">{seller.fullName}</Text>
-                  <Text fontSize="sm" color="surface.500">
+        {staff.map((seller) => {
+          const status = getSellerStatus(seller);
+
+          return (
+            <Box
+              key={seller.id}
+              as="button"
+              type="button"
+              textAlign="left"
+              bg={panelMutedSurface}
+              borderRadius="18px"
+              px={3}
+              py={3}
+              border={0}
+              onClick={() => {
+                setSelectedStaffSellerId(seller.id);
+                setStaffDetailMode("overview");
+                scrollToSectionTop();
+              }}
+            >
+              <HStack justify="space-between" align="center">
+                <HStack spacing={3} minW={0}>
+                  <Avatar size="sm" name={seller.fullName} bg="surface.200" color="surface.800" />
+                  <VStack align="start" spacing={0} minW={0}>
+                    <Text fontWeight="900" noOfLines={1}>
+                      {seller.fullName}
+                    </Text>
+                    <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                      {seller.currentAssignment?.storeName ?? "Unassigned"} · {seller.salesCount} sales
+                    </Text>
+                  </VStack>
+                </HStack>
+
+                <VStack align="end" spacing={1} flexShrink={0}>
+                  <StatusPill label={status.label} tone={status.tone} />
+                  <Text fontSize="sm" color="surface.700" fontWeight="900">
+                    {formatEur(seller.revenue)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </Box>
+          );
+        })}
+      </VStack>
+    </Box>
+  );
+
+  const renderSellerDetail = (seller: StaffSeller) => {
+    const status = getSellerStatus(seller);
+    const sellerSales = salesOverview.filter((sale) => sale.seller?.id === seller.id);
+    const sellerReturns = returnsOverview.filter((entry) => entry.seller?.id === seller.id);
+    const sellerStockActivity = inventoryHistory.filter((entry) => entry.actor?.id === seller.id);
+    const activeShiftStartedAt = seller.activeShift?.startedAt ? new Date(seller.activeShift.startedAt).getTime() : null;
+    const activeShiftMinutes = activeShiftStartedAt
+      ? Math.max(0, Math.floor((Date.now() - activeShiftStartedAt) / 60000))
+      : 0;
+    const activityItems = [
+      ...sellerSales.map((sale) => ({
+        id: `sale-${sale.id}`,
+        title: sale.status === "deleted" ? "Sale deleted" : "Sale completed",
+        meta: `${sale.store?.name ?? "Unknown store"} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
+        date: sale.createdAt,
+        tone: sale.status === "deleted" ? "red" : "green",
+      })),
+      ...sellerReturns.map((entry) => ({
+        id: `return-${entry.id}`,
+        title: "Return created",
+        meta: `${entry.store?.name ?? "Unknown store"} · ${formatEur(entry.totalAmount)}`,
+        date: entry.createdAt,
+        tone: "orange",
+      })),
+      ...sellerStockActivity.map((entry) => ({
+        id: `stock-${entry.id}`,
+        title:
+          entry.movementType === "restock"
+            ? "Stock restocked"
+            : entry.movementType === "writeoff"
+              ? "Stock written off"
+              : "Stock adjusted",
+        meta: `${entry.product?.name ?? "Unknown product"} · ${entry.quantityDelta > 0 ? "+" : ""}${entry.quantityDelta} units`,
+        date: entry.createdAt,
+        tone: entry.quantityDelta < 0 ? "red" : "blue",
+      })),
+      ...(seller.activeShift
+        ? [
+            {
+              id: `shift-${seller.activeShift.id}`,
+              title: seller.activeShift.status === "paused" ? "Shift paused" : "Shift active",
+              meta: `${seller.activeShift.storeName} · started ${formatDateTime(seller.activeShift.startedAt)}`,
+              date: seller.activeShift.startedAt,
+              tone: seller.activeShift.status === "paused" ? "orange" : "blue",
+            },
+          ]
+        : []),
+    ].sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
+
+    return (
+      <VStack spacing={4} align="stretch">
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+          <VStack align="stretch" spacing={4}>
+            {!supportsTelegramBackButton ? (
+              <HStack justify="flex-start">
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => {
+                    setSelectedStaffSellerId(null);
+                    setStaffDetailMode("overview");
+                  }}
+                >
+                  Back
+                </Button>
+              </HStack>
+            ) : null}
+
+            <HStack justify="space-between" align="center">
+              <HStack spacing={3} minW={0}>
+                <Avatar size="md" name={seller.fullName} bg="surface.200" color="surface.800" />
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" fontSize="xl" noOfLines={1}>
+                    {seller.fullName}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
                     {seller.currentAssignment?.storeName ?? "Unassigned"}
                   </Text>
                 </VStack>
-                {seller.activeShift ? (
-                  <StatusPill
-                    label={seller.activeShift.status === "paused" ? "Paused" : "On Shift"}
-                    tone={seller.activeShift.status === "paused" ? "orange" : "blue"}
-                  />
-                ) : (
-                  <StatusPill label={seller.isActive ? "Active" : "Inactive"} tone={seller.isActive ? "green" : "red"} />
-                )}
               </HStack>
+              <StatusPill label={status.label} tone={status.tone} />
+            </HStack>
 
-              <SimpleGrid columns={2} spacing={2}>
-                <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
+            <SimpleGrid columns={2} spacing={3}>
+              {[
+                { label: "Revenue", value: formatEur(seller.revenue) },
+                { label: "Sales", value: String(seller.salesCount) },
+                { label: "Commission", value: "0%" },
+                { label: "Last Sale", value: seller.lastSaleAt ? formatDateTime(seller.lastSaleAt) : "No activity" },
+              ].map((card) => (
+                <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    Sales
+                    {card.label}
                   </Text>
-                  <Text fontWeight="900">{seller.salesCount}</Text>
+                  <Text mt={1} fontWeight="900" fontSize={card.label === "Last Sale" ? "sm" : "xl"} noOfLines={2}>
+                    {card.value}
+                  </Text>
                 </Box>
-                <Box bg="rgba(255,255,255,0.7)" borderRadius="16px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    Revenue
+              ))}
+            </SimpleGrid>
+          </VStack>
+        </Box>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+          <HStack spacing={2} overflowX="auto" pb={1}>
+            {(["overview", "profile", "worklog", "activity"] as StaffDetailMode[]).map((mode) => {
+              const isActive = staffDetailMode === mode;
+
+              return (
+                <Button
+                  key={mode}
+                  size="sm"
+                  flexShrink={0}
+                  minW="88px"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onClick={() => setStaffDetailMode(mode)}
+                >
+                  {mode === "overview"
+                    ? "Overview"
+                    : mode === "profile"
+                      ? "Profile"
+                      : mode === "worklog"
+                        ? "Worklog"
+                        : "Activity"}
+                </Button>
+              );
+            })}
+          </HStack>
+        </Box>
+
+        {staffDetailMode === "overview" ? (
+          <VStack spacing={4} align="stretch">
+            {seller.activeShift ? (
+              <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+                <VStack align="stretch" spacing={3}>
+                  <HStack justify="space-between">
+                    <Text fontWeight="900" fontSize="lg">
+                      Current Shift
+                    </Text>
+                    <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
+                  </HStack>
+                  <SimpleGrid columns={2} spacing={3}>
+                    <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                        Started
+                      </Text>
+                      <Text mt={1} fontWeight="900">{formatDateTime(seller.activeShift.startedAt)}</Text>
+                    </Box>
+                    <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                        Time Open
+                      </Text>
+                      <Text mt={1} fontWeight="900">
+                        {Math.floor(activeShiftMinutes / 60)}h {activeShiftMinutes % 60}m
+                      </Text>
+                    </Box>
+                  </SimpleGrid>
+                </VStack>
+              </Box>
+            ) : null}
+
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <HStack justify="space-between">
+                  <Text fontWeight="900" fontSize="lg">
+                    Recent Seller Sales
                   </Text>
-                  <Text fontWeight="900">{formatEur(seller.revenue)}</Text>
+                  <Text color="surface.500" fontWeight="700" fontSize="sm">
+                    {sellerSales.length} loaded
+                  </Text>
+                </HStack>
+                {sellerSales.slice(0, 5).map((sale) => (
+                  <HStack key={sale.id} justify="space-between" align="start">
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="800">{sale.store?.name ?? "Unknown store"}</Text>
+                      <Text fontSize="xs" color="surface.500">
+                        {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
+                      </Text>
+                    </VStack>
+                    <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
+                  </HStack>
+                ))}
+                {sellerSales.length === 0 ? (
+                  <Text color="surface.500" fontSize="sm">
+                    No seller sales are loaded in the current admin sales snapshot.
+                  </Text>
+                ) : null}
+              </VStack>
+            </Box>
+          </VStack>
+        ) : null}
+
+        {staffDetailMode === "profile" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <Text fontWeight="900" fontSize="lg">
+                Profile Management
+              </Text>
+              <SimpleGrid columns={2} spacing={3}>
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    Telegram ID
+                  </Text>
+                  <Text mt={1} fontWeight="900">{seller.telegramId}</Text>
+                </Box>
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
+                    Account
+                  </Text>
+                  <Text mt={1} fontWeight="900">{seller.isActive ? "Active" : "Inactive"}</Text>
                 </Box>
               </SimpleGrid>
 
@@ -2434,7 +2712,7 @@ export function AdminDashboardScreen({
                     [seller.id]: event.target.value,
                   }))
                 }
-                borderRadius="16px"
+                borderRadius="18px"
                 bg="white"
                 borderColor="rgba(226,224,218,0.95)"
               >
@@ -2450,8 +2728,21 @@ export function AdminDashboardScreen({
                   ))}
               </Select>
 
+              <Input
+                value="0"
+                isReadOnly
+                inputMode="decimal"
+                borderRadius="18px"
+                bg="white"
+                borderColor="rgba(226,224,218,0.95)"
+                placeholder="Commission %"
+              />
+              <Text fontSize="sm" color="surface.500" lineHeight="1.45">
+                Commission editing is prepared visually. The next backend step is to persist a personal commission rate and feed it into shift reports.
+              </Text>
+
               <Button
-                borderRadius="16px"
+                borderRadius="18px"
                 bg="brand.500"
                 color="white"
                 _hover={{ bg: "brand.600" }}
@@ -2459,14 +2750,13 @@ export function AdminDashboardScreen({
                 isDisabled={!seller.isActive || !staffAssignments[seller.id]}
                 onClick={() => void handleAssignSeller(seller.id)}
               >
-                Reassign Seller
+                Save Assignment
               </Button>
               <Button
-                size="sm"
-                borderRadius="14px"
-                variant="ghost"
-                color="surface.700"
-                _hover={{ bg: "rgba(255,255,255,0.65)" }}
+                borderRadius="18px"
+                variant="outline"
+                borderColor="surface.200"
+                color="surface.800"
                 isDisabled={!seller.currentAssignment || !seller.isActive}
                 onClick={() => void onViewAsSeller(seller.id)}
               >
@@ -2474,10 +2764,84 @@ export function AdminDashboardScreen({
               </Button>
             </VStack>
           </Box>
-        ))}
+        ) : null}
+
+        {staffDetailMode === "worklog" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Worklog
+                </Text>
+                <Text color="surface.500" fontSize="sm" fontWeight="700">
+                  Timesheet
+                </Text>
+              </HStack>
+              {seller.activeShift ? (
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="900">Current shift</Text>
+                      <Text fontSize="sm" color="surface.500">
+                        {seller.activeShift.storeName} · started {formatDateTime(seller.activeShift.startedAt)}
+                      </Text>
+                    </VStack>
+                    <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
+                  </HStack>
+                </Box>
+              ) : null}
+              <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                <Text fontWeight="900">Full shift history needs the next backend payload</Text>
+                <Text mt={1} fontSize="sm" color="surface.500" lineHeight="1.45">
+                  We need `/admin/staff/:sellerId/details` to show monthly timesheets with start, end, worked hours,
+                  pauses, sales, revenue and commission per shift.
+                </Text>
+              </Box>
+            </VStack>
+          </Box>
+        ) : null}
+
+        {staffDetailMode === "activity" ? (
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="900" fontSize="lg">
+                  Activity Feed
+                </Text>
+                <Text color="surface.500" fontWeight="700" fontSize="sm">
+                  {activityItems.length} loaded
+                </Text>
+              </HStack>
+              {activityItems.slice(0, 12).map((item) => (
+                <Box key={item.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" spacing={0}>
+                      <Text fontWeight="900">{item.title}</Text>
+                      <Text fontSize="sm" color="surface.500">
+                        {item.meta}
+                      </Text>
+                      <Text fontSize="xs" color="surface.400" fontWeight="700">
+                        {formatDateTime(item.date)}
+                      </Text>
+                    </VStack>
+                    <StatusPill label={item.tone} tone={item.tone as "green" | "red" | "blue" | "orange" | "gray"} />
+                  </HStack>
+                </Box>
+              ))}
+              {activityItems.length === 0 ? (
+                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                  <Text fontWeight="900">No loaded activity yet</Text>
+                  <Text mt={1} fontSize="sm" color="surface.500" lineHeight="1.45">
+                    The complete seller action log should be built from shifts, sales, returns and inventory movements in the next backend step.
+                  </Text>
+                </Box>
+              ) : null}
+            </VStack>
+          </Box>
+        ) : null}
       </VStack>
-    </Box>
-  );
+    );
+  };
 
   const renderTeam = () => {
     const activeStores = stores.filter((store) => store.isActive).length;
@@ -2490,6 +2854,10 @@ export function AdminDashboardScreen({
       { label: "Live Shifts", value: String(liveShifts) },
       { label: "Unassigned", value: String(unassignedSellers) },
     ];
+
+    if (selectedStaffSeller) {
+      return renderSellerDetail(selectedStaffSeller);
+    }
 
     return (
       <VStack spacing={4} align="stretch">
