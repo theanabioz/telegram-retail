@@ -385,6 +385,11 @@ export function AdminDashboardScreen({
     scrollToSectionTop();
   }, []);
 
+  const adminPageTitle =
+    activeTab === "inventory" && selectedInventoryItemId
+      ? "Product Details"
+      : adminTabTitle[activeTab];
+
   useTelegramBackButton(
     activeTab === "sales"
       ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
@@ -2628,7 +2633,7 @@ export function AdminDashboardScreen({
                 color="surface.900"
                 lineHeight="1"
               >
-                {adminTabTitle[activeTab]}
+                {adminPageTitle}
               </Text>
 
               <HStack
