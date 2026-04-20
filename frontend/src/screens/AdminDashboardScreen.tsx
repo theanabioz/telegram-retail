@@ -1268,35 +1268,14 @@ export function AdminDashboardScreen({
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between" align="center">
-            <VStack align="start" spacing={0}>
-              <Text fontWeight="900" fontSize="lg">
-                Store Directory
-              </Text>
-              <Text color="surface.500" fontSize="sm" fontWeight="700">
-                Tap a store to manage profile, staff and activity.
-              </Text>
-            </VStack>
-            <HStack spacing={2} flexShrink={0}>
-              <Text color="surface.500" fontWeight="800" fontSize="sm">
-                {stores.length}
-              </Text>
-              <Button
-                size="sm"
-                borderRadius="999px"
-                bg="surface.900"
-                color="white"
-              _hover={{ bg: "surface.700" }}
-              onClick={() => {
-                setTeamKeyboardField("storeName");
-                setTeamKeyboardCapsLock(false);
-                setShowNewStoreModal(true);
-              }}
-            >
-              New Store
-            </Button>
-            </HStack>
-          </HStack>
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="900" fontSize="lg">
+              Store Directory
+            </Text>
+            <Text color="surface.500" fontSize="sm" fontWeight="700">
+              Tap a store to manage profile, staff and activity.
+            </Text>
+          </VStack>
 
           {stores.map((store) => (
             <Box
@@ -1316,28 +1295,41 @@ export function AdminDashboardScreen({
                 scrollToSectionTop();
               }}
             >
-              <HStack justify="space-between" align="center">
+              <HStack justify="space-between" align="center" gap={3}>
                 <VStack align="start" spacing={0} minW={0}>
                   <Text fontWeight="900" noOfLines={1}>
                     {store.name}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {store.address || `Created ${formatShortDate(store.createdAt)}`} · {store.salesCount} sales
+                    {store.address || `Created ${formatShortDate(store.createdAt)}`}
                   </Text>
                 </VStack>
 
-                <VStack align="end" spacing={1} flexShrink={0}>
+                <Box flexShrink={0}>
                   <StatusPill
                     label={store.isActive ? "Active" : "Inactive"}
                     tone={store.isActive ? "green" : "red"}
                   />
-                  <Text fontSize="sm" color="surface.700" fontWeight="900">
-                    {formatEur(store.revenueToday)}
-                  </Text>
-                </VStack>
+                </Box>
               </HStack>
             </Box>
           ))}
+
+          <Button
+            w="full"
+            h="52px"
+            borderRadius="18px"
+            bg="surface.900"
+            color="white"
+            _hover={{ bg: "surface.700" }}
+            onClick={() => {
+              setTeamKeyboardField("storeName");
+              setTeamKeyboardCapsLock(false);
+              setShowNewStoreModal(true);
+            }}
+          >
+            New Store
+          </Button>
         </VStack>
       </Box>
 
@@ -2826,7 +2818,7 @@ export function AdminDashboardScreen({
     }
 
     if (seller.activeShift) {
-      return { label: "On Shift", tone: "blue" as const };
+      return { label: "Online", tone: "blue" as const };
     }
 
     return { label: "Offline", tone: "gray" as const };
@@ -2835,35 +2827,14 @@ export function AdminDashboardScreen({
   const renderStaffSection = () => (
     <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
       <VStack align="stretch" spacing={3}>
-        <HStack justify="space-between" align="center">
-          <VStack align="start" spacing={0}>
-            <Text fontWeight="900" fontSize="lg">
-              Staff Directory
-            </Text>
-            <Text color="surface.500" fontSize="sm" fontWeight="700">
-              Tap a seller to manage profile, schedule and activity.
-            </Text>
-          </VStack>
-          <HStack spacing={2} flexShrink={0}>
-            <Text color="surface.500" fontWeight="800" fontSize="sm">
-              {staff.length}
-            </Text>
-            <Button
-              size="sm"
-              borderRadius="999px"
-              bg="surface.900"
-              color="white"
-              _hover={{ bg: "surface.700" }}
-              onClick={() => {
-                setTeamKeyboardField("sellerName");
-                setTeamKeyboardCapsLock(false);
-                setShowNewSellerModal(true);
-              }}
-            >
-              New Seller
-            </Button>
-          </HStack>
-        </HStack>
+        <VStack align="start" spacing={0}>
+          <Text fontWeight="900" fontSize="lg">
+            Staff Directory
+          </Text>
+          <Text color="surface.500" fontSize="sm" fontWeight="700">
+            Tap a seller to manage profile, schedule and activity.
+          </Text>
+        </VStack>
 
         {staff.map((seller) => {
           const status = getSellerStatus(seller);
@@ -2886,29 +2857,39 @@ export function AdminDashboardScreen({
                 scrollToSectionTop();
               }}
             >
-              <HStack justify="space-between" align="center">
-                <HStack spacing={3} minW={0}>
-                  <Avatar size="sm" name={seller.fullName} bg="surface.200" color="surface.800" />
-                  <VStack align="start" spacing={0} minW={0}>
-                    <Text fontWeight="900" noOfLines={1}>
-                      {seller.fullName}
-                    </Text>
-                    <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                      {seller.currentAssignment?.storeName ?? "Unassigned"} · {seller.salesCount} sales
-                    </Text>
-                  </VStack>
-                </HStack>
-
-                <VStack align="end" spacing={1} flexShrink={0}>
-                  <StatusPill label={status.label} tone={status.tone} />
-                  <Text fontSize="sm" color="surface.700" fontWeight="900">
-                    {formatEur(seller.revenue)}
+              <HStack justify="space-between" align="center" gap={3}>
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" noOfLines={1}>
+                    {seller.fullName}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                    {seller.currentAssignment?.storeName ?? "Unassigned"}
                   </Text>
                 </VStack>
+
+                <Box flexShrink={0}>
+                  <StatusPill label={status.label} tone={status.tone} />
+                </Box>
               </HStack>
             </Box>
           );
         })}
+
+        <Button
+          w="full"
+          h="52px"
+          borderRadius="18px"
+          bg="surface.900"
+          color="white"
+          _hover={{ bg: "surface.700" }}
+          onClick={() => {
+            setTeamKeyboardField("sellerName");
+            setTeamKeyboardCapsLock(false);
+            setShowNewSellerModal(true);
+          }}
+        >
+          New Seller
+        </Button>
       </VStack>
     </Box>
   );
