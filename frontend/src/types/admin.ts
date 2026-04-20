@@ -169,6 +169,8 @@ export type AdminProductsResponse = {
     sku: string;
     defaultPrice: number;
     isActive: boolean;
+    isArchived: boolean;
+    archivedAt: string | null;
     enabledStoreCount: number;
     storeSettings: Array<{
       storeProductId: string;

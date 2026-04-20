@@ -84,11 +84,12 @@ export async function getSellerCatalog(storeId: string) {
       product_id,
       price,
       is_enabled,
-      product:products!inner(id, name, sku, default_price, is_active)
+      product:products!inner(id, name, sku, default_price, is_active, archived_at)
     `
     )
     .eq("store_id", storeId)
     .eq("is_enabled", true)
+    .is("product.archived_at", null)
     .order("product_id", { ascending: true });
 
   if (error) {

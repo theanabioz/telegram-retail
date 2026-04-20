@@ -101,6 +101,7 @@ export type AdminProductRow = {
   sku: string;
   default_price: number;
   is_active: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -268,11 +269,15 @@ export async function listInventoryRows() {
   return (data ?? []) as AdminInventoryRow[];
 }
 
-export async function listProducts() {
-  const { data, error } = await supabaseAdmin
+export async function listProducts(options?: { archived?: boolean }) {
+  let query = supabaseAdmin
     .from("products")
-    .select("id, name, sku, default_price, is_active, created_at, updated_at")
+    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
     .order("name", { ascending: true });
+
+  query = options?.archived ? query.not("archived_at", "is", null) : query.is("archived_at", null);
+
+  const { data, error } = await query;
 
   if (error) {
     throw new HttpError(500, `Failed to load products: ${error.message}`);
@@ -284,7 +289,7 @@ export async function listProducts() {
 export async function findAdminProductById(productId: string) {
   const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id, name, sku, default_price, is_active, created_at, updated_at")
+    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
     .eq("id", productId)
     .maybeSingle<AdminProductRow>();
 
@@ -304,7 +309,7 @@ export async function createAdminProduct(input: {
   const { data, error } = await supabaseAdmin
     .from("products")
     .insert(input)
-    .select("id, name, sku, default_price, is_active, created_at, updated_at")
+    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
     .single<AdminProductRow>();
 
   if (error) {
@@ -316,13 +321,13 @@ export async function createAdminProduct(input: {
 
 export async function updateAdminProduct(
   productId: string,
-  updates: Partial<Pick<AdminProductRow, "name" | "sku" | "default_price" | "is_active">>
+  updates: Partial<Pick<AdminProductRow, "name" | "sku" | "default_price" | "is_active" | "archived_at">>
 ) {
   const { data, error } = await supabaseAdmin
     .from("products")
     .update(updates)
     .eq("id", productId)
-    .select("id, name, sku, default_price, is_active, created_at, updated_at")
+    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
     .maybeSingle<AdminProductRow>();
 
   if (error) {
@@ -403,6 +408,36 @@ export async function deleteAdminProduct(productId: string) {
   if (productError) {
     throw new HttpError(500, `Failed to delete product: ${productError.message}`);
   }
+}
+
+export async function archiveAdminProduct(productId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("products")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", productId)
+    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
+    .maybeSingle<AdminProductRow>();
+
+  if (error) {
+    throw new HttpError(500, `Failed to archive product: ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function restoreAdminProduct(productId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("products")
+    .update({ archived_at: null })
+    .eq("id", productId)
+    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
+    .maybeSingle<AdminProductRow>();
+
+  if (error) {
+    throw new HttpError(500, `Failed to restore product: ${error.message}`);
+  }
+
+  return data;
 }
 
 export async function createStoreProductsForProduct(input: {

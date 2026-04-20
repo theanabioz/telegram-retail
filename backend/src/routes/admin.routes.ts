@@ -7,6 +7,7 @@ import {
   adminInventoryQuerySchema,
   adminDashboardQuerySchema,
   adminProductParamsSchema,
+  adminProductsQuerySchema,
   adminSellerParamsSchema,
   adminSalesQuerySchema,
   adminStoreProductParamsSchema,
@@ -26,12 +27,14 @@ import {
   createSeller,
   createStore,
   deleteProduct,
+  archiveProduct,
   getAdminDashboard,
   getAdminInventory,
   getAdminProducts,
   getAdminSalesOverview,
   getAdminStaff,
   getAdminStores,
+  restoreProduct,
   updateStore,
   updateProduct,
   updateStoreProductSettings,
@@ -161,8 +164,9 @@ adminRouter.get(
 
 adminRouter.get(
   "/products",
-  asyncHandler(async (_req, res) => {
-    const result = await getAdminProducts();
+  asyncHandler(async (req, res) => {
+    const query = adminProductsQuerySchema.parse(req.query);
+    const result = await getAdminProducts(query);
     res.json(result);
   })
 );
@@ -191,6 +195,24 @@ adminRouter.delete(
   asyncHandler(async (req, res) => {
     const params = adminProductParamsSchema.parse(req.params);
     const result = await deleteProduct(params.productId);
+    res.json(result);
+  })
+);
+
+adminRouter.post(
+  "/products/:productId/archive",
+  asyncHandler(async (req, res) => {
+    const params = adminProductParamsSchema.parse(req.params);
+    const result = await archiveProduct(params.productId);
+    res.json(result);
+  })
+);
+
+adminRouter.post(
+  "/products/:productId/restore",
+  asyncHandler(async (req, res) => {
+    const params = adminProductParamsSchema.parse(req.params);
+    const result = await restoreProduct(params.productId);
     res.json(result);
   })
 );

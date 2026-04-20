@@ -4,6 +4,7 @@ import {
   createAdminProduct,
   createAdminStore,
   deleteAdminProduct,
+  archiveAdminProduct,
   createInventoryRowsForProduct,
   createStoreProductsForProduct,
   createUserStoreAssignment,
@@ -21,6 +22,7 @@ import {
   listInventoryRows,
   listOpenShifts,
   listProducts,
+  restoreAdminProduct,
   getProductReferenceCounts,
   updateAdminStore,
   updateAdminProduct,
@@ -70,6 +72,8 @@ function buildAdminProductsPayload(input: {
       sku: product.sku,
       defaultPrice: Number(product.default_price),
       isActive: product.is_active,
+      isArchived: Boolean(product.archived_at),
+      archivedAt: product.archived_at,
       enabledStoreCount: storeSettings.filter((setting) => setting.isEnabled).length,
       storeSettings,
       createdAt: product.created_at,
@@ -91,7 +95,7 @@ export async function getAdminDashboard(input: {
       listCurrentAssignments(),
       listOpenShifts(),
       listInventoryRows(),
-      listProducts(),
+      listProducts({ archived: false }),
     ]);
 
   const storeMap = new Map(stores.map((store) => [store.id, store]));
@@ -122,12 +126,13 @@ export async function getAdminDashboard(input: {
     };
   });
 
-  const inventoryByStore = inventoryRows.reduce<Map<string, number>>((map, row) => {
+  const visibleInventoryRows = inventoryRows.filter((row) => productMap.has(row.product_id));
+  const inventoryByStore = visibleInventoryRows.reduce<Map<string, number>>((map, row) => {
     map.set(row.store_id, (map.get(row.store_id) ?? 0) + Number(row.quantity));
     return map;
   }, new Map());
 
-  const lowStockItems = inventoryRows
+  const lowStockItems = visibleInventoryRows
     .filter((row) => Number(row.quantity) <= 10)
     .sort((a, b) => Number(a.quantity) - Number(b.quantity))
     .slice(0, input.lowStockLimit)
@@ -221,13 +226,17 @@ export async function getAdminDashboard(input: {
 }
 
 export async function getAdminStores() {
-  const [sales, stores, assignments, openShifts, inventoryRows] = await Promise.all([
+  const [sales, stores, assignments, openShifts, inventoryRows, products] = await Promise.all([
     listAdminSales(500),
     listAdminStores(),
     listCurrentAssignments(),
     listOpenShifts(),
     listInventoryRows(),
+    listProducts({ archived: false }),
   ]);
+
+  const visibleProductIds = new Set(products.map((product) => product.id));
+  const visibleInventoryRows = inventoryRows.filter((row) => visibleProductIds.has(row.product_id));
 
   const assignmentByStore = assignments.reduce<Map<string, number>>((map, row) => {
     map.set(row.store_id, (map.get(row.store_id) ?? 0) + 1);
@@ -239,7 +248,7 @@ export async function getAdminStores() {
     return map;
   }, new Map());
 
-  const stockByStore = inventoryRows.reduce<Map<string, number>>((map, row) => {
+  const stockByStore = visibleInventoryRows.reduce<Map<string, number>>((map, row) => {
     map.set(row.store_id, (map.get(row.store_id) ?? 0) + Number(row.quantity));
     return map;
   }, new Map());
@@ -251,7 +260,7 @@ export async function getAdminStores() {
     stores: stores.map((store) => {
       const storeSales = completedSales.filter((sale) => sale.store_id === store.id);
       const todaySales = storeSales.filter((sale) => sale.created_at >= todayStart);
-      const storeInventory = inventoryRows.filter((row) => row.store_id === store.id);
+      const storeInventory = visibleInventoryRows.filter((row) => row.store_id === store.id);
 
       return {
         id: store.id,
@@ -519,7 +528,7 @@ export async function getAdminInventory(input: {
 }) {
   const [stores, products, storeProducts, allStoreProducts, inventoryRows, history] = await Promise.all([
     listAdminStores(),
-    listProducts(),
+    listProducts({ archived: false }),
     listAdminStoreProducts(input.storeId),
     listAdminStoreProducts(),
     listInventoryRows(),
@@ -532,11 +541,15 @@ export async function getAdminInventory(input: {
     inventoryRows.map((row) => [`${row.store_id}:${row.product_id}`, Number(row.quantity)])
   );
 
-  const items = storeProducts.map((row) => {
+  const items = storeProducts.flatMap((row) => {
     const store = storeMap.get(row.store_id);
     const product = productMap.get(row.product_id);
 
-    return {
+    if (!product) {
+      return [];
+    }
+
+    return [{
       storeProductId: row.id,
       storeId: row.store_id,
       storeName: store?.name ?? "Unknown store",
@@ -549,7 +562,7 @@ export async function getAdminInventory(input: {
       isProductActive: product?.is_active ?? false,
       stockQuantity: inventoryMap.get(`${row.store_id}:${row.product_id}`) ?? 0,
       updatedAt: row.updated_at,
-    };
+    }];
   });
 
   return {
@@ -577,9 +590,9 @@ export async function getAdminInventory(input: {
   };
 }
 
-export async function getAdminProducts() {
+export async function getAdminProducts(input?: { archived?: boolean }) {
   const [products, stores, storeProducts] = await Promise.all([
-    listProducts(),
+    listProducts({ archived: input?.archived ?? false }),
     listAdminStores(),
     listAdminStoreProducts(),
   ]);
@@ -626,6 +639,8 @@ export async function createProduct(input: {
       sku: product.sku,
       defaultPrice: Number(product.default_price),
       isActive: product.is_active,
+      isArchived: Boolean(product.archived_at),
+      archivedAt: product.archived_at,
       createdAt: product.created_at,
       updatedAt: product.updated_at,
     },
@@ -665,6 +680,8 @@ export async function updateProduct(
       sku: updated.sku,
       defaultPrice: Number(updated.default_price),
       isActive: updated.is_active,
+      isArchived: Boolean(updated.archived_at),
+      archivedAt: updated.archived_at,
       createdAt: updated.created_at,
       updatedAt: updated.updated_at,
     },
@@ -691,6 +708,62 @@ export async function deleteProduct(productId: string) {
   await deleteAdminProduct(productId);
 
   return { ok: true };
+}
+
+export async function archiveProduct(productId: string) {
+  const existing = await findAdminProductById(productId);
+
+  if (!existing) {
+    throw new HttpError(404, "Product not found");
+  }
+
+  const archived = await archiveAdminProduct(productId);
+
+  if (!archived) {
+    throw new HttpError(404, "Product not found");
+  }
+
+  return {
+    product: {
+      id: archived.id,
+      name: archived.name,
+      sku: archived.sku,
+      defaultPrice: Number(archived.default_price),
+      isActive: archived.is_active,
+      isArchived: Boolean(archived.archived_at),
+      archivedAt: archived.archived_at,
+      createdAt: archived.created_at,
+      updatedAt: archived.updated_at,
+    },
+  };
+}
+
+export async function restoreProduct(productId: string) {
+  const existing = await findAdminProductById(productId);
+
+  if (!existing) {
+    throw new HttpError(404, "Product not found");
+  }
+
+  const restored = await restoreAdminProduct(productId);
+
+  if (!restored) {
+    throw new HttpError(404, "Product not found");
+  }
+
+  return {
+    product: {
+      id: restored.id,
+      name: restored.name,
+      sku: restored.sku,
+      defaultPrice: Number(restored.default_price),
+      isActive: restored.is_active,
+      isArchived: Boolean(restored.archived_at),
+      archivedAt: restored.archived_at,
+      createdAt: restored.created_at,
+      updatedAt: restored.updated_at,
+    },
+  };
 }
 
 export async function updateStoreProductSettings(input: {

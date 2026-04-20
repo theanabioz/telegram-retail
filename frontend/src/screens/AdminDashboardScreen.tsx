@@ -283,6 +283,7 @@ export function AdminDashboardScreen({
     assignSeller,
     inventoryStores,
     products,
+    archivedProducts,
     inventoryItems,
     inventoryHistory,
     salesStores,
@@ -293,6 +294,8 @@ export function AdminDashboardScreen({
     createProduct,
     updateProduct,
     deleteProduct,
+    archiveProduct,
+    restoreProduct,
     adjustInventory,
   } = useAdminManagementStore();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
@@ -314,6 +317,7 @@ export function AdminDashboardScreen({
   const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productDetailMode, setProductDetailMode] = useState<ProductDetailMode>("overview");
+  const [productCatalogMode, setProductCatalogMode] = useState<"catalog" | "archive">("catalog");
   const [inventoryView, setInventoryView] = useState<InventorySnapshot>(() => {
     const cachedStartup = getCachedAdminStartup();
     return {
@@ -428,6 +432,7 @@ export function AdminDashboardScreen({
       setInventoryDetailMode("overview");
       setSelectedProductId(null);
       setProductDetailMode("overview");
+      setProductCatalogMode("catalog");
     }
 
     if (tab === "team") {
@@ -466,7 +471,9 @@ export function AdminDashboardScreen({
       ? inventoryStores.find((store) => store.id === selectedInventoryStoreId)?.name ??
         selectedInventoryHeaderItem.storeName
       : activeTab === "inventory" && selectedProductId
-        ? "Product catalog"
+        ? productCatalogMode === "archive"
+          ? "Product archive"
+          : "Product catalog"
       : null;
 
   useTelegramBackButton(
@@ -802,7 +809,7 @@ export function AdminDashboardScreen({
     setProductEdits((current) => {
       const next = { ...current };
 
-      for (const product of products) {
+      for (const product of [...products, ...archivedProducts]) {
         next[product.id] ??= {
           name: product.name,
           sku: product.sku,
@@ -813,7 +820,13 @@ export function AdminDashboardScreen({
 
       return next;
     });
-  }, [products]);
+  }, [archivedProducts, products]);
+
+  useEffect(() => {
+    if (productCatalogMode === "archive") {
+      void loadProducts({ archived: true });
+    }
+  }, [loadProducts, productCatalogMode]);
 
   useEffect(() => {
     if (selectedInventoryStoreId) {
@@ -1002,6 +1015,46 @@ export function AdminDashboardScreen({
     if (selectedInventoryStoreId) {
       await loadInventory(selectedInventoryStoreId);
     }
+  };
+
+  const handleArchiveProduct = async (productId: string, productName: string) => {
+    const confirmed = window.confirm(`Archive ${productName}? It will be removed from the active product catalog.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await archiveProduct(productId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to archive product";
+      window.alert(message);
+      return;
+    }
+
+    setSelectedProductId(null);
+    setProductDetailMode("overview");
+    setProductCatalogMode("catalog");
+  };
+
+  const handleRestoreProduct = async (productId: string, productName: string) => {
+    const confirmed = window.confirm(`Restore ${productName} back to the active product catalog?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await restoreProduct(productId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to restore product";
+      window.alert(message);
+      return;
+    }
+
+    setSelectedProductId(null);
+    setProductDetailMode("overview");
+    setProductCatalogMode("catalog");
   };
 
   const handleSaveProductStoreSetting = async (storeProductId: string) => {
@@ -1848,12 +1901,13 @@ export function AdminDashboardScreen({
   const renderInventory = () => {
     const visibleInventoryItems = inventoryView.items;
     const visibleInventoryHistory = inventoryView.history;
+    const visibleProductCatalog = productCatalogMode === "archive" ? archivedProducts : products;
     const selectedStore = inventoryStores.find((store) => store.id === selectedInventoryStoreId) ?? null;
     const selectedItem = selectedInventoryItemId
       ? visibleInventoryItems.find((item) => item.storeProductId === selectedInventoryItemId) ?? null
       : null;
     const selectedProduct = selectedProductId
-      ? products.find((product) => product.id === selectedProductId) ?? null
+      ? visibleProductCatalog.find((product) => product.id === selectedProductId) ?? null
       : null;
     const totalUnits = visibleInventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
     const lowStockCount = visibleInventoryItems.filter((item) => item.stockQuantity <= 10).length;
@@ -1964,10 +2018,15 @@ export function AdminDashboardScreen({
                     {selectedProduct.name}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {selectedProduct.enabledStoreCount} stores enabled
+                    {selectedProduct.isArchived
+                      ? `Archived ${selectedProduct.archivedAt ? formatShortDate(selectedProduct.archivedAt) : ""}`.trim()
+                      : `${selectedProduct.enabledStoreCount} stores enabled`}
                   </Text>
                 </VStack>
-                <StatusPill label={selectedProduct.isActive ? "Active" : "Inactive"} tone={selectedProduct.isActive ? "green" : "red"} />
+                <StatusPill
+                  label={selectedProduct.isArchived ? "Archived" : selectedProduct.isActive ? "Active" : "Inactive"}
+                  tone={selectedProduct.isArchived ? "orange" : selectedProduct.isActive ? "green" : "red"}
+                />
               </HStack>
             </VStack>
           </Box>
@@ -2001,9 +2060,15 @@ export function AdminDashboardScreen({
                 <SimpleGrid columns={2} spacing={3}>
                   {[
                     { label: "Default Price", value: formatEur(selectedProduct.defaultPrice) },
-                    { label: "Status", value: selectedProduct.isActive ? "Active" : "Inactive" },
+                    {
+                      label: "Status",
+                      value: selectedProduct.isArchived ? "Archived" : selectedProduct.isActive ? "Active" : "Inactive",
+                    },
                     { label: "Stores Enabled", value: `${selectedProduct.enabledStoreCount}` },
-                    { label: "Updated", value: formatShortDate(selectedProduct.updatedAt) },
+                    {
+                      label: selectedProduct.isArchived ? "Archived" : "Updated",
+                      value: formatShortDate(selectedProduct.isArchived ? selectedProduct.archivedAt ?? selectedProduct.updatedAt : selectedProduct.updatedAt),
+                    },
                   ].map((card) => (
                     <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                       <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
@@ -2104,17 +2169,57 @@ export function AdminDashboardScreen({
                   Save Product
                 </Button>
 
-                <Button
-                  size="sm"
-                  borderRadius="14px"
-                  variant="ghost"
-                  color="red.500"
-                  _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                  isLoading={mutating}
-                  onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
-                >
-                  Delete Product
-                </Button>
+                {selectedProduct.isArchived ? (
+                  <>
+                    <Button
+                      size="sm"
+                      borderRadius="14px"
+                      variant="ghost"
+                      color="brand.600"
+                      _hover={{ bg: "rgba(74,132,244,0.12)" }}
+                      isLoading={mutating}
+                      onClick={() => void handleRestoreProduct(selectedProduct.id, selectedProduct.name)}
+                    >
+                      Restore Product
+                    </Button>
+                    <Button
+                      size="sm"
+                      borderRadius="14px"
+                      variant="ghost"
+                      color="red.500"
+                      _hover={{ bg: "rgba(248,113,113,0.12)" }}
+                      isLoading={mutating}
+                      onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
+                    >
+                      Delete Product
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      borderRadius="14px"
+                      variant="ghost"
+                      color="red.500"
+                      _hover={{ bg: "rgba(248,113,113,0.12)" }}
+                      isLoading={mutating}
+                      onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
+                    >
+                      Delete Product
+                    </Button>
+                    <Button
+                      size="sm"
+                      borderRadius="14px"
+                      variant="ghost"
+                      color="surface.700"
+                      _hover={{ bg: "rgba(18,18,18,0.06)" }}
+                      isLoading={mutating}
+                      onClick={() => void handleArchiveProduct(selectedProduct.id, selectedProduct.name)}
+                    >
+                      Archive Product
+                    </Button>
+                  </>
+                )}
               </VStack>
             </Box>
           ) : null}
@@ -2767,14 +2872,14 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
-                    Product Catalog
+                    {productCatalogMode === "archive" ? "Product Archive" : "Product Catalog"}
                   </Text>
                   <Text color="surface.500" fontWeight="700" fontSize="sm">
-                    {products.length} items
+                    {visibleProductCatalog.length} items
                   </Text>
                 </HStack>
 
-                {sortedProducts.map((product) => {
+                {(productCatalogMode === "archive" ? visibleProductCatalog : sortedProducts).map((product) => {
                   return (
                     <Box
                       key={product.id}
@@ -2800,30 +2905,83 @@ export function AdminDashboardScreen({
                             Default {formatEur(product.defaultPrice)}
                           </Text>
                           <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
-                            {product.enabledStoreCount} stores enabled
+                            {productCatalogMode === "archive"
+                              ? `Archived ${product.archivedAt ? formatShortDate(product.archivedAt) : ""}`.trim()
+                              : `${product.enabledStoreCount} stores enabled`}
                           </Text>
                         </VStack>
-                        <StatusPill label={product.isActive ? "Active" : "Inactive"} tone={product.isActive ? "green" : "red"} />
+                        <StatusPill
+                          label={productCatalogMode === "archive" ? "Archived" : product.isActive ? "Active" : "Inactive"}
+                          tone={productCatalogMode === "archive" ? "orange" : product.isActive ? "green" : "red"}
+                        />
                       </HStack>
                     </Box>
                   );
                 })}
 
-                <Button
-                  w="full"
-                  h="52px"
-                  borderRadius="18px"
-                  bg="surface.900"
-                  color="white"
-                  _hover={{ bg: "surface.700" }}
-                  onClick={() => {
-                    setProductKeyboardField("productName");
-                    setProductKeyboardCapsLock(false);
-                    setShowNewProductModal(true);
-                  }}
-                >
-                  New Product
-                </Button>
+                {visibleProductCatalog.length === 0 ? (
+                  <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={4}>
+                    <Text fontWeight="900">
+                      {productCatalogMode === "archive" ? "Archive is empty" : "No products yet"}
+                    </Text>
+                    <Text color="surface.500" fontSize="sm" mt={1}>
+                      {productCatalogMode === "archive"
+                        ? "Archived products will appear here and can be restored anytime."
+                        : "Create your first product to start filling the catalog."}
+                    </Text>
+                  </Box>
+                ) : null}
+
+                {productCatalogMode === "archive" ? (
+                  <Button
+                    w="full"
+                    h="52px"
+                    borderRadius="18px"
+                    bg={panelMutedSurface}
+                    color="surface.900"
+                    _hover={{ bg: "rgba(232,231,226,0.96)" }}
+                    onClick={() => {
+                      setSelectedProductId(null);
+                      setProductDetailMode("overview");
+                      setProductCatalogMode("catalog");
+                    }}
+                  >
+                    Back to Products
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      w="full"
+                      h="52px"
+                      borderRadius="18px"
+                      bg="surface.900"
+                      color="white"
+                      _hover={{ bg: "surface.700" }}
+                      onClick={() => {
+                        setProductKeyboardField("productName");
+                        setProductKeyboardCapsLock(false);
+                        setShowNewProductModal(true);
+                      }}
+                    >
+                      New Product
+                    </Button>
+                    <Button
+                      w="full"
+                      h="48px"
+                      borderRadius="18px"
+                      bg={panelMutedSurface}
+                      color="surface.900"
+                      _hover={{ bg: "rgba(232,231,226,0.96)" }}
+                      onClick={() => {
+                        setSelectedProductId(null);
+                        setProductDetailMode("overview");
+                        setProductCatalogMode("archive");
+                      }}
+                    >
+                      Product Archive
+                    </Button>
+                  </>
+                )}
               </VStack>
             </Box>
           </VStack>

@@ -48,6 +48,7 @@ type AdminManagementState = {
   staff: AdminStaffResponse["sellers"];
   inventoryStores: AdminInventoryResponse["stores"];
   products: AdminProductsResponse["products"];
+  archivedProducts: AdminProductsResponse["products"];
   inventoryItems: AdminInventoryResponse["items"];
   inventoryHistory: AdminInventoryResponse["history"];
   salesFilters: AdminSalesOverviewResponse["filters"] | null;
@@ -58,7 +59,7 @@ type AdminManagementState = {
   loadStores: () => Promise<void>;
   loadStaff: () => Promise<void>;
   loadInventory: (storeId?: string, options?: { silent?: boolean }) => Promise<void>;
-  loadProducts: () => Promise<void>;
+  loadProducts: (options?: { archived?: boolean }) => Promise<void>;
   loadSalesOverview: (filters?: {
     storeId?: string;
     sellerId?: string;
@@ -106,6 +107,8 @@ type AdminManagementState = {
     }
   ) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
+  archiveProduct: (productId: string) => Promise<void>;
+  restoreProduct: (productId: string) => Promise<void>;
   hydrateStartup: (startup: AdminStartupResponse) => void;
 };
 
@@ -122,6 +125,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
   staff: cachedAdminStartup?.staff.sellers ?? [],
   inventoryStores: cachedAdminStartup?.inventory.stores ?? [],
   products: cachedAdminStartup?.inventory.products ?? [],
+  archivedProducts: [],
   inventoryItems: cachedAdminStartup?.inventory.items ?? [],
   inventoryHistory: cachedAdminStartup?.inventory.history ?? [],
   salesFilters: cachedAdminStartup?.sales.filters ?? null,
@@ -141,6 +145,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       staff: startup.staff.sellers,
       inventoryStores: startup.inventory.stores,
       products: startup.inventory.products,
+      archivedProducts: [],
       inventoryItems: startup.inventory.items,
       inventoryHistory: startup.inventory.history,
       salesFilters: startup.sales.filters,
@@ -226,7 +231,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     }
   },
 
-  loadProducts: async () => {
+  loadProducts: async (options) => {
     const token = getStoredToken();
 
     if (!token) {
@@ -235,8 +240,9 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     }
 
     try {
-      const data = await apiGet<AdminProductsResponse>("/admin/products", token);
-      set({ products: data.products, error: null });
+      const query = options?.archived ? "?archived=true" : "";
+      const data = await apiGet<AdminProductsResponse>(`/admin/products${query}`, token);
+      set(options?.archived ? { archivedProducts: data.products, error: null } : { products: data.products, error: null });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Failed to load products",
@@ -476,7 +482,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       await apiPost<AdminProductMutationResponse>("/admin/products", input, token);
       triggerNotification("success");
       const currentStoreId = get().inventoryItems[0]?.storeId;
-      await Promise.all([get().loadProducts(), get().loadInventory(currentStoreId)]);
+      await Promise.all([get().loadProducts(), get().loadProducts({ archived: true }), get().loadInventory(currentStoreId)]);
       set({ mutating: false, error: null });
     } catch (error) {
       triggerNotification("error");
@@ -500,7 +506,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     try {
       await apiPatch<AdminProductMutationResponse>(`/admin/products/${productId}`, input, token);
       triggerNotification("success");
-      await Promise.all([get().loadProducts(), get().loadInventory()]);
+      await Promise.all([get().loadProducts(), get().loadProducts({ archived: true }), get().loadInventory()]);
       set({ mutating: false, error: null });
     } catch (error) {
       triggerNotification("error");
@@ -526,7 +532,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     try {
       await apiDelete<{ ok: boolean }>(`/admin/products/${productId}`, token);
       triggerNotification("success");
-      await Promise.all([get().loadProducts(), get().loadInventory(currentStoreId)]);
+      await Promise.all([get().loadProducts(), get().loadProducts({ archived: true }), get().loadInventory(currentStoreId)]);
       set({ mutating: false, error: null });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete product";
@@ -535,6 +541,56 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         mutating: false,
         error: message,
       });
+      throw error instanceof Error ? error : new Error(message);
+    }
+  },
+
+  archiveProduct: async (productId) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    const currentStoreId = get().inventoryItems[0]?.storeId;
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost<AdminProductMutationResponse>(`/admin/products/${productId}/archive`, {}, token);
+      triggerNotification("success");
+      await Promise.all([get().loadProducts(), get().loadProducts({ archived: true }), get().loadInventory(currentStoreId)]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to archive product";
+      triggerNotification("error");
+      set({ mutating: false, error: message });
+      throw error instanceof Error ? error : new Error(message);
+    }
+  },
+
+  restoreProduct: async (productId) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    const currentStoreId = get().inventoryItems[0]?.storeId;
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost<AdminProductMutationResponse>(`/admin/products/${productId}/restore`, {}, token);
+      triggerNotification("success");
+      await Promise.all([get().loadProducts(), get().loadProducts({ archived: true }), get().loadInventory(currentStoreId)]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to restore product";
+      triggerNotification("error");
+      set({ mutating: false, error: message });
       throw error instanceof Error ? error : new Error(message);
     }
   },

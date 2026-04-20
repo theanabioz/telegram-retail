@@ -53,6 +53,10 @@ export const adminProductParamsSchema = z.object({
   productId: z.string().uuid(),
 });
 
+export const adminProductsQuerySchema = z.object({
+  archived: z.coerce.boolean().optional().default(false),
+});
+
 export const createAdminProductBodySchema = z.object({
   name: z.string().trim().min(2).max(120),
   sku: z.string().trim().min(2).max(60),
