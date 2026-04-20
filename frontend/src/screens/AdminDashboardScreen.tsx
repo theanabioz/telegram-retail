@@ -11,7 +11,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { LuActivity, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
+import { LuActivity, LuCheck, LuChevronDown, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
@@ -380,6 +380,7 @@ export function AdminDashboardScreen({
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [productKeyboardField, setProductKeyboardField] = useState<ProductVirtualKeyboardField>("productName");
   const [productKeyboardCapsLock, setProductKeyboardCapsLock] = useState(false);
+  const [showInventoryStoreSelector, setShowInventoryStoreSelector] = useState(false);
   const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState(
     () => getCachedAdminStartup()?.inventory.selectedStoreId ?? ""
   );
@@ -2811,37 +2812,31 @@ export function AdminDashboardScreen({
         {inventoryMode === "stock" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={3}>
-              <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="lg">
+              <Button
+                h="76px"
+                px={4}
+                borderRadius="22px"
+                bg={panelMutedSurface}
+                color="surface.900"
+                justifyContent="space-between"
+                _hover={{ bg: "rgba(232,231,226,0.96)" }}
+                onClick={() => setShowInventoryStoreSelector(true)}
+              >
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" fontSize="lg" noOfLines={1}>
                     {selectedStore?.name ?? "Select store"}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
                     {visibleInventoryItems.length} products in this store
                   </Text>
                 </VStack>
-                {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
-              </HStack>
-              <HStack spacing={2} overflowX="auto" pb={1}>
-                {inventoryStores.map((store) => {
-                  const isActive = selectedInventoryStoreId === store.id;
-
-                  return (
-                    <Button
-                      key={store.id}
-                      size="sm"
-                      flexShrink={0}
-                      borderRadius="999px"
-                      bg={isActive ? "brand.500" : panelMutedSurface}
-                      color={isActive ? "white" : "surface.700"}
-                      _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
-                      onClick={() => setSelectedInventoryStoreId(store.id)}
-                    >
-                      {store.name}
-                    </Button>
-                  );
-                })}
-              </HStack>
+                <HStack spacing={2} flexShrink={0}>
+                  {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
+                  <Box color="surface.500">
+                    <LuChevronDown size={20} />
+                  </Box>
+                </HStack>
+              </Button>
             </VStack>
           </Box>
         ) : null}
@@ -3022,6 +3017,7 @@ export function AdminDashboardScreen({
         )}
         </VStack>
         {renderProductCreationModal()}
+        {renderInventoryStoreSelector()}
       </>
     );
   };
@@ -4737,6 +4733,120 @@ export function AdminDashboardScreen({
               Create Product
             </Button>
           </Box>
+        </Box>
+      </Box>
+    ) : null;
+
+  const renderInventoryStoreSelector = () =>
+    showInventoryStoreSelector ? (
+      <Box position="fixed" inset={0} zIndex={1400}>
+        <Box
+          position="absolute"
+          inset={0}
+          bg="rgba(14, 12, 10, 0.4)"
+          overscrollBehavior="none"
+          style={{ touchAction: "none" }}
+          onClick={() => setShowInventoryStoreSelector(false)}
+        />
+        <Box
+          role="dialog"
+          aria-modal="true"
+          aria-label="Select Store"
+          position="absolute"
+          left={0}
+          right={0}
+          bottom={0}
+          w="100%"
+          maxH="78vh"
+          bg="white"
+          borderTopRadius="32px"
+          boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
+          overscrollBehavior="contain"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowInventoryStoreSelector(false)} cursor="pointer">
+            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+          </Box>
+
+          <VStack align="stretch" spacing={3} px={4} pt={1} pb={4}>
+            <HStack justify="space-between" align="center">
+              <VStack align="start" spacing={0}>
+                <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
+                  Select Store
+                </Text>
+                <Text color="surface.500" fontSize="xs" fontWeight="700">
+                  Switch inventory view between your active locations.
+                </Text>
+              </VStack>
+              <Button
+                aria-label="Close store selector"
+                minW="42px"
+                h="42px"
+                px={0}
+                borderRadius="999px"
+                bg="surface.50"
+                color="surface.700"
+                fontSize="24px"
+                lineHeight="1"
+                fontWeight="700"
+                _hover={{ bg: "rgba(232,231,226,0.95)" }}
+                onClick={() => setShowInventoryStoreSelector(false)}
+              >
+                ×
+              </Button>
+            </HStack>
+
+            <VStack align="stretch" spacing={2}>
+              {inventoryStores.map((store) => {
+                const isActive = selectedInventoryStoreId === store.id;
+
+                return (
+                  <Button
+                    key={store.id}
+                    justifyContent="space-between"
+                    h="64px"
+                    px={4}
+                    borderRadius="20px"
+                    bg={isActive ? "rgba(74,132,244,0.12)" : panelMutedSurface}
+                    color="surface.900"
+                    border="1px solid"
+                    borderColor={isActive ? "rgba(74,132,244,0.24)" : "transparent"}
+                    _hover={{ bg: isActive ? "rgba(74,132,244,0.14)" : "rgba(232,231,226,0.96)" }}
+                    onClick={() => {
+                      setSelectedInventoryStoreId(store.id);
+                      setShowInventoryStoreSelector(false);
+                    }}
+                  >
+                    <VStack align="start" spacing={0} minW={0}>
+                      <Text fontWeight="900" noOfLines={1}>
+                        {store.name}
+                      </Text>
+                      <Text fontSize="sm" color="surface.500" fontWeight="700">
+                        {store.isActive ? "Active location" : "Inactive location"}
+                      </Text>
+                    </VStack>
+                    {isActive ? (
+                      <Box
+                        w="32px"
+                        h="32px"
+                        borderRadius="999px"
+                        bg="brand.500"
+                        color="white"
+                        display="grid"
+                        placeItems="center"
+                        flexShrink={0}
+                      >
+                        <LuCheck size={18} />
+                      </Box>
+                    ) : null}
+                  </Button>
+                );
+              })}
+            </VStack>
+          </VStack>
         </Box>
       </Box>
     ) : null;
