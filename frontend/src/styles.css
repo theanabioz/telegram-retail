@@ -30,6 +30,18 @@ input {
   font: inherit;
 }
 
+button,
+a,
+[role="button"],
+[role="tab"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 #root {
   min-height: var(--app-viewport-height, 100vh);
 }
