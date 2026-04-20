@@ -1109,13 +1109,18 @@ export function AdminDashboardScreen({
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="800">{store.name}</Text>
                   <Text fontSize="sm" color="surface.500">
-                    {store.sellerCount} sellers · {store.salesCount} sales
+                    {store.address?.trim() || "Address not specified"}
                   </Text>
                   <Text fontSize="xs" color="surface.500">
-                    {store.stockUnits} units in stock
+                    {store.stockUnits} Units in stock
                   </Text>
                 </VStack>
-                <Text fontWeight="900">{formatEur(store.revenue)}</Text>
+                <VStack align="end" spacing={0.5}>
+                  <Text fontWeight="900">{formatEur(store.revenue)}</Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700">
+                    {store.salesCount} sales
+                  </Text>
+                </VStack>
               </HStack>
             </Box>
           ))}
