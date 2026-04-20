@@ -3416,32 +3416,42 @@ export function AdminDashboardScreen({
   const renderTeamCreationModals = () => (
     <>
       {showNewStoreModal ? (
-        <Box
-          position="fixed"
-          inset={0}
-          zIndex={1400}
-          bg="rgba(18,18,18,0.28)"
-          display="flex"
-          alignItems="flex-end"
-          justifyContent="center"
-          px={3}
-          pb="calc(16px + env(safe-area-inset-bottom, 0px))"
-          onClick={() => setShowNewStoreModal(false)}
-        >
+        <Box position="fixed" inset={0} zIndex={1400}>
           <Box
+            position="absolute"
+            inset={0}
+            bg="rgba(14, 12, 10, 0.4)"
+            overscrollBehavior="none"
+            style={{ touchAction: "none" }}
+            onClick={() => setShowNewStoreModal(false)}
+          />
+          <Box
+            role="dialog"
+            aria-modal="true"
+            aria-label="New Store"
+            position="absolute"
+            left={0}
+            right={0}
+            bottom={0}
             w="100%"
-            maxW="420px"
-            bg={panelSurface}
-            borderRadius="28px"
-            px={4}
-            py={4}
-            boxShadow="0 24px 60px rgba(18,18,18,0.18)"
+            maxH="88vh"
+            bg="white"
+            borderTopRadius="32px"
+            boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
+            overflow="hidden"
+            display="flex"
+            flexDirection="column"
+            overscrollBehavior="contain"
             onClick={(event) => event.stopPropagation()}
           >
-            <VStack align="stretch" spacing={4}>
-              <HStack justify="space-between" align="start">
+            <Box w="full" py={3} display="flex" justifyContent="center" onClick={() => setShowNewStoreModal(false)} cursor="pointer">
+              <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+            </Box>
+
+            <VStack align="stretch" spacing={4} px={5} pt={2} pb="calc(20px + env(safe-area-inset-bottom, 0px))" overflowY="auto">
+              <HStack justify="space-between" align="center" mb={2}>
                 <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="xl">
+                  <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
                     New Store
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="700">
@@ -3451,12 +3461,12 @@ export function AdminDashboardScreen({
                 <Button
                   size="sm"
                   borderRadius="999px"
-                  bg={panelMutedSurface}
+                  bg="surface.50"
                   color="surface.700"
                   _hover={{ bg: "rgba(232,231,226,0.95)" }}
                   onClick={() => setShowNewStoreModal(false)}
                 >
-                  Close
+                  ×
                 </Button>
               </HStack>
 
@@ -3469,8 +3479,10 @@ export function AdminDashboardScreen({
                   onChange={(event) => setNewStoreName(event.target.value)}
                   placeholder="Central Mall Store"
                   borderRadius="18px"
-                  bg="white"
+                  bg="surface.50"
                   borderColor="rgba(226,224,218,0.95)"
+                  h="52px"
+                  fontWeight="800"
                 />
               </VStack>
 
@@ -3483,8 +3495,10 @@ export function AdminDashboardScreen({
                   onChange={(event) => setNewStoreAddress(event.target.value)}
                   placeholder="Address or short location note"
                   borderRadius="18px"
-                  bg="white"
+                  bg="surface.50"
                   borderColor="rgba(226,224,218,0.95)"
+                  h="52px"
+                  fontWeight="800"
                 />
               </VStack>
 
@@ -3505,32 +3519,42 @@ export function AdminDashboardScreen({
       ) : null}
 
       {showNewSellerModal ? (
-        <Box
-          position="fixed"
-          inset={0}
-          zIndex={1400}
-          bg="rgba(18,18,18,0.28)"
-          display="flex"
-          alignItems="flex-end"
-          justifyContent="center"
-          px={3}
-          pb="calc(16px + env(safe-area-inset-bottom, 0px))"
-          onClick={() => setShowNewSellerModal(false)}
-        >
+        <Box position="fixed" inset={0} zIndex={1400}>
           <Box
+            position="absolute"
+            inset={0}
+            bg="rgba(14, 12, 10, 0.4)"
+            overscrollBehavior="none"
+            style={{ touchAction: "none" }}
+            onClick={() => setShowNewSellerModal(false)}
+          />
+          <Box
+            role="dialog"
+            aria-modal="true"
+            aria-label="New Seller"
+            position="absolute"
+            left={0}
+            right={0}
+            bottom={0}
             w="100%"
-            maxW="420px"
-            bg={panelSurface}
-            borderRadius="28px"
-            px={4}
-            py={4}
-            boxShadow="0 24px 60px rgba(18,18,18,0.18)"
+            maxH="88vh"
+            bg="white"
+            borderTopRadius="32px"
+            boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
+            overflow="hidden"
+            display="flex"
+            flexDirection="column"
+            overscrollBehavior="contain"
             onClick={(event) => event.stopPropagation()}
           >
-            <VStack align="stretch" spacing={4}>
-              <HStack justify="space-between" align="start">
+            <Box w="full" py={3} display="flex" justifyContent="center" onClick={() => setShowNewSellerModal(false)} cursor="pointer">
+              <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+            </Box>
+
+            <VStack align="stretch" spacing={4} px={5} pt={2} pb="calc(20px + env(safe-area-inset-bottom, 0px))" overflowY="auto">
+              <HStack justify="space-between" align="center" mb={2}>
                 <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="xl">
+                  <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
                     New Seller
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="700">
@@ -3540,12 +3564,12 @@ export function AdminDashboardScreen({
                 <Button
                   size="sm"
                   borderRadius="999px"
-                  bg={panelMutedSurface}
+                  bg="surface.50"
                   color="surface.700"
                   _hover={{ bg: "rgba(232,231,226,0.95)" }}
                   onClick={() => setShowNewSellerModal(false)}
                 >
-                  Close
+                  ×
                 </Button>
               </HStack>
 
@@ -3560,8 +3584,10 @@ export function AdminDashboardScreen({
                   }
                   placeholder="John Seller"
                   borderRadius="18px"
-                  bg="white"
+                  bg="surface.50"
                   borderColor="rgba(226,224,218,0.95)"
+                  h="52px"
+                  fontWeight="800"
                 />
               </VStack>
 
@@ -3577,8 +3603,10 @@ export function AdminDashboardScreen({
                   inputMode="numeric"
                   placeholder="123456789"
                   borderRadius="18px"
-                  bg="white"
+                  bg="surface.50"
                   borderColor="rgba(226,224,218,0.95)"
+                  h="52px"
+                  fontWeight="800"
                 />
               </VStack>
 
@@ -3592,9 +3620,10 @@ export function AdminDashboardScreen({
                     setNewSeller((current) => ({ ...current, storeId: event.target.value }))
                   }
                   borderRadius="18px"
-                  bg="white"
+                  bg="surface.50"
                   borderColor="rgba(226,224,218,0.95)"
                   fontWeight="800"
+                  h="52px"
                 >
                   <option value="">No store yet</option>
                   {stores
