@@ -93,7 +93,15 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
               minH="48px"
               borderRadius="12px"
               bg="transparent"
-              sx={{ touchAction: "manipulation" }}
+              _active={{ bg: "transparent", boxShadow: "none" }}
+              _focus={{ boxShadow: "none" }}
+              _focusVisible={{ boxShadow: "none" }}
+              sx={{
+                WebkitTapHighlightColor: "transparent",
+                appearance: "none",
+                touchAction: "manipulation",
+                userSelect: "none",
+              }}
               transition="all 0.18s ease"
             >
               <Box

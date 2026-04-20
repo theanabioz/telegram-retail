@@ -99,9 +99,16 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
               minH="54px"
               borderRadius="16px"
               bg="transparent"
-              sx={{ touchAction: "manipulation" }}
+              sx={{
+                WebkitTapHighlightColor: "transparent",
+                appearance: "none",
+                touchAction: "manipulation",
+                userSelect: "none",
+              }}
               transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
-              _active={{ transform: "scale(0.94)" }}
+              _active={{ bg: "transparent", boxShadow: "none", transform: "scale(0.94)" }}
+              _focus={{ boxShadow: "none" }}
+              _focusVisible={{ boxShadow: "none" }}
               position="relative"
             >
               <Box
