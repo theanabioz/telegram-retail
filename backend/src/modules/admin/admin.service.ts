@@ -148,7 +148,7 @@ export async function getAdminDashboard(input: {
   }));
 
   const storePerformance = stores.map((store) => {
-    const storeSales = completedSales.filter((sale) => sale.store_id === store.id);
+    const storeSales = todaySales.filter((sale) => sale.store_id === store.id);
     return {
       id: store.id,
       name: store.name,
