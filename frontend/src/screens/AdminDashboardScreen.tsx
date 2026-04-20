@@ -296,6 +296,9 @@ export function AdminDashboardScreen({
     loadingInventory,
     loadingSales,
     mutating,
+    creatingProduct,
+    pendingStoreProductIds,
+    pendingProductIds,
     loadStores,
     loadStaff,
     loadInventory,
@@ -323,6 +326,10 @@ export function AdminDashboardScreen({
     restoreProduct,
     adjustInventory,
   } = useAdminManagementStore();
+  const hasPendingAdminInventoryMutation =
+    creatingProduct ||
+    Object.keys(pendingStoreProductIds).length > 0 ||
+    Object.keys(pendingProductIds).length > 0;
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [selectedOverviewHour, setSelectedOverviewHour] = useState<number | null>(null);
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
@@ -564,7 +571,7 @@ export function AdminDashboardScreen({
       return;
     }
 
-    if (softRefreshInFlightRef.current || mutating) {
+    if (softRefreshInFlightRef.current || mutating || hasPendingAdminInventoryMutation) {
       return;
     }
 
@@ -606,6 +613,7 @@ export function AdminDashboardScreen({
     load,
     loadInventory,
     loadSalesOverview,
+    hasPendingAdminInventoryMutation,
     mutating,
     salesDateFrom,
     salesDateTo,
@@ -989,9 +997,6 @@ export function AdminDashboardScreen({
     setNewProduct({ name: "", sku: "", defaultPrice: "" });
     setNewProductIsActive(true);
     setShowNewProductModal(false);
-    if (selectedInventoryStoreId) {
-      await loadInventory(selectedInventoryStoreId);
-    }
   };
 
   const handleSaveProduct = async (productId: string) => {
@@ -1009,10 +1014,6 @@ export function AdminDashboardScreen({
       defaultPrice: parsedPrice,
       isActive: draft.isActive,
     });
-
-    if (selectedInventoryStoreId) {
-      await loadInventory(selectedInventoryStoreId);
-    }
   };
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
@@ -1037,10 +1038,6 @@ export function AdminDashboardScreen({
       delete next[productId];
       return next;
     });
-
-    if (selectedInventoryStoreId) {
-      await loadInventory(selectedInventoryStoreId);
-    }
   };
 
   const handleArchiveProduct = async (productId: string, productName: string) => {
@@ -1101,11 +1098,6 @@ export function AdminDashboardScreen({
       price: parsedPrice,
       isEnabled: draft.isEnabled,
     });
-
-    await loadProducts();
-    if (selectedInventoryStoreId) {
-      await loadInventory(selectedInventoryStoreId);
-    }
   };
 
   const handleInventoryAdjustment = async (
@@ -2205,7 +2197,7 @@ export function AdminDashboardScreen({
                   bg="surface.900"
                   color="white"
                   _hover={{ bg: "surface.700" }}
-                  isLoading={mutating}
+                  isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                   onClick={() => void handleSaveProduct(selectedProduct.id)}
                 >
                   Save Product
@@ -2219,7 +2211,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="brand.600"
                       _hover={{ bg: "rgba(74,132,244,0.12)" }}
-                      isLoading={mutating}
+                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleRestoreProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       Restore Product
@@ -2230,7 +2222,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="red.500"
                       _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                      isLoading={mutating}
+                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       Delete Product
@@ -2244,7 +2236,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="red.500"
                       _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                      isLoading={mutating}
+                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       Delete Product
@@ -2255,7 +2247,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="surface.700"
                       _hover={{ bg: "rgba(18,18,18,0.06)" }}
-                      isLoading={mutating}
+                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleArchiveProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       Archive Product
@@ -2360,7 +2352,7 @@ export function AdminDashboardScreen({
                           bg="surface.900"
                           color="white"
                           _hover={{ bg: "surface.700" }}
-                          isLoading={mutating}
+                          isLoading={Boolean(pendingStoreProductIds[setting.storeProductId])}
                           onClick={() => void handleSaveProductStoreSetting(setting.storeProductId)}
                         >
                           Save Store Settings
@@ -2626,7 +2618,7 @@ export function AdminDashboardScreen({
                   bg="surface.900"
                   color="white"
                   _hover={{ bg: "surface.700" }}
-                  isLoading={mutating}
+                  isLoading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
                   onClick={() => void handleSaveStoreProduct(selectedItem.storeProductId)}
                 >
                   Save Price & Status
@@ -2764,7 +2756,7 @@ export function AdminDashboardScreen({
                   bg={movementTone.bg}
                   color={movementTone.color}
                   _hover={{ bg: movementTone.hover }}
-                  isLoading={mutating}
+                  isLoading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
                   onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, movementType)}
                 >
                   {movementLabel} {movementQuantity} Units
@@ -4742,7 +4734,7 @@ export function AdminDashboardScreen({
               bg="surface.900"
               color="white"
               _hover={{ bg: "surface.700" }}
-              isLoading={mutating}
+              isLoading={creatingProduct}
               isDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
               onClick={() => void handleCreateProduct()}
             >
