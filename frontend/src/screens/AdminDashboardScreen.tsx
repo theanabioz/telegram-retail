@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   Avatar,
   Box,
@@ -748,6 +748,14 @@ export function AdminDashboardScreen({
     await assignSeller(sellerId, storeId);
     await load();
   };
+
+  const sortedProducts = useMemo(
+    () =>
+      [...products].sort(
+        (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+      ),
+    [products]
+  );
 
   const handleSaveStoreProduct = async (storeProductId: string) => {
     const draft = inventoryEdits[storeProductId];
@@ -1736,7 +1744,7 @@ export function AdminDashboardScreen({
                   </Text>
                 </HStack>
 
-                {products.map((product) => {
+                {sortedProducts.map((product) => {
                   const draft = productEdits[product.id] ?? {
                     name: product.name,
                     sku: product.sku,
