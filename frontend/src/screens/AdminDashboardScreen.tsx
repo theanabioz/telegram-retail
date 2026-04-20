@@ -274,6 +274,7 @@ export function AdminDashboardScreen({
     loadSalesOverview,
     hydrateStartup,
     createStore,
+    createSeller,
     updateStore,
     assignSeller,
     inventoryStores,
@@ -340,6 +341,14 @@ export function AdminDashboardScreen({
   const [storeActivityPage, setStoreActivityPage] = useState(0);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreAddress, setNewStoreAddress] = useState("");
+  const [showNewStoreModal, setShowNewStoreModal] = useState(false);
+  const [showNewSellerModal, setShowNewSellerModal] = useState(false);
+  const [newSeller, setNewSeller] = useState({
+    fullName: "",
+    telegramId: "",
+    storeId: "",
+    isActive: true,
+  });
   const [newProduct, setNewProduct] = useState({
     name: "",
     sku: "",
@@ -795,6 +804,31 @@ export function AdminDashboardScreen({
     await load();
     setNewStoreName("");
     setNewStoreAddress("");
+    setShowNewStoreModal(false);
+  };
+
+  const handleCreateSeller = async () => {
+    const fullName = newSeller.fullName.trim();
+    const telegramId = Number(newSeller.telegramId.trim());
+
+    if (!fullName || !Number.isFinite(telegramId) || telegramId <= 0) {
+      return;
+    }
+
+    await createSeller({
+      fullName,
+      telegramId,
+      storeId: newSeller.storeId || undefined,
+      isActive: newSeller.isActive,
+    });
+    await load();
+    setNewSeller({
+      fullName: "",
+      telegramId: "",
+      storeId: "",
+      isActive: true,
+    });
+    setShowNewSellerModal(false);
   };
 
   const handleSaveStore = async (storeId: string) => {
@@ -1240,9 +1274,21 @@ export function AdminDashboardScreen({
                 Tap a store to manage profile, staff and activity.
               </Text>
             </VStack>
-            <Text color="surface.500" fontWeight="800" fontSize="sm">
-              {stores.length}
-            </Text>
+            <HStack spacing={2} flexShrink={0}>
+              <Text color="surface.500" fontWeight="800" fontSize="sm">
+                {stores.length}
+              </Text>
+              <Button
+                size="sm"
+                borderRadius="999px"
+                bg="surface.900"
+                color="white"
+                _hover={{ bg: "surface.700" }}
+                onClick={() => setShowNewStoreModal(true)}
+              >
+                New Store
+              </Button>
+            </HStack>
           </HStack>
 
           {stores.map((store) => (
@@ -1288,44 +1334,6 @@ export function AdminDashboardScreen({
         </VStack>
       </Box>
 
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <VStack align="start" spacing={0}>
-            <Text fontWeight="900" fontSize="lg">
-              New Store
-            </Text>
-            <Text color="surface.500" fontSize="sm" fontWeight="700">
-              Add a new sales location when the business expands.
-            </Text>
-          </VStack>
-          <Input
-            value={newStoreName}
-            onChange={(event) => setNewStoreName(event.target.value)}
-            placeholder="Store name"
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          />
-          <Input
-            value={newStoreAddress}
-            onChange={(event) => setNewStoreAddress(event.target.value)}
-            placeholder="Address or short location note"
-            borderRadius="18px"
-            bg="white"
-            borderColor="rgba(226,224,218,0.95)"
-          />
-          <Button
-            borderRadius="18px"
-            bg="surface.900"
-            color="white"
-            _hover={{ bg: "surface.700" }}
-            isLoading={mutating}
-            onClick={() => void handleCreateStore()}
-          >
-            Add Store
-          </Button>
-        </VStack>
-      </Box>
     </VStack>
   );
 
@@ -2829,9 +2837,21 @@ export function AdminDashboardScreen({
               Tap a seller to manage profile, schedule and activity.
             </Text>
           </VStack>
-          <Text color="surface.500" fontWeight="800" fontSize="sm">
-            {staff.length}
-          </Text>
+          <HStack spacing={2} flexShrink={0}>
+            <Text color="surface.500" fontWeight="800" fontSize="sm">
+              {staff.length}
+            </Text>
+            <Button
+              size="sm"
+              borderRadius="999px"
+              bg="surface.900"
+              color="white"
+              _hover={{ bg: "surface.700" }}
+              onClick={() => setShowNewSellerModal(true)}
+            >
+              New Seller
+            </Button>
+          </HStack>
         </HStack>
 
         {staff.map((seller) => {
@@ -3393,6 +3413,242 @@ export function AdminDashboardScreen({
     );
   };
 
+  const renderTeamCreationModals = () => (
+    <>
+      {showNewStoreModal ? (
+        <Box
+          position="fixed"
+          inset={0}
+          zIndex={1400}
+          bg="rgba(18,18,18,0.28)"
+          display="flex"
+          alignItems="flex-end"
+          justifyContent="center"
+          px={3}
+          pb="calc(16px + env(safe-area-inset-bottom, 0px))"
+          onClick={() => setShowNewStoreModal(false)}
+        >
+          <Box
+            w="100%"
+            maxW="420px"
+            bg={panelSurface}
+            borderRadius="28px"
+            px={4}
+            py={4}
+            boxShadow="0 24px 60px rgba(18,18,18,0.18)"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="xl">
+                    New Store
+                  </Text>
+                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                    Create a new sales location.
+                  </Text>
+                </VStack>
+                <Button
+                  size="sm"
+                  borderRadius="999px"
+                  bg={panelMutedSurface}
+                  color="surface.700"
+                  _hover={{ bg: "rgba(232,231,226,0.95)" }}
+                  onClick={() => setShowNewStoreModal(false)}
+                >
+                  Close
+                </Button>
+              </HStack>
+
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Store name
+                </Text>
+                <Input
+                  value={newStoreName}
+                  onChange={(event) => setNewStoreName(event.target.value)}
+                  placeholder="Central Mall Store"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+              </VStack>
+
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Address
+                </Text>
+                <Input
+                  value={newStoreAddress}
+                  onChange={(event) => setNewStoreAddress(event.target.value)}
+                  placeholder="Address or short location note"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+              </VStack>
+
+              <Button
+                borderRadius="18px"
+                bg="surface.900"
+                color="white"
+                _hover={{ bg: "surface.700" }}
+                isLoading={mutating}
+                isDisabled={!newStoreName.trim()}
+                onClick={() => void handleCreateStore()}
+              >
+                Create Store
+              </Button>
+            </VStack>
+          </Box>
+        </Box>
+      ) : null}
+
+      {showNewSellerModal ? (
+        <Box
+          position="fixed"
+          inset={0}
+          zIndex={1400}
+          bg="rgba(18,18,18,0.28)"
+          display="flex"
+          alignItems="flex-end"
+          justifyContent="center"
+          px={3}
+          pb="calc(16px + env(safe-area-inset-bottom, 0px))"
+          onClick={() => setShowNewSellerModal(false)}
+        >
+          <Box
+            w="100%"
+            maxW="420px"
+            bg={panelSurface}
+            borderRadius="28px"
+            px={4}
+            py={4}
+            boxShadow="0 24px 60px rgba(18,18,18,0.18)"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="xl">
+                    New Seller
+                  </Text>
+                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                    Add seller account and optional store assignment.
+                  </Text>
+                </VStack>
+                <Button
+                  size="sm"
+                  borderRadius="999px"
+                  bg={panelMutedSurface}
+                  color="surface.700"
+                  _hover={{ bg: "rgba(232,231,226,0.95)" }}
+                  onClick={() => setShowNewSellerModal(false)}
+                >
+                  Close
+                </Button>
+              </HStack>
+
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Full name
+                </Text>
+                <Input
+                  value={newSeller.fullName}
+                  onChange={(event) =>
+                    setNewSeller((current) => ({ ...current, fullName: event.target.value }))
+                  }
+                  placeholder="John Seller"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+              </VStack>
+
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Telegram ID
+                </Text>
+                <Input
+                  value={newSeller.telegramId}
+                  onChange={(event) =>
+                    setNewSeller((current) => ({ ...current, telegramId: event.target.value.replace(/\D/g, "") }))
+                  }
+                  inputMode="numeric"
+                  placeholder="123456789"
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                />
+              </VStack>
+
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  Assigned store
+                </Text>
+                <Select
+                  value={newSeller.storeId}
+                  onChange={(event) =>
+                    setNewSeller((current) => ({ ...current, storeId: event.target.value }))
+                  }
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)"
+                  fontWeight="800"
+                >
+                  <option value="">No store yet</option>
+                  {stores
+                    .filter((store) => store.isActive)
+                    .map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                </Select>
+              </VStack>
+
+              <SimpleGrid columns={2} spacing={2}>
+                {[
+                  { label: "Active", value: true },
+                  { label: "Inactive", value: false },
+                ].map((option) => {
+                  const isActive = newSeller.isActive === option.value;
+
+                  return (
+                    <Button
+                      key={option.label}
+                      borderRadius="16px"
+                      bg={isActive ? "brand.500" : panelMutedSurface}
+                      color={isActive ? "white" : "surface.700"}
+                      _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.95)" }}
+                      onClick={() =>
+                        setNewSeller((current) => ({ ...current, isActive: option.value }))
+                      }
+                    >
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </SimpleGrid>
+
+              <Button
+                borderRadius="18px"
+                bg="surface.900"
+                color="white"
+                _hover={{ bg: "surface.700" }}
+                isLoading={mutating}
+                isDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
+                onClick={() => void handleCreateSeller()}
+              >
+                Create Seller
+              </Button>
+            </VStack>
+          </Box>
+        </Box>
+      ) : null}
+    </>
+  );
+
   const renderTeam = () => {
     if (selectedStaffSeller) {
       return renderSellerDetail(selectedStaffSeller);
@@ -3403,32 +3659,35 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack spacing={4} align="stretch">
-        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-          <HStack spacing={2}>
-            {(["staff", "stores"] as TeamMode[]).map((mode) => {
-              const isActive = teamMode === mode;
+      <>
+        <VStack spacing={4} align="stretch">
+          <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+            <HStack spacing={2}>
+              {(["staff", "stores"] as TeamMode[]).map((mode) => {
+                const isActive = teamMode === mode;
 
-              return (
-                <Button
-                  key={mode}
-                  flex="1"
-                  size="sm"
-                  borderRadius="999px"
-                  bg={isActive ? "surface.900" : "transparent"}
-                  color={isActive ? "white" : "surface.500"}
-                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setTeamMode(mode)}
-                >
-                  {mode === "staff" ? `Staff · ${staff.length}` : `Stores · ${stores.length}`}
-                </Button>
-              );
-            })}
-          </HStack>
-        </Box>
+                return (
+                  <Button
+                    key={mode}
+                    flex="1"
+                    size="sm"
+                    borderRadius="999px"
+                    bg={isActive ? "surface.900" : "transparent"}
+                    color={isActive ? "white" : "surface.500"}
+                    _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                    onClick={() => setTeamMode(mode)}
+                  >
+                    {mode === "staff" ? `Staff · ${staff.length}` : `Stores · ${stores.length}`}
+                  </Button>
+                );
+              })}
+            </HStack>
+          </Box>
 
-        {teamMode === "staff" ? renderStaffSection() : renderStoresSection()}
-      </VStack>
+          {teamMode === "staff" ? renderStaffSection() : renderStoresSection()}
+        </VStack>
+        {renderTeamCreationModals()}
+      </>
     );
   };
 

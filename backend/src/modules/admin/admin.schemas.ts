@@ -33,6 +33,13 @@ export const assignSellerBodySchema = z.object({
   storeId: z.string().uuid(),
 });
 
+export const createAdminSellerBodySchema = z.object({
+  fullName: z.string().trim().min(2).max(120),
+  telegramId: z.coerce.number().int().positive(),
+  storeId: z.string().uuid().optional(),
+  isActive: z.boolean().optional(),
+});
+
 export const adminInventoryQuerySchema = z.object({
   storeId: z.string().uuid().optional(),
   historyLimit: z.coerce.number().int().positive().max(100).default(20),

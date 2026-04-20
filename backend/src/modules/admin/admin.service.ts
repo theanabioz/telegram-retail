@@ -1,5 +1,6 @@
 import {
   closeCurrentAssignment,
+  createAdminUser,
   createAdminProduct,
   createAdminStore,
   deleteAdminProduct,
@@ -347,6 +348,61 @@ export async function getAdminStaff() {
           lastSaleAt: sellerSales[0]?.created_at ?? null,
         };
       }),
+  };
+}
+
+export async function createSeller(input: {
+  adminUserId: string;
+  fullName: string;
+  telegramId: number;
+  storeId?: string;
+  isActive?: boolean;
+}) {
+  const store = input.storeId ? await findAdminStoreById(input.storeId) : null;
+
+  if (input.storeId && !store) {
+    throw new HttpError(404, "Store not found");
+  }
+
+  if (store && !store.is_active) {
+    throw new HttpError(409, "Seller can only be assigned to an active store");
+  }
+
+  const seller = await createAdminUser({
+    telegram_id: input.telegramId,
+    full_name: input.fullName.trim(),
+    role: "seller",
+    is_active: input.isActive ?? true,
+  });
+
+  const assignment =
+    store && seller.is_active
+      ? await createUserStoreAssignment({
+          userId: seller.id,
+          storeId: store.id,
+          assignedBy: input.adminUserId,
+        })
+      : null;
+
+  return {
+    seller: {
+      id: seller.id,
+      telegramId: seller.telegram_id,
+      fullName: seller.full_name,
+      isActive: seller.is_active,
+      currentAssignment: assignment
+        ? {
+            id: assignment.id,
+            storeId: assignment.store_id,
+            storeName: store!.name,
+            startedAt: assignment.started_at,
+          }
+        : null,
+      activeShift: null,
+      salesCount: 0,
+      revenue: 0,
+      lastSaleAt: null,
+    },
   };
 }
 

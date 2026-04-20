@@ -113,6 +113,10 @@ export type AdminAssignmentMutationResponse = {
   };
 };
 
+export type AdminSellerMutationResponse = {
+  seller: AdminStaffResponse["sellers"][number];
+};
+
 export type AdminInventoryResponse = {
   stores: Array<{
     id: string;

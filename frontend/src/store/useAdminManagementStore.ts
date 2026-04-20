@@ -6,6 +6,7 @@ import type {
   AdminInventoryResponse,
   AdminProductMutationResponse,
   AdminProductsResponse,
+  AdminSellerMutationResponse,
   AdminSalesOverviewResponse,
   AdminStoreProductMutationResponse,
   AdminStaffResponse,
@@ -67,6 +68,12 @@ type AdminManagementState = {
     limit?: number;
   }, options?: { silent?: boolean }) => Promise<void>;
   createStore: (input: { name: string; address?: string | null; isActive?: boolean }) => Promise<void>;
+  createSeller: (input: {
+    fullName: string;
+    telegramId: number;
+    storeId?: string;
+    isActive?: boolean;
+  }) => Promise<void>;
   updateStore: (
     storeId: string,
     input: { name?: string; address?: string | null; isActive?: boolean }
@@ -314,6 +321,30 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       set({
         mutating: false,
         error: error instanceof Error ? error.message : "Failed to create store",
+      });
+    }
+  },
+
+  createSeller: async (input) => {
+    const token = getStoredToken();
+
+    if (!token) {
+      set({ error: "Missing auth token" });
+      return;
+    }
+
+    set({ mutating: true, error: null });
+
+    try {
+      await apiPost<AdminSellerMutationResponse>("/admin/staff", input, token);
+      triggerNotification("success");
+      await Promise.all([get().loadStaff(), get().loadStores()]);
+      set({ mutating: false, error: null });
+    } catch (error) {
+      triggerNotification("error");
+      set({
+        mutating: false,
+        error: error instanceof Error ? error.message : "Failed to create seller",
       });
     }
   },

@@ -210,6 +210,25 @@ export async function listAdminUsers() {
   return (data ?? []) as AdminUserRow[];
 }
 
+export async function createAdminUser(input: {
+  telegram_id: number;
+  full_name: string;
+  role: "admin" | "seller";
+  is_active: boolean;
+}) {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .insert(input)
+    .select("id, telegram_id, full_name, role, is_active")
+    .single<AdminUserRow>();
+
+  if (error) {
+    throw new HttpError(500, `Failed to create user: ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function listCurrentAssignments() {
   const { data, error } = await supabaseAdmin
     .from("user_store_assignments")

@@ -13,6 +13,7 @@ import {
   adminStoreParamsSchema,
   assignSellerBodySchema,
   createAdminProductBodySchema,
+  createAdminSellerBodySchema,
   createAdminStoreBodySchema,
   updateAdminProductBodySchema,
   updateAdminStoreProductBodySchema,
@@ -22,6 +23,7 @@ import {
   assignSellerToStore,
   createAdminInventoryAdjustment,
   createProduct,
+  createSeller,
   createStore,
   deleteProduct,
   getAdminDashboard,
@@ -121,6 +123,21 @@ adminRouter.get(
   asyncHandler(async (_req, res) => {
     const result = await getAdminStaff();
     res.json(result);
+  })
+);
+
+adminRouter.post(
+  "/staff",
+  asyncHandler(async (req, res) => {
+    const body = createAdminSellerBodySchema.parse(req.body);
+    const result = await createSeller({
+      adminUserId: req.auth!.app_user_id,
+      fullName: body.fullName,
+      telegramId: body.telegramId,
+      storeId: body.storeId,
+      isActive: body.isActive,
+    });
+    res.status(201).json(result);
   })
 );
 
