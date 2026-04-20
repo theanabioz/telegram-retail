@@ -973,8 +973,15 @@ export function AdminDashboardScreen({
 
     const parsedQuantity = Number(draft.adjustQuantity);
 
-    if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      window.alert("Enter a quantity greater than 0.");
+    if (
+      Number.isNaN(parsedQuantity) ||
+      (movementType === "manual_adjustment" ? parsedQuantity < 0 : parsedQuantity <= 0)
+    ) {
+      window.alert(
+        movementType === "manual_adjustment"
+          ? "Enter a stock quantity of 0 or more."
+          : "Enter a quantity greater than 0."
+      );
       return;
     }
 
@@ -989,7 +996,7 @@ export function AdminDashboardScreen({
           ? "Admin restock"
           : movementType === "writeoff"
             ? "Admin writeoff"
-            : "Admin manual adjustment"),
+            : `Admin set stock to ${parsedQuantity}`),
     });
 
     setInventoryEdits((current) => ({
@@ -1768,6 +1775,9 @@ export function AdminDashboardScreen({
       { label: "Total Units", value: String(totalUnits) },
       { label: "Low Stock", value: String(lowStockCount) },
     ];
+    const itemMovementHistory = selectedItem
+      ? visibleInventoryHistory.filter((entry) => entry.product?.id === selectedItem.productId).slice(0, 6)
+      : [];
     const getInventoryMovementUi = (movementType: string, quantityDelta: number) => {
       if (movementType === "restock") {
         return {
@@ -1812,9 +1822,12 @@ export function AdminDashboardScreen({
         adjustReason: "",
       };
       const movementType = inventoryMovementTypes[selectedItem.storeProductId] ?? "restock";
-      const movementQuantity = Math.max(1, Number(draft.adjustQuantity) || 1);
+      const isAbsoluteAdjust = movementType === "manual_adjustment";
+      const movementQuantity = isAbsoluteAdjust
+        ? Math.max(0, Number(draft.adjustQuantity) || 0)
+        : Math.max(1, Number(draft.adjustQuantity) || 1);
       const movementLabel =
-        movementType === "restock" ? "Restock" : movementType === "writeoff" ? "Write-off" : "Adjust";
+        movementType === "restock" ? "Restock" : movementType === "writeoff" ? "Write-off" : "Set Stock";
       const movementTone =
         movementType === "restock"
           ? { bg: "brand.500", hover: "brand.600", color: "white" }
@@ -1916,6 +1929,60 @@ export function AdminDashboardScreen({
                     </Box>
                   ))}
                 </SimpleGrid>
+
+                <VStack align="stretch" spacing={0}>
+                  <HStack justify="space-between" pb={2}>
+                    <Text fontWeight="900" fontSize="lg">
+                      Recent Movements
+                    </Text>
+                    <Text color="surface.500" fontWeight="800" fontSize="sm">
+                      {itemMovementHistory.length} latest
+                    </Text>
+                  </HStack>
+
+                  {itemMovementHistory.length ? (
+                    itemMovementHistory.map((entry, index) => {
+                      const movementUi = getInventoryMovementUi(entry.movementType, entry.quantityDelta);
+
+                      return (
+                        <HStack
+                          key={entry.id}
+                          justify="space-between"
+                          align="start"
+                          py={3}
+                          borderTop={index === 0 ? "1px solid" : "1px solid"}
+                          borderColor="rgba(226,224,218,0.82)"
+                        >
+                          <VStack align="start" spacing={0} minW={0} flex="1">
+                            <Text fontWeight="900" noOfLines={1}>
+                              {movementUi.title}
+                            </Text>
+                            <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                              Balance {entry.balanceAfter}
+                              {entry.reason ? ` · ${entry.reason}` : ""}
+                            </Text>
+                            <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
+                              {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
+                            </Text>
+                          </VStack>
+                          <VStack align="end" spacing={0} flexShrink={0}>
+                            <Text fontWeight="900" color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}>
+                              {entry.quantityDelta >= 0 ? "+" : ""}
+                              {entry.quantityDelta}
+                            </Text>
+                            <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase">
+                              Units
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      );
+                    })
+                  ) : (
+                    <Text color="surface.500" fontSize="sm" py={2}>
+                      No recent product movements yet.
+                    </Text>
+                  )}
+                </VStack>
               </VStack>
             </Box>
           ) : null}
@@ -2029,12 +2096,22 @@ export function AdminDashboardScreen({
                         bg={isActive ? "surface.900" : panelMutedSurface}
                         color={isActive ? "white" : type === "writeoff" ? "red.500" : "surface.700"}
                         _hover={{ bg: isActive ? "surface.900" : "rgba(232,231,226,0.96)" }}
-                        onClick={() =>
+                        onClick={() => {
+                          if (type === "manual_adjustment") {
+                            setInventoryEdits((current) => ({
+                              ...current,
+                              [selectedItem.storeProductId]: {
+                                ...draft,
+                                adjustQuantity: String(selectedItem.stockQuantity),
+                              },
+                            }));
+                          }
+
                           setInventoryMovementTypes((current) => ({
                             ...current,
                             [selectedItem.storeProductId]: type,
-                          }))
-                        }
+                          }));
+                        }}
                       >
                         {label}
                       </Button>
@@ -2058,7 +2135,7 @@ export function AdminDashboardScreen({
                         ...current,
                         [selectedItem.storeProductId]: {
                           ...draft,
-                          adjustQuantity: String(Math.max(1, movementQuantity - 1)),
+                          adjustQuantity: String(Math.max(isAbsoluteAdjust ? 0 : 1, movementQuantity - 1)),
                         },
                       }))
                     }
@@ -2409,79 +2486,6 @@ export function AdminDashboardScreen({
             </Box>
           </VStack>
         )}
-
-        {inventoryMode === "stock" && visibleInventoryHistory.length > 0 ? (
-          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
-              <HStack justify="space-between">
-                <Text fontWeight="900" fontSize="lg">
-                  Recent Movements
-                </Text>
-                <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {visibleInventoryHistory.length} entries
-                </Text>
-              </HStack>
-
-              {visibleInventoryHistory.slice(0, 6).map((entry) => {
-                const movementUi = getInventoryMovementUi(entry.movementType, entry.quantityDelta);
-                const MovementIcon = movementUi.icon;
-
-                return (
-                  <HStack
-                    key={entry.id}
-                    spacing={3}
-                    align="center"
-                    bg={panelMutedSurface}
-                    borderRadius="18px"
-                    px={3}
-                    py={3}
-                  >
-                    <Box
-                      w="40px"
-                      h="40px"
-                      borderRadius="16px"
-                      bg={movementUi.iconBg}
-                      color={movementUi.iconColor}
-                      display="grid"
-                      placeItems="center"
-                      flexShrink={0}
-                    >
-                      <MovementIcon size={20} strokeWidth={2.5} />
-                    </Box>
-
-                    <VStack align="start" spacing={0} minW={0} flex="1">
-                      <HStack spacing={2} minW={0}>
-                        <Text fontWeight="900" noOfLines={1}>
-                          {movementUi.title}
-                        </Text>
-                        <Text fontSize="sm" color="surface.600" fontWeight="800" noOfLines={1}>
-                          {entry.product?.name ?? "Unknown product"}
-                        </Text>
-                      </HStack>
-                      <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                        Balance {entry.balanceAfter}
-                        {entry.reason ? ` · ${entry.reason}` : ""}
-                      </Text>
-                      <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
-                        {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
-                      </Text>
-                    </VStack>
-
-                    <VStack align="end" spacing={0} flexShrink={0}>
-                      <Text fontWeight="900" color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}>
-                        {entry.quantityDelta >= 0 ? "+" : ""}
-                        {entry.quantityDelta}
-                      </Text>
-                      <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase">
-                        Units
-                      </Text>
-                    </VStack>
-                  </HStack>
-                );
-              })}
-            </VStack>
-          </Box>
-        ) : null}
       </VStack>
     );
   };

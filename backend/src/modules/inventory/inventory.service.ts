@@ -209,8 +209,22 @@ export async function runAdminInventoryAdjustment(input: {
   quantity: number;
   reason: string;
 }) {
-  const quantityDelta =
-    input.movementType === "writeoff" ? -input.quantity : input.quantity;
+  let quantityDelta = input.movementType === "writeoff" ? -input.quantity : input.quantity;
+
+  if (input.movementType === "manual_adjustment") {
+    const { data: existing, error } = await supabaseAdmin
+      .from("inventory")
+      .select("quantity")
+      .eq("store_id", input.storeId)
+      .eq("product_id", input.productId)
+      .maybeSingle<{ quantity: number }>();
+
+    if (error) {
+      throw new HttpError(500, `Failed to read inventory for adjustment: ${error.message}`);
+    }
+
+    quantityDelta = input.quantity - Number(existing?.quantity ?? 0);
+  }
 
   return applyInventoryMovement({
     storeId: input.storeId,
