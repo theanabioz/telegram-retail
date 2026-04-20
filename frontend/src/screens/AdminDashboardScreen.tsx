@@ -92,6 +92,7 @@ type InventoryMode = "stock" | "products";
 type InventoryDetailMode = "overview" | "settings" | "stock";
 type ProductDetailMode = "overview" | "settings" | "stores";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
+type InventoryItem = AdminInventoryResponse["items"][number];
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
 type StaffDetailMode = "overview" | "profile" | "worklog" | "activity";
@@ -100,6 +101,19 @@ type StoreDetailMode = "overview" | "profile" | "staff" | "activity";
 type TeamStore = AdminStoresResponse["stores"][number];
 type TeamVirtualKeyboardField = "storeName" | "storeAddress" | "sellerName" | "sellerTelegramId";
 type ProductVirtualKeyboardField = "productName" | "productPrice";
+
+function compareInventoryItems(left: InventoryItem, right: InventoryItem) {
+  const nameComparison = left.productName.localeCompare(right.productName, undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+
+  if (nameComparison !== 0) {
+    return nameComparison;
+  }
+
+  return left.storeProductId.localeCompare(right.storeProductId);
+}
 
 function getCachedAdminStartup() {
   try {
@@ -2038,7 +2052,7 @@ export function AdminDashboardScreen({
         ? inventoryCache[selectedInventoryStoreId]
         : null;
     const activeInventorySnapshot = trustedInventorySnapshot ?? inventoryView;
-    const visibleInventoryItems = activeInventorySnapshot.items;
+    const visibleInventoryItems = [...activeInventorySnapshot.items].sort(compareInventoryItems);
     const visibleInventoryHistory = activeInventorySnapshot.history;
     const visibleProductCatalog = productCatalogMode === "archive" ? archivedProducts : products;
     const selectedStore = inventoryStores.find((store) => store.id === selectedInventoryStoreId) ?? null;
