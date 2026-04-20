@@ -190,6 +190,12 @@ function formatDateTime(value: string | null) {
   });
 }
 
+function parseDecimalInput(value: string) {
+  const normalized = value.replace(/\s+/g, "").replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
 function formatShortDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
@@ -764,9 +770,10 @@ export function AdminDashboardScreen({
       return;
     }
 
-    const parsedPrice = Number(draft.price);
+    const parsedPrice = parseDecimalInput(draft.price);
 
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      window.alert("Enter a valid price. You can use either 12.50 or 12,50.");
       return;
     }
 
@@ -777,9 +784,10 @@ export function AdminDashboardScreen({
   };
 
   const handleCreateProduct = async () => {
-    const parsedPrice = Number(newProduct.defaultPrice);
+    const parsedPrice = parseDecimalInput(newProduct.defaultPrice);
 
     if (!newProduct.name.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      window.alert("Enter product name and a valid price. You can use either 12.50 or 12,50.");
       return;
     }
 
@@ -798,9 +806,10 @@ export function AdminDashboardScreen({
 
   const handleSaveProduct = async (productId: string) => {
     const draft = productEdits[productId];
-    const parsedPrice = Number(draft?.defaultPrice);
+    const parsedPrice = parseDecimalInput(draft?.defaultPrice ?? "");
 
     if (!draft || !draft.name.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      window.alert("Enter product name and a valid price. You can use either 12.50 or 12,50.");
       return;
     }
 
