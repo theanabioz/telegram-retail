@@ -14,9 +14,9 @@ set
 
 insert into public.stores (id, name, address)
 values
-  ('33333333-3333-3333-3333-333333333331', 'Central Mall Store', 'Central Mall, Floor 1'),
-  ('33333333-3333-3333-3333-333333333332', 'North Point Store', 'North Point Avenue 12'),
-  ('33333333-3333-3333-3333-333333333333', 'Riverside Store', 'Riverside Plaza')
+  ('33333333-3333-3333-3333-333333333331', 'Central Mall Store', 'Rua Augusta 275, Lisboa'),
+  ('33333333-3333-3333-3333-333333333332', 'North Point Store', 'Avenida da Boavista 412, Porto'),
+  ('33333333-3333-3333-3333-333333333333', 'Riverside Store', 'Largo do Toural 9, Guimaraes')
 on conflict (id) do update
 set
   name = excluded.name,

@@ -217,6 +217,22 @@ function parseDecimalInput(value: string) {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
+const demoStoreAddressOverrides: Record<string, string> = {
+  "Central Mall Store": "Rua Augusta 275, Lisboa",
+  "North Point Store": "Avenida da Boavista 412, Porto",
+  "Riverside Store": "Largo do Toural 9, Guimaraes",
+};
+
+function getStoreAddressLabel(store: { name: string; address?: string | null }) {
+  const normalizedAddress = store.address?.trim();
+
+  if (!normalizedAddress) {
+    return demoStoreAddressOverrides[store.name] ?? "Address not specified";
+  }
+
+  return demoStoreAddressOverrides[store.name] ?? normalizedAddress;
+}
+
 function formatShortDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
@@ -4825,7 +4841,9 @@ export function AdminDashboardScreen({
                         {store.name}
                       </Text>
                       <Text fontSize="sm" color="surface.500" fontWeight="700">
-                        {store.isActive ? "Active location" : "Inactive location"}
+                        {getStoreAddressLabel(
+                          stores.find((entry) => entry.id === store.id) ?? { name: store.name }
+                        )}
                       </Text>
                     </VStack>
                     {isActive ? (
