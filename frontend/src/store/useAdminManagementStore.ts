@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { triggerImpact, triggerNotification, triggerSelection } from "../lib/haptics";
+import { patchAdminDashboardSnapshot } from "./useAdminDashboardStore";
 import type {
   AdminAssignmentMutationResponse,
+  AdminDashboardResponse,
   AdminInventoryResponse,
   AdminProductMutationResponse,
   AdminProductsResponse,
@@ -23,6 +25,7 @@ type AdminInventoryStore = AdminInventoryResponse["stores"][number];
 type AdminInventoryItem = AdminInventoryResponse["items"][number];
 type AdminInventoryHistoryItem = AdminInventoryResponse["history"][number];
 type AdminProduct = AdminProductsResponse["products"][number];
+type AdminSellerItem = AdminStaffResponse["sellers"][number];
 
 function getStoredToken() {
   return window.localStorage.getItem(TOKEN_KEY);
@@ -136,6 +139,55 @@ function patchStoreSettingInProducts(
       updatedAt: typeof updates.updatedAt === "string" ? updates.updatedAt : product.updatedAt,
     };
   });
+}
+
+function buildDashboardStorePerformance(stores: AdminStoreItem[]): AdminDashboardResponse["storePerformance"] {
+  return stores.map((store) => ({
+    id: store.id,
+    name: store.name,
+    address: store.address,
+    active: store.isActive,
+    sellerCount: store.sellerCount,
+    stockUnits: store.stockUnits,
+    salesCount: store.salesCount,
+    revenue: store.revenueToday,
+  }));
+}
+
+function buildDashboardLowStockItems(items: AdminInventoryItem[]): AdminDashboardResponse["lowStockItems"] {
+  return items
+    .filter((item) => item.stockQuantity <= 10)
+    .map((item) => ({
+      inventoryId: item.storeProductId,
+      quantity: item.stockQuantity,
+      store: { id: item.storeId, name: item.storeName },
+      product: { id: item.productId, name: item.productName, sku: item.sku },
+    }))
+    .sort((left, right) => left.quantity - right.quantity);
+}
+
+function patchDashboardFromAdminState(params: {
+  stores: AdminStoreItem[];
+  staff: AdminSellerItem[];
+  inventoryItems?: AdminInventoryItem[];
+}) {
+  patchAdminDashboardSnapshot((dashboard) => ({
+    ...dashboard,
+    summary: {
+      ...dashboard.summary,
+      totalRevenueToday: Number(params.stores.reduce((sum, store) => sum + store.revenueToday, 0).toFixed(2)),
+      totalRevenueAllTime: Number(params.stores.reduce((sum, store) => sum + store.revenueAllTime, 0).toFixed(2)),
+      completedSalesToday: params.stores.reduce((sum, store) => sum + store.salesCount, 0),
+      totalStores: params.stores.length,
+      totalSellers: params.staff.length,
+      activeShifts: params.stores.reduce((sum, store) => sum + store.activeShiftCount, 0),
+      lowStockCount:
+        params.inventoryItems?.filter((item) => item.stockQuantity <= 10).length ??
+        params.stores.reduce((sum, store) => sum + store.lowStockCount, 0),
+    },
+    storePerformance: buildDashboardStorePerformance(params.stores),
+    lowStockItems: params.inventoryItems ? buildDashboardLowStockItems(params.inventoryItems) : dashboard.lowStockItems,
+  }));
 }
 
 type AdminManagementState = {
@@ -478,6 +530,10 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         [optimisticId]: true,
       },
     }));
+    patchDashboardFromAdminState({
+      stores: [optimisticStore, ...previousStores],
+      staff: get().staff,
+    });
 
     try {
       const response = await apiPost<AdminStoreMutationResponse>("/admin/stores", input, token);
@@ -495,6 +551,10 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
           Object.entries(state.pendingStoreIds).filter(([id]) => id !== optimisticId)
         ),
       }));
+      patchDashboardFromAdminState({
+        stores: [confirmedStore, ...previousStores],
+        staff: get().staff,
+      });
 
       patchAdminStartupCache(token, (startup) => ({
         ...startup,
@@ -505,6 +565,10 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       }));
     } catch (error) {
       triggerNotification("error");
+      patchDashboardFromAdminState({
+        stores: previousStores,
+        staff: get().staff,
+      });
       set({
         creatingStore: false,
         stores: previousStores,
@@ -559,6 +623,14 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
           )
         : state.stores,
     }));
+    patchDashboardFromAdminState({
+      stores: assignedStore
+        ? previousStores.map((store) =>
+            store.id === assignedStore.id ? { ...store, sellerCount: store.sellerCount + 1 } : store
+          )
+        : previousStores,
+      staff: [optimisticSeller, ...previousStaff],
+    });
 
     try {
       const response = await apiPost<AdminSellerMutationResponse>("/admin/staff", input, token);
@@ -571,10 +643,18 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
           Object.entries(state.pendingSellerIds).filter(([id]) => id !== optimisticId)
         ),
       }));
+      patchDashboardFromAdminState({
+        stores: get().stores,
+        staff: get().staff.map((seller) => (seller.id === optimisticId ? response.seller : seller)),
+      });
 
       void get().loadStores();
     } catch (error) {
       triggerNotification("error");
+      patchDashboardFromAdminState({
+        stores: previousStores,
+        staff: previousStaff,
+      });
       set({
         creatingSeller: false,
         staff: previousStaff,
@@ -694,6 +774,34 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         return store;
       }),
     }));
+    patchDashboardFromAdminState({
+      stores: previousStores.map((store) => {
+        if (previousStoreId && store.id === previousStoreId) {
+          return { ...store, sellerCount: Math.max(0, store.sellerCount - 1) };
+        }
+
+        if (store.id === storeId) {
+          return { ...store, sellerCount: store.sellerCount + (previousStoreId === storeId ? 0 : 1) };
+        }
+
+        return store;
+      }),
+      staff: previousStaff.map((entry) =>
+        entry.id === sellerId
+          ? {
+              ...entry,
+              currentAssignment: selectedStore
+                ? {
+                    id: entry.currentAssignment?.id ?? `optimistic-assignment-${Date.now()}`,
+                    storeId: selectedStore.id,
+                    storeName: selectedStore.name,
+                    startedAt: optimisticStartedAt,
+                  }
+                : entry.currentAssignment,
+            }
+          : entry
+      ),
+    });
 
     try {
       const response = await apiPost<AdminAssignmentMutationResponse>(
@@ -721,9 +829,29 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
             : entry
         ),
       }));
+      patchDashboardFromAdminState({
+        stores: get().stores,
+        staff: get().staff.map((entry) =>
+          entry.id === sellerId
+            ? {
+                ...entry,
+                currentAssignment: {
+                  id: response.assignment.id,
+                  storeId: response.assignment.storeId,
+                  storeName: response.assignment.storeName,
+                  startedAt: response.assignment.startedAt,
+                },
+              }
+            : entry
+        ),
+      });
       void get().loadStores();
     } catch (error) {
       triggerNotification("error");
+      patchDashboardFromAdminState({
+        stores: previousStores,
+        staff: previousStaff,
+      });
       set((state) => ({
         error: error instanceof Error ? error.message : "Failed to assign seller",
         pendingSellerIds: Object.fromEntries(
@@ -938,6 +1066,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       inventoryHistory: [optimisticHistoryEntry, ...state.inventoryHistory].slice(0, 20),
       stores: nextStores,
     }));
+    patchDashboardFromAdminState({
+      stores: nextStores,
+      staff: get().staff,
+      inventoryItems: nextItems,
+    });
 
     patchAdminStartupCache(token, (startup) => ({
       ...startup,
@@ -971,6 +1104,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       void get().loadStores();
     } catch (error) {
       triggerNotification("error");
+      patchDashboardFromAdminState({
+        stores: previousStores,
+        staff: get().staff,
+        inventoryItems: previousItems,
+      });
       set((state) => ({
         error: error instanceof Error ? error.message : "Failed to adjust inventory",
         pendingStoreProductIds: Object.fromEntries(

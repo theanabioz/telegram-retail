@@ -24,6 +24,36 @@ function readCachedDashboard() {
   }
 }
 
+function writeCachedDashboard(data: AdminDashboardResponse) {
+  try {
+    const token = getStoredToken();
+    const raw = window.localStorage.getItem(ADMIN_STARTUP_CACHE_KEY);
+
+    if (!token || !raw) {
+      return;
+    }
+
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
+
+    if (cached.token !== token) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      ADMIN_STARTUP_CACHE_KEY,
+      JSON.stringify({
+        token,
+        startup: {
+          ...cached.startup,
+          dashboard: data,
+        },
+      })
+    );
+  } catch {
+    // Dashboard cache is only for perceived speed.
+  }
+}
+
 type AdminDashboardState = {
   loading: boolean;
   error: string | null;
@@ -39,6 +69,7 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
   error: null,
   data: cachedDashboard,
   hydrate: (data) => {
+    writeCachedDashboard(data);
     set({ loading: false, error: null, data });
   },
   load: async (options) => {
@@ -61,6 +92,7 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
 
     try {
       const data = await apiGet<AdminDashboardResponse>("/admin/dashboard", token);
+      writeCachedDashboard(data);
       set({
         loading: false,
         error: null,
@@ -75,3 +107,20 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
     }
   },
 }));
+
+export function patchAdminDashboardSnapshot(
+  updater: (data: AdminDashboardResponse) => AdminDashboardResponse
+) {
+  const current = useAdminDashboardStore.getState().data ?? readCachedDashboard();
+
+  if (!current) {
+    return;
+  }
+
+  const next = updater(current);
+  writeCachedDashboard(next);
+  useAdminDashboardStore.setState({
+    data: next,
+    error: null,
+  });
+}
