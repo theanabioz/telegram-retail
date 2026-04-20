@@ -3705,10 +3705,16 @@ export function AdminDashboardScreen({
                   </Text>
                 </VStack>
                 <Button
-                  size="sm"
+                  aria-label="Close new store modal"
+                  minW="42px"
+                  h="42px"
+                  px={0}
                   borderRadius="999px"
                   bg="surface.50"
                   color="surface.700"
+                  fontSize="24px"
+                  lineHeight="1"
+                  fontWeight="700"
                   _hover={{ bg: "rgba(232,231,226,0.95)" }}
                   onClick={() => setShowNewStoreModal(false)}
                 >
@@ -3809,10 +3815,16 @@ export function AdminDashboardScreen({
                   </Text>
                 </VStack>
                 <Button
-                  size="sm"
+                  aria-label="Close new seller modal"
+                  minW="42px"
+                  h="42px"
+                  px={0}
                   borderRadius="999px"
                   bg="surface.50"
                   color="surface.700"
+                  fontSize="24px"
+                  lineHeight="1"
+                  fontWeight="700"
                   _hover={{ bg: "rgba(232,231,226,0.95)" }}
                   onClick={() => setShowNewSellerModal(false)}
                 >
