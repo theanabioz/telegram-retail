@@ -67,6 +67,15 @@ const adminTabTitle: Record<AdminTab, string> = {
   settings: "Settings",
 };
 
+function getLowStockCardProps(shouldPulse: boolean) {
+  return shouldPulse
+    ? {
+        className: "low-stock-card-pulse",
+        border: "1px solid rgba(248,113,113,0.18)",
+      }
+    : {};
+}
+
 type AdminDashboardScreenProps = {
   operatorName: string;
   currentPanel: "admin" | "seller";
@@ -1222,7 +1231,15 @@ export function AdminDashboardScreen({
           { label: "Low Stock", value: data ? String(data.summary.lowStockCount) : "..." },
           { label: "Active Sellers", value: data ? String(data.summary.totalSellers) : "..." },
         ].map((card) => (
-          <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+          <Box
+            key={card.label}
+            bg={panelSurface}
+            borderRadius="22px"
+            px={4}
+            py={4}
+            boxShadow={panelShadow}
+            {...getLowStockCardProps(card.label === "Low Stock" && Boolean(data && data.summary.lowStockCount > 0))}
+          >
             <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
               {card.label}
             </Text>
@@ -1615,7 +1632,15 @@ export function AdminDashboardScreen({
                 { label: "Stock Units", value: String(store.stockUnits) },
                 { label: "Low Stock", value: String(store.lowStockCount) },
               ].map((card) => (
-                <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+                <Box
+                  key={card.label}
+                  bg={panelSurface}
+                  borderRadius="22px"
+                  px={4}
+                  py={4}
+                  boxShadow={panelShadow}
+                  {...getLowStockCardProps(card.label === "Low Stock" && store.lowStockCount > 0)}
+                >
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                     {card.label}
                   </Text>
@@ -2763,7 +2788,15 @@ export function AdminDashboardScreen({
         {inventoryMode === "stock" ? (
           <SimpleGrid columns={2} spacing={3}>
             {inventorySummaryCards.map((card) => (
-              <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+              <Box
+                key={card.label}
+                bg={panelSurface}
+                borderRadius="22px"
+                px={4}
+                py={4}
+                boxShadow={panelShadow}
+                {...getLowStockCardProps(card.label === "Low Stock" && lowStockCount > 0)}
+              >
                 <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
                   {card.label}
                 </Text>
