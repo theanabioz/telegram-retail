@@ -3003,36 +3003,12 @@ export function AdminDashboardScreen({
   };
 
   const renderTeam = () => {
-    const activeStores = stores.filter((store) => store.isActive).length;
-    const liveShifts = stores.reduce((total, store) => total + store.activeShiftCount, 0);
-    const unassignedSellers = staff.filter((seller) => !seller.currentAssignment).length;
-    const activeSellers = staff.filter((seller) => seller.isActive).length;
-    const teamSummaryCards = [
-      { label: "Active Stores", value: String(activeStores) },
-      { label: "Sellers", value: String(activeSellers) },
-      { label: "Live Shifts", value: String(liveShifts) },
-      { label: "Unassigned", value: String(unassignedSellers) },
-    ];
-
     if (selectedStaffSeller) {
       return renderSellerDetail(selectedStaffSeller);
     }
 
     return (
       <VStack spacing={4} align="stretch">
-        <SimpleGrid columns={2} spacing={3}>
-          {teamSummaryCards.map((card) => (
-            <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-              <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
-                {card.label}
-              </Text>
-              <Text fontSize="2xl" fontWeight="900" mt={2}>
-                {card.value}
-              </Text>
-            </Box>
-          ))}
-        </SimpleGrid>
-
         <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
           <HStack spacing={2}>
             {(["staff", "stores"] as TeamMode[]).map((mode) => {
