@@ -3500,6 +3500,9 @@ export function AdminDashboardScreen({
 
     if (value.length < 80) {
       setTeamKeyboardValue(teamKeyboardField, `${value}${nextChar}`);
+      if (teamKeyboardCapsLock && key.length === 1 && /[a-z]/i.test(key)) {
+        setTeamKeyboardCapsLock(false);
+      }
     }
   };
 
@@ -3552,7 +3555,7 @@ export function AdminDashboardScreen({
           {numericKeys.map((key) => (
             <Button
               key={key}
-              h="52px"
+              h="50px"
               borderRadius="16px"
               bg={key === "delete" || key === "clear" ? "surface.50" : "white"}
               color="surface.900"
@@ -3578,7 +3581,7 @@ export function AdminDashboardScreen({
             {row.map((key) => (
               <Button
                 key={key}
-                h="40px"
+                h="38px"
                 flex="1"
                 minW={0}
                 px={0}
@@ -3601,7 +3604,7 @@ export function AdminDashboardScreen({
         <HStack spacing={2}>
           <Button
             flex="1"
-            h="44px"
+            h="42px"
             borderRadius="16px"
             bg={teamKeyboardCapsLock ? "brand.500" : "surface.50"}
             color={teamKeyboardCapsLock ? "white" : "surface.800"}
@@ -3614,7 +3617,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="44px"
+            h="42px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3627,7 +3630,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="2"
-            h="44px"
+            h="42px"
             borderRadius="16px"
             bg="white"
             color="surface.800"
@@ -3640,7 +3643,7 @@ export function AdminDashboardScreen({
           </Button>
           <Button
             flex="1"
-            h="44px"
+            h="42px"
             borderRadius="16px"
             bg="surface.50"
             color="surface.800"
@@ -3732,8 +3735,9 @@ export function AdminDashboardScreen({
                 borderRadius="22px"
                 mx={-2}
                 px={2}
-                py={2}
-                h="238px"
+                pt={2}
+                pb={3}
+                h="250px"
                 flexShrink={0}
                 border="1px solid"
                 borderColor="rgba(223,219,210,0.78)"
@@ -3885,8 +3889,9 @@ export function AdminDashboardScreen({
                 borderRadius="22px"
                 mx={-2}
                 px={2}
-                py={2}
-                h="238px"
+                pt={2}
+                pb={3}
+                h="250px"
                 flexShrink={0}
                 border="1px solid"
                 borderColor="rgba(223,219,210,0.78)"
