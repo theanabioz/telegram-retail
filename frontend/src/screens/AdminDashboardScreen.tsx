@@ -78,6 +78,7 @@ type SalesLedgerMode = "sales" | "returns";
 type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
 type InventoryMode = "stock" | "products";
+type InventoryDetailMode = "overview" | "settings" | "stock";
 type InventorySnapshot = Pick<AdminInventoryResponse, "items" | "history">;
 type InventoryMovementType = "manual_adjustment" | "restock" | "writeoff";
 type TeamMode = "staff" | "stores";
@@ -307,6 +308,7 @@ export function AdminDashboardScreen({
   const [salesCache, setSalesCache] = useState<Record<string, SalesLedgerSnapshot>>({});
   const [salesSoftRefreshing, setSalesSoftRefreshing] = useState(false);
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("stock");
+  const [inventoryDetailMode, setInventoryDetailMode] = useState<InventoryDetailMode>("overview");
   const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string | null>(null);
   const [inventoryView, setInventoryView] = useState<InventorySnapshot>(() => {
     const cachedStartup = getCachedAdminStartup();
@@ -412,6 +414,7 @@ export function AdminDashboardScreen({
 
     if (tab === "inventory") {
       setSelectedInventoryItemId(null);
+      setInventoryDetailMode("overview");
     }
 
     if (tab === "team") {
@@ -470,6 +473,7 @@ export function AdminDashboardScreen({
 
       if (activeTab === "inventory" && selectedInventoryItemId) {
         setSelectedInventoryItemId(null);
+        setInventoryDetailMode("overview");
         return;
       }
 
@@ -1760,12 +1764,9 @@ export function AdminDashboardScreen({
       : null;
     const totalUnits = visibleInventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
     const lowStockCount = visibleInventoryItems.filter((item) => item.stockQuantity <= 10).length;
-    const disabledCount = visibleInventoryItems.filter((item) => !item.isEnabled || !item.isProductActive).length;
     const inventorySummaryCards = [
       { label: "Total Units", value: String(totalUnits) },
       { label: "Low Stock", value: String(lowStockCount) },
-      { label: "Disabled", value: String(disabledCount) },
-      { label: "Products", value: String(visibleInventoryItems.length) },
     ];
 
     if (selectedItem) {
@@ -1785,81 +1786,142 @@ export function AdminDashboardScreen({
           : movementType === "writeoff"
             ? { bg: "rgba(248,113,113,0.14)", hover: "rgba(248,113,113,0.22)", color: "red.500" }
             : { bg: "surface.900", hover: "surface.700", color: "white" };
+      const isProductAvailable = draft.isEnabled && selectedItem.isProductActive;
 
       return (
         <VStack spacing={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={4}>
               {!supportsTelegramBackButton ? (
-                <HStack justify="flex-end">
+                <HStack justify="flex-start">
                   <Button
                     size="sm"
                     borderRadius="14px"
                     variant="outline"
                     borderColor="var(--app-border)"
-                    onClick={() => setSelectedInventoryItemId(null)}
+                    onClick={() => {
+                      setSelectedInventoryItemId(null);
+                      setInventoryDetailMode("overview");
+                    }}
                   >
                     Back
                   </Button>
                 </HStack>
               ) : null}
 
-              <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={1}>
-                  <Text fontWeight="900" fontSize="2xl">
+              <HStack justify="space-between" align="center" gap={3}>
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" fontSize="xl" noOfLines={2}>
                     {selectedItem.productName}
                   </Text>
-                  <Text fontSize="sm" color="surface.500">
-                    Default {formatEur(selectedItem.defaultPrice)}
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                    {selectedStore?.name ?? selectedItem.storeName}
                   </Text>
                 </VStack>
-                <StatusPill
-                  label={`${selectedItem.stockQuantity} units`}
-                  tone={selectedItem.stockQuantity <= 10 ? "orange" : "blue"}
-                />
+                <VStack align="end" spacing={1} flexShrink={0}>
+                  <StatusPill
+                    label={`${selectedItem.stockQuantity} units`}
+                    tone={selectedItem.stockQuantity <= 10 ? "orange" : "blue"}
+                  />
+                  <StatusPill label={isProductAvailable ? "Active" : "Inactive"} tone={isProductAvailable ? "green" : "red"} />
+                </VStack>
               </HStack>
+            </VStack>
+          </Box>
 
-              <SimpleGrid columns={2} spacing={3}>
-                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    Store Price
-                  </Text>
-                  <Text fontWeight="900" fontSize="xl">
-                    {formatEur(selectedItem.storePrice)}
-                  </Text>
-                </Box>
-                <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
-                    Status
-                  </Text>
-                  <Text fontWeight="900" fontSize="xl">
-                    {draft.isEnabled && selectedItem.isProductActive ? "Active" : "Off"}
-                  </Text>
-                </Box>
-              </SimpleGrid>
+          <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+            <HStack spacing={2}>
+              {(["overview", "settings", "stock"] as InventoryDetailMode[]).map((mode) => {
+                const isActive = inventoryDetailMode === mode;
 
-              <VStack align="stretch" spacing={3}>
-                <Text fontWeight="900">Price & Status</Text>
-                <Input
-                  value={draft.price}
-                  onChange={(event) =>
-                    setInventoryEdits((current) => ({
-                      ...current,
-                      [selectedItem.storeProductId]: {
-                        ...draft,
-                        price: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Store price"
-                  inputMode="decimal"
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)"
-                />
-                <HStack spacing={2}>
+                return (
                   <Button
+                    key={mode}
                     flex="1"
+                    size="sm"
+                    borderRadius="999px"
+                    bg={isActive ? "surface.900" : "transparent"}
+                    color={isActive ? "white" : "surface.500"}
+                    _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                    onClick={() => setInventoryDetailMode(mode)}
+                  >
+                    {mode === "overview" ? "Overview" : mode === "settings" ? "Settings" : "Stock"}
+                  </Button>
+                );
+              })}
+            </HStack>
+          </Box>
+
+          {inventoryDetailMode === "overview" ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <HStack justify="space-between">
+                  <Text fontWeight="900" fontSize="lg">
+                    Product Overview
+                  </Text>
+                  <Text color="surface.500" fontWeight="800" fontSize="sm">
+                    Updated {formatShortDate(selectedItem.updatedAt)}
+                  </Text>
+                </HStack>
+
+                <SimpleGrid columns={2} spacing={3}>
+                  {[
+                    { label: "Store Price", value: formatEur(selectedItem.storePrice) },
+                    { label: "Default Price", value: formatEur(selectedItem.defaultPrice) },
+                    { label: "Current Stock", value: `${selectedItem.stockQuantity}` },
+                    { label: "Status", value: isProductAvailable ? "Active" : "Inactive" },
+                  ].map((card) => (
+                    <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                        {card.label}
+                      </Text>
+                      <Text fontWeight="900" fontSize="xl" mt={1}>
+                        {card.value}
+                      </Text>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+              </VStack>
+            </Box>
+          ) : null}
+
+          {inventoryDetailMode === "settings" ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+              <VStack align="stretch" spacing={3}>
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="lg">
+                    Price & Availability
+                  </Text>
+                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                    Store-specific price and product visibility.
+                  </Text>
+                </VStack>
+
+                <VStack align="stretch" spacing={2}>
+                  <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                    Store price
+                  </Text>
+                  <Input
+                    value={draft.price}
+                    onChange={(event) =>
+                      setInventoryEdits((current) => ({
+                        ...current,
+                        [selectedItem.storeProductId]: {
+                          ...draft,
+                          price: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="Store price"
+                    inputMode="decimal"
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)"
+                  />
+                </VStack>
+
+                <SimpleGrid columns={2} spacing={2}>
+                  <Button
                     borderRadius="16px"
                     bg={draft.isEnabled ? "brand.500" : "rgba(241,240,236,0.95)"}
                     color={draft.isEnabled ? "white" : "surface.800"}
@@ -1874,7 +1936,6 @@ export function AdminDashboardScreen({
                     Enabled
                   </Button>
                   <Button
-                    flex="1"
                     borderRadius="16px"
                     bg={!draft.isEnabled ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
                     color={!draft.isEnabled ? "red.500" : "surface.800"}
@@ -1888,8 +1949,10 @@ export function AdminDashboardScreen({
                   >
                     Disabled
                   </Button>
-                </HStack>
+                </SimpleGrid>
+
                 <Button
+                  h="52px"
                   borderRadius="18px"
                   bg="surface.900"
                   color="white"
@@ -1900,11 +1963,21 @@ export function AdminDashboardScreen({
                   Save Price & Status
                 </Button>
               </VStack>
+            </Box>
+          ) : null}
 
-              <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
-
+          {inventoryDetailMode === "stock" ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
-                <Text fontWeight="900">Stock Movement</Text>
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="900" fontSize="lg">
+                    Stock Movement
+                  </Text>
+                  <Text color="surface.500" fontSize="sm" fontWeight="700">
+                    Restock, write off or set a manual balance.
+                  </Text>
+                </VStack>
+
                 <SimpleGrid columns={3} spacing={2}>
                   {([
                     ["restock", "Restock"],
@@ -2007,6 +2080,7 @@ export function AdminDashboardScreen({
                 />
 
                 <Button
+                  h="52px"
                   borderRadius="18px"
                   bg={movementTone.bg}
                   color={movementTone.color}
@@ -2017,14 +2091,37 @@ export function AdminDashboardScreen({
                   {movementLabel} {movementQuantity} Units
                 </Button>
               </VStack>
-            </VStack>
-          </Box>
+            </Box>
+          ) : null}
         </VStack>
       );
     }
 
     return (
       <VStack spacing={4} align="stretch">
+        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+          <HStack spacing={2}>
+            {(["stock", "products"] as InventoryMode[]).map((mode) => {
+              const isActive = inventoryMode === mode;
+
+              return (
+                <Button
+                  key={mode}
+                  flex="1"
+                  size="sm"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onClick={() => setInventoryMode(mode)}
+                >
+                  {mode === "stock" ? "Stock" : "Products"}
+                </Button>
+              );
+            })}
+          </HStack>
+        </Box>
+
         <SimpleGrid columns={2} spacing={3}>
           {inventorySummaryCards.map((card) => (
             <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
@@ -2040,13 +2137,15 @@ export function AdminDashboardScreen({
 
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
           <VStack align="stretch" spacing={3}>
-            <HStack justify="space-between">
+            <HStack justify="space-between" align="center" gap={3}>
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="lg">
-                  Store Inventory
-                </Text>
-                <Text fontSize="sm" color="surface.500">
                   {selectedStore?.name ?? "Select store"}
+                </Text>
+                <Text fontSize="sm" color="surface.500" fontWeight="700">
+                  {inventoryMode === "stock"
+                    ? `${visibleInventoryItems.length} products in this store`
+                    : `${products.length} catalog products`}
                 </Text>
               </VStack>
               {inventorySoftRefreshing || loadingInventory ? <StatusPill label="Updating" tone="blue" /> : null}
@@ -2074,29 +2173,6 @@ export function AdminDashboardScreen({
           </VStack>
         </Box>
 
-        <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-          <HStack spacing={2}>
-            {(["stock", "products"] as InventoryMode[]).map((mode) => {
-              const isActive = inventoryMode === mode;
-
-              return (
-                <Button
-                  key={mode}
-                  flex="1"
-                  size="sm"
-                  borderRadius="999px"
-                  bg={isActive ? "surface.900" : "transparent"}
-                  color={isActive ? "white" : "surface.500"}
-                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setInventoryMode(mode)}
-                >
-                  {mode === "stock" ? `Stock · ${visibleInventoryItems.length}` : `Products · ${products.length}`}
-                </Button>
-              );
-            })}
-          </HStack>
-        </Box>
-
         {inventoryMode === "stock" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={3}>
@@ -2119,7 +2195,11 @@ export function AdminDashboardScreen({
                   borderRadius="18px"
                   px={3}
                   py={3}
-                  onClick={() => setSelectedInventoryItemId(item.storeProductId)}
+                  onClick={() => {
+                    setSelectedInventoryItemId(item.storeProductId);
+                    setInventoryDetailMode("overview");
+                    scrollToSectionTop();
+                  }}
                 >
                   <HStack justify="space-between" align="start">
                     <VStack align="start" spacing={1} minW={0}>
