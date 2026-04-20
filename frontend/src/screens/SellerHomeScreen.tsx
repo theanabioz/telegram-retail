@@ -36,7 +36,7 @@ import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
-import { useI18n } from "../lib/i18n";
+import { translate, useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
@@ -66,7 +66,7 @@ function formatShiftDateRange(startedAt: string, endedAt: string | null) {
   const end = endedAt ? new Date(endedAt) : null;
 
   return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} - ${
-    end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "Ongoing"
+    end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : translate("common.ongoing")
   }`;
 }
 
@@ -76,7 +76,7 @@ function formatMonthLabel(value: string) {
 
 function formatDateTimeLabel(value: string | null) {
   if (!value) {
-    return "Ongoing";
+    return translate("common.ongoing");
   }
 
   return new Date(value).toLocaleString(undefined, {
@@ -99,7 +99,7 @@ function formatDateLabel(value: string) {
 
 function formatTimeLabel(value: string | null) {
   if (!value) {
-    return "Ongoing";
+    return translate("common.ongoing");
   }
 
   return new Date(value).toLocaleTimeString([], {
@@ -303,18 +303,22 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const shiftStatusLabel =
     shiftStatus === "active"
-      ? "Active"
+      ? t("shift.status.active")
       : shiftStatus === "paused"
-        ? "Paused"
-        : "Not started";
+        ? t("shift.status.paused")
+        : t("shift.status.notStarted");
   const shiftStatusCopy =
     shiftStatus === "active"
-      ? "Live sales unlocked"
+      ? t("shift.copy.active")
       : shiftStatus === "paused"
-        ? "Sales are paused"
-        : "Open a shift to start selling";
+        ? t("shift.copy.paused")
+        : t("shift.copy.inactive");
   const shiftContextLabel =
-    shiftStatus === "active" ? "Shift active" : shiftStatus === "paused" ? "Shift paused" : "Shift inactive";
+    shiftStatus === "active"
+      ? t("shift.context.active")
+      : shiftStatus === "paused"
+        ? t("shift.context.paused")
+        : t("shift.context.inactive");
 
   const activeTabTitle: Record<SellerTab, string> = {
     checkout: t("nav.checkout"),
@@ -345,6 +349,21 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
     return groups;
   }, [shiftHistory]);
+
+  const getShiftStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return t("shift.status.active");
+      case "paused":
+        return t("shift.status.paused");
+      case "closed":
+        return t("shift.status.closed");
+      case "inactive":
+        return t("shift.status.inactive");
+      default:
+        return status;
+    }
+  };
 
   const getStockDraft = (productId: string) =>
     stockEdits[productId] ?? {
@@ -466,12 +485,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     if (discountDraft.type === "percent" && value > 100) {
-      window.alert("Percent discount cannot be more than 100%.");
+      window.alert(t("alert.percentTooHigh"));
       return;
     }
 
     if (discountDraft.type === "amount" && value > item.base_price) {
-      window.alert("Amount discount cannot be more than the unit price.");
+      window.alert(t("alert.amountTooHigh"));
       return;
     }
 
@@ -987,10 +1006,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Box>
           <VStack align="start" spacing={0}>
             <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
-              {draft.summary.itemsCount} Items
+              {draft.summary.itemsCount} {t("checkout.items")}
             </Text>
             <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em">
-              View Cart Details
+              {t("checkout.viewCartDetails")}
             </Text>
           </VStack>
         </HStack>
@@ -1028,10 +1047,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         >
           <VStack align="start" spacing={3}>
             <Text fontSize="lg" fontWeight="800">
-              Start your shift to unlock live sales
+              {t("checkout.startShiftTitle")}
             </Text>
             <Text color="surface.600" fontSize="sm">
-              The app is connected to the real backend. Once the shift is open, products and cart switch from demo mode to live mode.
+              {t("checkout.startShiftDescription")}
             </Text>
             <Button
               borderRadius="16px"
@@ -1041,7 +1060,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               isLoading={isShiftPending}
               onClick={() => void startShift()}
             >
-              Start Shift
+              {t("shift.start")}
             </Button>
           </VStack>
         </Box>
@@ -1223,7 +1242,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {item.name}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="600">
-                    {formatEur(item.price)} · Current Stock: {item.stock}
+                    {formatEur(item.price)} · {t("stock.currentStock")}: {item.stock}
                   </Text>
                 </VStack>
                 <Box 
@@ -1241,7 +1260,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               <VStack spacing={4}>
                 <HStack justify="center" spacing={6} bg="surface.50" py={3} px={6} borderRadius="20px">
                   <IconButton
-                    aria-label="Decrease adjustment quantity"
+                    aria-label={t("draftCart.decreaseQuantity")}
                     icon={<Text fontSize="2xl" lineHeight="1">−</Text>}
                     onClick={() => updateStockDraft(item.id, { quantity: String(Math.max(1, adjQty - 1)) })}
                     variant="ghost"
@@ -1254,11 +1273,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       {adjQty}
                     </Text>
                     <Text fontSize="10px" fontWeight="800" color="surface.400" textTransform="uppercase">
-                      Adjust By
+                      {t("stock.adjustBy")}
                     </Text>
                   </VStack>
                   <IconButton
-                    aria-label="Increase adjustment quantity"
+                    aria-label={t("draftCart.increaseQuantity")}
                     icon={<Text fontSize="2xl" lineHeight="1">+</Text>}
                     onClick={() => updateStockDraft(item.id, { quantity: String(adjQty + 1) })}
                     variant="ghost"
@@ -1285,7 +1304,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     leftIcon={<Box as={HiOutlineArchiveBox} boxSize={5} />}
                     _active={{ transform: "scale(0.96)", bg: "surface.50" }}
                   >
-                    Restock
+                    {t("stock.restock")}
                   </Button>
                   <Button
                     flex="1"
@@ -1303,7 +1322,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     leftIcon={<Box as={HiOutlineTrash} boxSize={5} />}
                     _active={{ transform: "scale(0.96)", bg: "red.50" }}
                   >
-                    Write-off
+                    {t("stock.writeoff")}
                   </Button>
                 </HStack>
               </VStack>
@@ -1373,7 +1392,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             {formatDuration(entry.summary.workedSeconds)}
           </Text>
           <Text fontSize="10px" color="surface.400" fontWeight="700" textTransform="uppercase">
-            {entry.shift.status}
+            {getShiftStatusBadge(entry.shift.status)}
           </Text>
         </VStack>
       </HStack>
@@ -1387,7 +1406,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           <HStack justify="space-between" align="center">
             <VStack align="start" spacing={1}>
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                Current Shift
+                {t("shift.current")}
               </Text>
               <Text fontWeight="900" fontSize="lg" letterSpacing="-0.02em" color="surface.900">
                 {shiftStatusCopy}
@@ -1415,7 +1434,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           <SimpleGrid columns={2} spacing={4}>
             <VStack align="start" spacing={1} bg={innerSurface} p={4} borderRadius="18px">
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
-                Time Worked
+                {t("shift.timeWorked")}
               </Text>
               <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.03em">
                 {shiftSummary ? formatDuration(shiftSummary.workedSeconds) : "0h 0m"}
@@ -1423,7 +1442,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </VStack>
             <VStack align="start" spacing={1} bg={innerSurface} p={4} borderRadius="18px">
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
-                On Break
+                {t("shift.onBreak")}
               </Text>
               <Text fontWeight="900" fontSize="2xl" color="surface.900" letterSpacing="-0.03em">
                 {shiftSummary ? formatDuration(shiftSummary.pausedSeconds) : "0h 0m"}
@@ -1447,7 +1466,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 isLoading={isShiftPending}
                 onClick={() => void startShift()}
               >
-                Start New Shift
+                {t("shift.startNew")}
               </Button>
             ) : (
               <>
@@ -1468,7 +1487,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     _hover={{ bg: "white" }}
                     _active={{ bg: "surface.100" }}
                   >
-                    Pause
+                    {t("shift.pause")}
                   </Button>
                   <Button
                     flex="1"
@@ -1486,7 +1505,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     _hover={{ bg: "white" }}
                     _active={{ bg: "surface.100" }}
                   >
-                    Resume
+                    {t("shift.resume")}
                   </Button>
                 </HStack>
                 <Button
@@ -1499,7 +1518,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   borderColor="rgba(248,113,113,0.12)"
                   fontWeight="800"
                   onClick={() => {
-                    if (window.confirm("Stop this shift now?")) {
+                    if (window.confirm(t("shift.confirmStop"))) {
                       void stopShift();
                     }
                   }}
@@ -1509,7 +1528,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   _hover={{ bg: "rgba(248,113,113,0.12)" }}
                   _active={{ bg: "rgba(248,113,113,0.16)" }}
                 >
-                  End Shift
+                  {t("shift.end")}
                 </Button>
               </>
             )}
@@ -1520,7 +1539,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       <VStack align="stretch" spacing={4} mt={2}>
         <HStack justify="space-between" px={1}>
           <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-            Shift History
+            {t("shift.history")}
           </Text>
           <Button
             size="sm"
@@ -1533,7 +1552,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               void loadShiftHistory(50, 0);
             }}
           >
-            View All
+            {t("shift.viewAll")}
           </Button>
         </HStack>
 
@@ -1542,7 +1561,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
           {shiftHistory.length === 0 ? (
             <Text color="surface.400" fontSize="sm" textAlign="center" py={4} fontWeight="600">
-              No shift records found
+              {t("shift.noRecords")}
             </Text>
           ) : null}
         </VStack>
@@ -1556,10 +1575,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         <HStack justify="space-between" align="center">
           <VStack align="start" spacing={1}>
             <Text fontWeight="900" fontSize="xl">
-              All Shifts
+              {t("shift.all")}
             </Text>
             <Text fontSize="sm" color="surface.500">
-              Browse full history grouped by month.
+              {t("shift.historyDescription")}
             </Text>
           </VStack>
           {!supportsTelegramBackButton ? (
@@ -1575,7 +1594,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 void loadShiftHistory(7, 0);
               }}
             >
-              Back
+              {t("orders.back")}
             </Button>
           ) : null}
         </HStack>
@@ -1592,9 +1611,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       {shiftHistory.length === 0 ? (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
-          <Text fontWeight="800">No shift records found</Text>
+          <Text fontWeight="800">{t("shift.noRecords")}</Text>
           <Text color="surface.500" fontSize="sm">
-            Closed shifts will appear here as you keep working.
+            {t("shift.noRecordsDescription")}
           </Text>
         </Box>
       ) : null}
@@ -1608,7 +1627,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           onClick={() => void loadShiftHistory(50, (shiftHistoryPagination.offset ?? 0) + 50)}
           mt={2}
         >
-          Load Older Shifts
+          {t("shift.loadOlder")}
         </Button>
       ) : null}
     </VStack>
@@ -1646,7 +1665,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   setShiftView("history");
                 }}
               >
-                Back
+                {t("orders.back")}
               </Button>
             ) : null}
           </HStack>
@@ -1699,9 +1718,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       {!shiftDetailsLoading && !shiftDetails ? (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
-          <Text fontWeight="800">Shift details unavailable</Text>
+          <Text fontWeight="800">{t("shift.detailsUnavailable")}</Text>
           <Text color="surface.500" fontSize="sm">
-            Try opening the shift again from history.
+            {t("shift.detailsRetry")}
           </Text>
         </Box>
       ) : null}
@@ -1734,7 +1753,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     color={shiftDetails.shift.status === "closed" ? "surface.600" : "brand.500"}
                   >
                     <Text fontSize="xs" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                      {shiftDetails.shift.status}
+                      {getShiftStatusBadge(shiftDetails.shift.status)}
                     </Text>
                   </Box>
                   {!supportsTelegramBackButton ? (
@@ -1749,7 +1768,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                         setShiftView("history");
                       }}
                     >
-                      Back
+                      {t("orders.back")}
                     </Button>
                   ) : null}
                 </HStack>
@@ -1758,7 +1777,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               <SimpleGrid columns={2} spacing={3}>
                 <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Started
+                    {t("shift.started")}
                   </Text>
                   <Text mt={1.5} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
                     {formatTimeLabel(shiftDetails.shift.started_at)}
@@ -1766,7 +1785,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </Box>
                 <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Ended
+                    {t("shift.ended")}
                   </Text>
                   <Text mt={1.5} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
                     {formatTimeLabel(shiftDetails.shift.ended_at)}
@@ -1778,10 +1797,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
           <SimpleGrid columns={2} spacing={3}>
             {[
-              { label: "Time Worked", value: formatDuration(shiftDetails.summary.workedSeconds) },
-              { label: "Break Time", value: formatDuration(shiftDetails.summary.pausedSeconds) },
-              { label: "Completed Sales", value: String(shiftDetails.salesSummary.count) },
-              { label: "Revenue", value: formatEur(shiftDetails.salesSummary.totalRevenue) },
+              { label: t("shift.timeWorked"), value: formatDuration(shiftDetails.summary.workedSeconds) },
+              { label: t("shift.breakTime"), value: formatDuration(shiftDetails.summary.pausedSeconds) },
+              { label: t("shift.completedSales"), value: String(shiftDetails.salesSummary.count) },
+              { label: t("shift.revenue"), value: formatEur(shiftDetails.salesSummary.totalRevenue) },
             ].map((item) => (
               <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
                 <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
@@ -1798,7 +1817,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <VStack align="stretch" spacing={4}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
-                  Payment Breakdown
+                  {t("shift.paymentBreakdown")}
                 </Text>
                 <Text fontSize="sm" color="surface.500" fontWeight="700">
                   {shiftDetails.salesSummary.count} sales
@@ -1808,7 +1827,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               <SimpleGrid columns={2} spacing={3}>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Cash Sales
+                    {t("shift.cashSales")}
                   </Text>
                   <Text fontWeight="900" fontSize="2xl" mt={2} letterSpacing="-0.03em">
                     {shiftDetails.salesSummary.cashSalesCount}
@@ -1819,7 +1838,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </Box>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Card Sales
+                    {t("shift.cardSales")}
                   </Text>
                   <Text fontWeight="900" fontSize="2xl" mt={2} letterSpacing="-0.03em">
                     {shiftDetails.salesSummary.cardSalesCount}
@@ -1839,12 +1858,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               >
                 <HStack justify="space-between" align="center">
                   <Text color="surface.500" fontWeight="700">
-                    Last Sale
+                    {t("shift.lastSale")}
                   </Text>
                   <Text fontWeight="800" fontSize="sm" textAlign="right">
                     {shiftDetails.salesSummary.lastSaleAt
                       ? formatDateTimeLabel(shiftDetails.salesSummary.lastSaleAt)
-                      : "No sales"}
+                      : t("shift.noSales")}
                   </Text>
                 </HStack>
               </Box>
@@ -1855,11 +1874,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <VStack align="stretch" spacing={4}>
               <HStack justify="space-between" align="center">
                 <Text fontWeight="900" fontSize="lg">
-                  Commission
+                  {t("shift.commission")}
                 </Text>
                 <Box px={3} py={1.5} borderRadius="999px" bg="surface.100">
                   <Text fontSize="xs" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Future Ready
+                    {t("shift.futureReady")}
                   </Text>
                 </Box>
               </HStack>
@@ -1867,7 +1886,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               <SimpleGrid columns={2} spacing={3}>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Rate
+                    {t("shift.rate")}
                   </Text>
                   <Text mt={2} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
                     {shiftDetails.commission.ratePercent}%
@@ -1875,7 +1894,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </Box>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                    Amount
+                    {t("shift.amount")}
                   </Text>
                   <Text mt={2} fontWeight="900" fontSize="2xl" letterSpacing="-0.03em">
                     {formatEur(shiftDetails.commission.amount)}
@@ -1884,7 +1903,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </SimpleGrid>
 
               <Text fontSize="sm" color="surface.500" lineHeight="1.5">
-                Admins will later be able to assign a personal commission rate for each seller. Until then, commission stays at zero and this card remains informational.
+                {t("shift.commissionDescription")}
               </Text>
             </VStack>
           </Box>
@@ -2146,7 +2165,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </Box>
               <VStack align="start" spacing={0}>
                 <Text fontSize="xs" textTransform="uppercase" letterSpacing="0.08em" color="surface.500">
-                  Local Device
+                  {t("common.localDevice")}
                 </Text>
                 <Text fontWeight="800">{localIpLabel}</Text>
               </VStack>
@@ -2154,7 +2173,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
             <VStack align="end" spacing={0}>
               <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {loading ? "Loading..." : mode === "live" ? "Live mode" : "Demo mode"}
+                {loading ? t("common.loading") : mode === "live" ? t("settings.session.liveMode") : t("settings.session.demoMode")}
               </Text>
               {error ? (
                 <Text color="red.400" fontSize="xs" maxW="180px" textAlign="right">
