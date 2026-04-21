@@ -24,6 +24,7 @@ const CLICKABLE_SELECTOR = [
 const SCROLL_STEP_PX = 72;
 const SCROLL_FEEDBACK_INTERVAL_MS = 140;
 const POINTER_FEEDBACK_INTERVAL_MS = 100;
+let hapticsSuppressedUntil = 0;
 
 function canUseHaptics() {
   return typeof getTelegramWebApp()?.HapticFeedback !== "undefined";
@@ -51,6 +52,17 @@ export function triggerSelection() {
   }
 
   triggerTelegramSelection();
+}
+
+export function suppressGlobalHaptics(durationMs = 500) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  hapticsSuppressedUntil = Math.max(
+    hapticsSuppressedUntil,
+    window.performance.now() + durationMs,
+  );
 }
 
 export function attachGlobalHaptics() {
@@ -82,6 +94,9 @@ export function attachGlobalHaptics() {
     }
 
     const now = window.performance.now();
+    if (now < hapticsSuppressedUntil) {
+      return;
+    }
     if (now - lastPointerFeedbackAt < POINTER_FEEDBACK_INTERVAL_MS) {
       return;
     }
@@ -112,11 +127,17 @@ export function attachGlobalHaptics() {
       return;
     }
 
+    const now = window.performance.now();
+    if (now < hapticsSuppressedUntil) {
+      lastScrollTop = window.scrollY;
+      accumulatedScrollDistance = 0;
+      return;
+    }
+
     const currentScrollTop = window.scrollY;
     accumulatedScrollDistance += Math.abs(currentScrollTop - lastScrollTop);
     lastScrollTop = currentScrollTop;
 
-    const now = window.performance.now();
     if (
       accumulatedScrollDistance < SCROLL_STEP_PX ||
       now - lastScrollFeedbackAt < SCROLL_FEEDBACK_INTERVAL_MS

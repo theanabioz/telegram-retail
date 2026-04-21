@@ -40,6 +40,7 @@ import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
+import { suppressGlobalHaptics } from "../lib/haptics";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
@@ -316,6 +317,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
     resetSellerSection(tab);
   }, [isSellerProfileOpen, resetSellerSection]);
+
+  const openSellerProfile = useCallback(() => {
+    suppressGlobalHaptics(700);
+    setSellerProfileWeekIndex(0);
+    setIsSellerProfileOpen(true);
+    void loadShiftHistory(200, 0);
+  }, [loadShiftHistory]);
 
   useEffect(() => {
     void bootstrap();
@@ -2547,11 +2555,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     WebkitTapHighlightColor: "transparent",
                     touchAction: "manipulation",
                   }}
-                  onClick={() => {
-                    setSellerProfileWeekIndex(0);
-                    setIsSellerProfileOpen(true);
-                    void loadShiftHistory(200, 0);
-                  }}
+                  onClick={openSellerProfile}
                   _active={{ transform: "scale(0.98)" }}
                 >
                   <Avatar
