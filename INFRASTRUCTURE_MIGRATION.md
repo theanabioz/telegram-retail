@@ -51,6 +51,7 @@ Temporary operational note:
 - [scripts/server/pitr-restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/pitr-restore-postgres.sh)
 - [scripts/server/pitr-drill-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/pitr-drill-postgres.sh)
 - [scripts/server/bootstrap-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/bootstrap-postgres.sh)
+- [scripts/server/bootstrap-cloudbeaver.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/bootstrap-cloudbeaver.sh)
 
 ## Operations Docs
 
@@ -75,6 +76,8 @@ These two docs are now the main operational references:
 - reusable deploy/smoke scripts for lower-friction operations
 - an explicit restore path for future self-hosted Postgres drills
 - WAL archive support for point-in-time style recovery groundwork
+- CloudBeaver web UI behind Caddy basic auth on `db.<domain>`
+- `fail2ban` SSH protection on the droplet
 
 ## Current Runtime Notes
 

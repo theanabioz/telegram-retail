@@ -26,6 +26,8 @@
 - `backup`, `base backup`, `PITR`, `restore drill` уже работают
 - operational alert scripts добавлены
 - offsite backup sync подготовлен в ready-to-enable виде
+- `fail2ban` установлен для SSH
+- `CloudBeaver` поднят за отдельной basic auth защитой
 
 ## Что держим в текущей конфигурации
 
@@ -127,12 +129,12 @@ ls -lah /opt/telegram-retail/backups/wal | tail
 
 ### fail2ban
 
-Можно добавить, но не обязательно первым делом.
+Уже установлен на сервере для `sshd`.
 
-Имеет смысл, если:
+Что это дает:
 
-- парольный SSH остается надолго
-- хочется дополнительной защиты от brute-force
+- режет тупой brute-force по SSH
+- особенно полезен, пока парольный доступ еще включен
 
 ### Отключение password SSH
 

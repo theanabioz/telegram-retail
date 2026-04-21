@@ -12,6 +12,9 @@ services:
         condition: service_healthy
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
+      DB_DOMAIN: ${DB_DOMAIN}
+      DB_BASIC_AUTH_USER: ${DB_BASIC_AUTH_USER}
+      DB_BASIC_AUTH_PASSWORD_HASH: ${DB_BASIC_AUTH_PASSWORD_HASH}
     ports:
       - "80:80"
       - "443:443"
@@ -117,6 +120,40 @@ services:
         max-size: "5m"
         max-file: "2"
 
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:25.1.0
+    container_name: telegram-retail-cloudbeaver
+    restart: unless-stopped
+    labels:
+      autoheal: "true"
+    environment:
+      CLOUDBEAVER_DB_DRIVER: postgres-jdbc
+      CLOUDBEAVER_DB_URL: jdbc:postgresql://postgres:5432/cloudbeaver
+      CLOUDBEAVER_DB_USER: ${POSTGRES_USER:-telegram_retail}
+      CLOUDBEAVER_DB_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.server}
+      CB_ADMIN_NAME: ${CLOUDBEAVER_ADMIN_NAME:?set in .env.server}
+      CB_ADMIN_PASSWORD: ${CLOUDBEAVER_ADMIN_PASSWORD:?set in .env.server}
+      CB_SERVER_NAME: Telegram Retail DB
+      CB_SERVER_URL: https://${DB_DOMAIN}
+    expose:
+      - "8978"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - cloudbeaver_workspace:/opt/cloudbeaver/workspace
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8978/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   postgres-backup:
     image: postgres:16-alpine
     container_name: telegram-retail-postgres-backup
@@ -155,3 +192,4 @@ volumes:
   caddy_data:
   caddy_config:
   postgres_data:
+  cloudbeaver_workspace:

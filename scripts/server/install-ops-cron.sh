@@ -25,6 +25,7 @@ declare -a SCRIPTS=(
   "check-disk-usage.sh:retail-check-disk-usage"
   "check-ssl-expiry.sh:retail-check-ssl-expiry"
   "offsite-sync-backups.sh:retail-offsite-sync-backups"
+  "bootstrap-cloudbeaver.sh:retail-bootstrap-cloudbeaver"
   "smoke-check.sh:retail-smoke"
   "deploy.sh:retail-deploy"
 )

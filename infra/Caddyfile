@@ -17,6 +17,16 @@
   }
 }
 
+http://{$DB_DOMAIN}, https://{$DB_DOMAIN} {
+  encode zstd gzip
+
+  basic_auth {
+    {$DB_BASIC_AUTH_USER} {$DB_BASIC_AUTH_PASSWORD_HASH}
+  }
+
+  reverse_proxy cloudbeaver:8978
+}
+
 :80 {
   encode zstd gzip
 
