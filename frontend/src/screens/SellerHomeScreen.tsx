@@ -24,11 +24,14 @@ import {
 import {
   HiOutlineAdjustmentsHorizontal,
   HiOutlineArchiveBox,
+  HiOutlineChartBar,
   HiOutlineChevronLeft,
+  HiOutlineClock,
   HiOutlineMagnifyingGlass,
   HiOutlinePause,
   HiOutlinePlay,
   HiOutlinePower,
+  HiOutlineShoppingBag,
   HiOutlineTrash,
   HiOutlineWifi,
 } from "react-icons/hi2";
@@ -132,6 +135,16 @@ function getRussianItemWord(count: number) {
   return "товаров";
 }
 
+function isSameCalendarDay(value: string, compareDate: Date) {
+  const date = new Date(value);
+
+  return (
+    date.getFullYear() === compareDate.getFullYear() &&
+    date.getMonth() === compareDate.getMonth() &&
+    date.getDate() === compareDate.getDate()
+  );
+}
+
 function formatSellerPaymentMethod(method: "cash" | "card") {
   return method === "cash" ? translate("payment.cash") : translate("payment.card");
 }
@@ -191,6 +204,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [isDraftCartOpen, setIsDraftCartOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
+  const [isSellerProfileOpen, setIsSellerProfileOpen] = useState(false);
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const isShiftPending = pendingShiftMutationId !== null;
@@ -289,6 +303,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     Boolean(
       discountModalItemId ||
       isDraftCartOpen ||
+      isSellerProfileOpen ||
       selectedSaleId ||
       (activeTab === "shift" && shiftView !== "overview")
     ),
@@ -300,6 +315,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       if (isDraftCartOpen) {
         setIsDraftCartOpen(false);
+        return;
+      }
+
+      if (isSellerProfileOpen) {
+        setIsSellerProfileOpen(false);
         return;
       }
 
@@ -352,6 +372,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           : t("nav.shift"),
     options: t("nav.settings"),
   };
+
+  const todaySales = useMemo(() => {
+    const today = new Date();
+    return sales.filter((sale) => sale.status === "completed" && isSameCalendarDay(sale.created_at, today));
+  }, [sales]);
+
+  const todaySalesCount = todaySales.length;
+  const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total_amount, 0);
+  const lastSale = sales.find((sale) => sale.status === "completed") ?? null;
+  const recentCompletedSales = sales.filter((sale) => sale.status === "completed").slice(0, 4);
+  const recentShiftEntries = shiftHistory.slice(0, 4);
 
   const formatCartItemsCount = (count: number) => {
     if (locale === "ru") {
@@ -1971,6 +2002,237 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     return renderShiftOverview();
   };
 
+  const renderSellerProfileTab = () => (
+    <VStack spacing={4} align="stretch">
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <HStack justify="space-between" align="center">
+          <HStack spacing={3}>
+            <Avatar
+              size="md"
+              name={operatorName}
+              bg="brand.500"
+              color="white"
+              fontWeight="800"
+            />
+            <VStack align="start" spacing={0.5}>
+              <Text fontWeight="900" fontSize="xl" letterSpacing="-0.03em" color="surface.900">
+                {operatorName}
+              </Text>
+              <Text fontSize="sm" color="surface.500" fontWeight="700">
+                {storeName}
+              </Text>
+            </VStack>
+          </HStack>
+
+          <HStack
+            spacing={1.5}
+            px={3}
+            py={2}
+            borderRadius="999px"
+            bg={shiftStatus === "active" ? "rgba(34,197,94,0.12)" : shiftStatus === "paused" ? "rgba(251,146,60,0.14)" : "surface.100"}
+          >
+            <Box
+              w="8px"
+              h="8px"
+              borderRadius="full"
+              bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.400"}
+            />
+            <Text color="surface.700" fontWeight="900" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em" whiteSpace="nowrap">
+              {shiftStatusLabel}
+            </Text>
+          </HStack>
+        </HStack>
+      </Box>
+
+      <SimpleGrid columns={2} spacing={3}>
+        {[
+          {
+            label: t("sellerProfile.todaySales"),
+            value: String(todaySalesCount),
+            icon: HiOutlineShoppingBag,
+          },
+          {
+            label: t("sellerProfile.todayRevenue"),
+            value: formatEur(todayRevenue),
+            icon: HiOutlineChartBar,
+          },
+          {
+            label: t("sellerProfile.currentStore"),
+            value: storeName,
+            icon: HiOutlineArchiveBox,
+          },
+          {
+            label: t("sellerProfile.lastSale"),
+            value: lastSale ? formatTimeLabel(lastSale.created_at) : t("sellerProfile.noSalesShort"),
+            icon: HiOutlineClock,
+          },
+        ].map((item) => (
+          <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+            <HStack justify="space-between" align="start">
+              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                {item.label}
+              </Text>
+              <Box color="brand.500">
+                <Box as={item.icon} boxSize={4.5} />
+              </Box>
+            </HStack>
+            <Text
+              mt={2}
+              fontWeight="900"
+              fontSize={item.label === t("sellerProfile.currentStore") ? "lg" : "2xl"}
+              lineHeight="1.15"
+              letterSpacing="-0.03em"
+              color="surface.900"
+            >
+              {item.value}
+            </Text>
+          </Box>
+        ))}
+      </SimpleGrid>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={3}>
+          <Text fontWeight="900" fontSize="lg">{t("sellerProfile.session")}</Text>
+          <HStack justify="space-between">
+            <Text color="surface.500">{t("settings.session.store")}</Text>
+            <Text fontWeight="800" textAlign="right">{storeName}</Text>
+          </HStack>
+          <HStack justify="space-between">
+            <Text color="surface.500">{t("settings.session.mode")}</Text>
+            <Text fontWeight="800">{mode === "live" ? t("settings.session.liveMode") : t("settings.session.demoMode")}</Text>
+          </HStack>
+          <HStack justify="space-between">
+            <Text color="surface.500">{t("settings.session.device")}</Text>
+            <Text fontWeight="800">{localIpLabel}</Text>
+          </HStack>
+        </VStack>
+      </Box>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <HStack justify="space-between" align="center">
+            <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentSales")}</Text>
+            <Text fontSize="sm" color="surface.500" fontWeight="700">
+              {t("common.today")}
+            </Text>
+          </HStack>
+
+          <VStack spacing={3} align="stretch">
+            {recentCompletedSales.map((sale) => (
+              <HStack
+                key={sale.id}
+                as="button"
+                type="button"
+                textAlign="left"
+                w="full"
+                bg={innerSurface}
+                borderRadius="20px"
+                px={4}
+                py={3.5}
+                border={0}
+                justify="space-between"
+                align="center"
+                onClick={() => {
+                  setActiveTab("orders");
+                  setSelectedSaleId(sale.id);
+                  setIsSellerProfileOpen(false);
+                }}
+              >
+                <VStack align="start" spacing={0.5}>
+                  <Text fontWeight="800">{t("orders.completedSale")}</Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {formatDateTimeLabel(sale.created_at)}
+                  </Text>
+                </VStack>
+
+                <VStack align="end" spacing={0.5}>
+                  <Text fontWeight="900">{formatEur(sale.total_amount)}</Text>
+                  <Text fontSize="xs" color="surface.500" fontWeight="700">
+                    {formatSellerPaymentMethod(sale.payment_method)}
+                  </Text>
+                </VStack>
+              </HStack>
+            ))}
+
+            {recentCompletedSales.length === 0 ? (
+              <Text color="surface.400" fontSize="sm" textAlign="center" py={2} fontWeight="600">
+                {t("sellerProfile.noSales")}
+              </Text>
+            ) : null}
+          </VStack>
+        </VStack>
+      </Box>
+
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentShifts")}</Text>
+
+          <VStack spacing={3} align="stretch">
+            {recentShiftEntries.map((entry) => (
+              <HStack
+                key={entry.shift.id}
+                as="button"
+                type="button"
+                textAlign="left"
+                w="full"
+                bg={innerSurface}
+                borderRadius="20px"
+                px={4}
+                py={3.5}
+                border={0}
+                justify="space-between"
+                align="center"
+                onClick={() => {
+                  setActiveTab("shift");
+                  if (entry.salesSummary && entry.commission) {
+                    showShiftDetails({
+                      shift: entry.shift,
+                      summary: entry.summary,
+                      store: entry.store,
+                      salesSummary: entry.salesSummary,
+                      commission: entry.commission,
+                    });
+                  } else {
+                    clearShiftDetails();
+                  }
+
+                  setShiftView("detail");
+                  setIsSellerProfileOpen(false);
+                  void loadShiftDetails(entry.shift.id);
+                }}
+              >
+                <VStack align="start" spacing={0.5}>
+                  <Text fontWeight="800">
+                    {new Date(entry.shift.started_at).toLocaleDateString(getLocaleTag(), {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500">
+                    {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
+                  </Text>
+                </VStack>
+
+                <VStack align="end" spacing={0.5}>
+                  <Text fontWeight="900">{formatDuration(entry.summary.workedSeconds)}</Text>
+                  <Text fontSize="xs" color="surface.500" fontWeight="700">
+                    {getShiftStatusBadge(entry.shift.status)}
+                  </Text>
+                </VStack>
+              </HStack>
+            ))}
+
+            {recentShiftEntries.length === 0 ? (
+              <Text color="surface.400" fontSize="sm" textAlign="center" py={2} fontWeight="600">
+                {t("sellerProfile.noShifts")}
+              </Text>
+            ) : null}
+          </VStack>
+        </VStack>
+      </Box>
+    </VStack>
+  );
+
   const renderOptionsTab = () => (
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
@@ -2063,6 +2325,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderActiveTab = () => {
+    if (isSellerProfileOpen) {
+      return renderSellerProfileTab();
+    }
+
     switch (activeTab) {
       case "orders":
         return renderOrdersTab();
@@ -2117,11 +2383,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     color="surface.900"
                     lineHeight="1"
                   >
-                    {activeTabTitle[activeTab]}
+                    {isSellerProfileOpen ? t("sellerProfile.title") : activeTabTitle[activeTab]}
                   </Text>
                 </VStack>
 
                 <HStack
+                  as="button"
+                  type="button"
                   spacing={2.5}
                   bg="rgba(255,255,255,0.6)"
                   backdropFilter="blur(10px)"
@@ -2132,6 +2400,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   border="1px solid"
                   borderColor="rgba(255,255,255,0.8)"
                   boxShadow="0 4px 12px rgba(0,0,0,0.03)"
+                  onClick={() => setIsSellerProfileOpen(true)}
+                  _active={{ transform: "scale(0.98)" }}
                 >
                   <Avatar
                     size="xs"
@@ -2148,7 +2418,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </HStack>
             </VStack>
 
-          {activeTab === "checkout" ? (
+          {activeTab === "checkout" && !isSellerProfileOpen ? (
             <InputGroup size="md">
               <InputLeftElement pointerEvents="none" color="surface.500" h="54px" pl={2}>
                 <Box as={HiOutlineMagnifyingGlass} boxSize={5} strokeWidth={2.5} />
