@@ -424,15 +424,18 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const runStockOperation = (productId: string, operation: "restock" | "writeoff") => {
     const draft = getStockDraft(productId);
     const quantity = Number(draft.quantity);
-    const defaultReason = operation === "restock" ? "Manual Restock" : "Manual Write-off";
+    const defaultReason = operation === "restock" ? t("stock.manualRestockReason") : t("stock.manualWriteoffReason");
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      window.alert("Select a quantity greater than 0.");
+      window.alert(t("stock.quantityTooLow"));
       return;
     }
 
-    const label = operation === "restock" ? "restock" : "write off";
-    if (!window.confirm(`Confirm ${label} of ${quantity} unit(s)?`)) {
+    const confirmMessage =
+      operation === "restock"
+        ? t("stock.confirmRestock", { count: quantity })
+        : t("stock.confirmWriteoff", { count: quantity });
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -519,7 +522,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     const value = Number(rawValue);
 
     if (!Number.isFinite(value) || value < 0) {
-      window.alert("Enter a valid discount.");
+      window.alert(t("discount.invalid"));
       return;
     }
 
@@ -2092,10 +2095,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     textTransform="uppercase"
                     color="surface.400"
                   >
-                    {storeName || "Current store"} · {shiftContextLabel}
+                    {storeName || t("common.currentStore")} · {shiftContextLabel}
                   </Text>
                   <Text fontSize="xs" color="surface.400" fontWeight="700">
-                    Today · {formatHeaderDate(new Date())}
+                    {t("common.today")} · {formatHeaderDate(new Date())}
                   </Text>
                 </HStack>
               ) : null}

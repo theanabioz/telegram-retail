@@ -2941,7 +2941,7 @@ export function AdminDashboardScreen({
 
                 <HStack justify="center" spacing={6} bg={panelMutedSurface} py={3} px={5} borderRadius="20px">
                   <Button
-                    aria-label="Decrease movement quantity"
+                    aria-label={t("admin.inventory.decreaseQuantity")}
                     minW="48px"
                     h="48px"
                     borderRadius="999px"
@@ -2971,7 +2971,7 @@ export function AdminDashboardScreen({
                     </Text>
                   </VStack>
                   <Button
-                    aria-label="Increase movement quantity"
+                    aria-label={t("admin.inventory.increaseQuantity")}
                     minW="48px"
                     h="48px"
                     borderRadius="999px"
@@ -5074,7 +5074,7 @@ export function AdminDashboardScreen({
                 </Text>
               </VStack>
               <Button
-                aria-label="Close store selector"
+                aria-label={t("admin.inventory.closeStoreSelector")}
                 minW="42px"
                 h="42px"
                 px={0}
@@ -5603,7 +5603,7 @@ export function AdminDashboardScreen({
           {loading || loadingStores || loadingStaff ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
               <Text fontWeight="800">
-                {activeTab === "team" ? "Loading team data..." : "Loading admin data..."}
+                {activeTab === "team" ? t("admin.loadingTeamData") : t("admin.loadingAdminData")}
               </Text>
             </Box>
           ) : null}
