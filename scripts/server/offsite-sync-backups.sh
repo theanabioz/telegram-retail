@@ -10,15 +10,14 @@ done
 
 ROOT_DIR="$(cd "$(dirname "${SOURCE_PATH}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env.server"
+source "${ROOT_DIR}/scripts/server/load-env.sh"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo ".env.server is missing." >&2
   exit 1
 fi
 
-set -a
-source "${ENV_FILE}"
-set +a
+load_env_file "${ENV_FILE}"
 
 OFFSITE_BACKUP_ENABLED="${OFFSITE_BACKUP_ENABLED:-false}"
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/telegram-retail/backups}"

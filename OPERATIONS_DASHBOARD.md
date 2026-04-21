@@ -18,7 +18,7 @@
 
 Обычно достаточно этих 5 вещей.
 
-### 1. Жив ли backend
+### 1. Жив ли публичный health
 
 ```bash
 curl -sS https://albufeirashop.xyz/health
@@ -27,6 +27,16 @@ curl -sS https://albufeirashop.xyz/health
 Норма:
 
 - приходит `{"ok":true,"service":"telegram-retail-backend"}`
+
+### 1b. Жив ли internal backend
+
+```bash
+ssh -i ~/.ssh/do_telegram_retail -o IdentitiesOnly=yes root@167.172.169.171 'docker exec telegram-retail-backend wget -q -O - http://127.0.0.1:4000/health'
+```
+
+Норма:
+
+- internal health отвечает даже если frontend/Caddy в моменте перезапускается
 
 ### 2. Все ли контейнеры healthy
 
@@ -121,7 +131,8 @@ cat /etc/cron.d/telegram-retail-ops
 
 Норма:
 
-- есть health check
+- есть internal backend health check
+- есть public health check
 - есть disk check
 - есть ssl check
 - есть monitored SQL backup
@@ -156,10 +167,11 @@ cd /opt/telegram-retail/app
 docker compose --profile selfhosted-db --env-file .env.server -f docker-compose.server.yml ps
 ```
 
-### 2. Backend health
+### 2. Public и internal health
 
 ```bash
 curl -sS https://albufeirashop.xyz/health
+ssh -i ~/.ssh/do_telegram_retail -o IdentitiesOnly=yes root@167.172.169.171 'docker exec telegram-retail-backend wget -q -O - http://127.0.0.1:4000/health'
 ```
 
 ### 3. Backup layer
@@ -188,13 +200,23 @@ scripts/server/pitr-drill-postgres.sh
 
 ## Если пришел Telegram alert
 
-### Backend health failed
+### Backend internal health failed
 
 Смотри:
 
 ```bash
 docker logs --tail 100 telegram-retail-backend
 docker compose --profile selfhosted-db --env-file .env.server -f docker-compose.server.yml ps
+docker exec telegram-retail-backend wget -q -O - http://127.0.0.1:4000/health
+```
+
+### Public health failed
+
+Смотри:
+
+```bash
+docker logs --tail 100 telegram-retail-caddy 2>/dev/null || true
+docker logs --tail 100 telegram-retail-frontend
 curl -sS https://albufeirashop.xyz/health
 ```
 

@@ -11,10 +11,9 @@ done
 ROOT_DIR="$(cd "$(dirname "${SOURCE_PATH}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env.server"
 ALERT_SCRIPT="${ROOT_DIR}/scripts/server/send-telegram-alert.sh"
+source "${ROOT_DIR}/scripts/server/load-env.sh"
 
-set -a
-source "${ENV_FILE}"
-set +a
+load_env_file "${ENV_FILE}"
 
 APP_DOMAIN="${APP_DOMAIN:?APP_DOMAIN is required}"
 THRESHOLD_DAYS="${SSL_ALERT_THRESHOLD_DAYS:-14}"

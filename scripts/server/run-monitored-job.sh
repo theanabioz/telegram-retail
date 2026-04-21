@@ -11,6 +11,7 @@ done
 ROOT_DIR="$(cd "$(dirname "${SOURCE_PATH}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env.server"
 ALERT_SCRIPT="${ROOT_DIR}/scripts/server/send-telegram-alert.sh"
+source "${ROOT_DIR}/scripts/server/load-env.sh"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo ".env.server is missing." >&2
@@ -26,9 +27,7 @@ STATE_KEY="$1"
 TITLE="$2"
 shift 2
 
-set -a
-source "${ENV_FILE}"
-set +a
+load_env_file "${ENV_FILE}"
 
 ALERT_STATE_DIR="${ALERT_STATE_DIR:-/opt/telegram-retail/state/alerts}"
 STATE_FILE="${ALERT_STATE_DIR}/${STATE_KEY}.state"
@@ -57,4 +56,3 @@ if [[ ! -f "${STATE_FILE}" ]]; then
 fi
 
 exit ${STATUS}
-

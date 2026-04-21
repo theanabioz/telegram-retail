@@ -62,7 +62,8 @@
 
 Стоит добавить уведомления в Telegram, если:
 
-- `backend` стал unhealthy
+- внутренний `backend` перестал отвечать на `127.0.0.1`
+- публичный `https://albufeirashop.xyz/health` стал недоступен
 - `base backup` упал
 - `SQL dump` упал
 - диск заполнился выше порога
@@ -74,6 +75,7 @@
 
 - `scripts/server/send-telegram-alert.sh`
 - `scripts/server/check-backend-health.sh`
+- `scripts/server/check-public-health.sh`
 - `scripts/server/check-disk-usage.sh`
 - `scripts/server/check-ssl-expiry.sh`
 - `scripts/server/run-monitored-job.sh`
@@ -186,9 +188,10 @@ cd /opt/telegram-retail/app
 docker compose --profile selfhosted-db --env-file .env.server -f docker-compose.server.yml ps
 ```
 
-2. Жив ли backend:
+2. Живы ли internal и public health:
 
 ```bash
+docker exec telegram-retail-backend wget -q -O - http://127.0.0.1:4000/health
 curl -sS https://albufeirashop.xyz/health
 ```
 

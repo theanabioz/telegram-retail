@@ -10,6 +10,7 @@ done
 
 ROOT_DIR="$(cd "$(dirname "${SOURCE_PATH}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env.server"
+source "${ROOT_DIR}/scripts/server/load-env.sh"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo ".env.server is missing." >&2
@@ -24,9 +25,7 @@ fi
 TITLE="$1"
 MESSAGE="$2"
 
-set -a
-source "${ENV_FILE}"
-set +a
+load_env_file "${ENV_FILE}"
 
 BOT_TOKEN="${BOT_TOKEN:-}"
 TELEGRAM_ALERT_CHAT_IDS="${TELEGRAM_ALERT_CHAT_IDS:-}"

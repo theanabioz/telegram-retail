@@ -15,25 +15,23 @@ source "${ROOT_DIR}/scripts/server/load-env.sh"
 
 load_env_file "${ENV_FILE}"
 
-PORT="${PORT:-4000}"
+APP_DOMAIN="${APP_DOMAIN:?APP_DOMAIN is required}"
 ALERT_STATE_DIR="${ALERT_STATE_DIR:-/opt/telegram-retail/state/alerts}"
-STATE_FILE="${ALERT_STATE_DIR}/backend-internal-health.state"
-BACKEND_CONTAINER="${BACKEND_CONTAINER:-telegram-retail-backend}"
+STATE_FILE="${ALERT_STATE_DIR}/public-health.state"
 
 mkdir -p "${ALERT_STATE_DIR}"
 
 set +e
-RESPONSE="$(docker exec "${BACKEND_CONTAINER}" wget -q -O - "http://127.0.0.1:${PORT}/health" 2>&1)"
+RESPONSE="$(curl -fsS --max-time 10 "https://${APP_DOMAIN}/health" 2>&1)"
 STATUS=$?
 set -e
 
 if [[ ${STATUS} -eq 0 ]]; then
   if [[ -f "${STATE_FILE}" ]]; then
-    "${ALERT_SCRIPT}" "Backend internal health recovered" "Host: $(hostname)
-Container: ${BACKEND_CONTAINER}
-Endpoint: http://127.0.0.1:${PORT}/health
+    "${ALERT_SCRIPT}" "Public health recovered" "Host: $(hostname)
+Domain: ${APP_DOMAIN}
 
-/health responds again:
+Public /health responds again:
 ${RESPONSE}" || true
     rm -f "${STATE_FILE}"
   fi
@@ -42,11 +40,10 @@ fi
 
 if [[ ! -f "${STATE_FILE}" ]]; then
   printf 'failed\n' > "${STATE_FILE}"
-  "${ALERT_SCRIPT}" "Backend internal health failed" "Host: $(hostname)
-Container: ${BACKEND_CONTAINER}
-Endpoint: http://127.0.0.1:${PORT}/health
+  "${ALERT_SCRIPT}" "Public health failed" "Host: $(hostname)
+Domain: ${APP_DOMAIN}
 
-GET /health failed with:
+GET https://${APP_DOMAIN}/health failed with:
 ${RESPONSE}" || true
 fi
 

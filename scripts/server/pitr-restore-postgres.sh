@@ -11,6 +11,7 @@ done
 ROOT_DIR="$(cd "$(dirname "${SOURCE_PATH}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env.server"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.server.yml"
+source "${ROOT_DIR}/scripts/server/load-env.sh"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo ".env.server is missing." >&2
@@ -38,9 +39,7 @@ if [[ "${CONFIRM_FLAG}" != "--yes" ]]; then
   exit 1
 fi
 
-set -a
-source "${ENV_FILE}"
-set +a
+load_env_file "${ENV_FILE}"
 
 echo "==> Stopping app containers"
 docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop frontend backend postgres-backup postgres >/dev/null
@@ -83,4 +82,3 @@ docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FI
 echo "==> Wait for postgres to promote, then bring app containers back"
 echo "Run after verification:"
 echo "  docker compose --profile selfhosted-db --env-file ${ENV_FILE} -f ${COMPOSE_FILE} up -d backend frontend postgres-backup"
-

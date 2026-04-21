@@ -22,6 +22,7 @@ declare -a SCRIPTS=(
   "send-telegram-alert.sh:retail-send-telegram-alert"
   "run-monitored-job.sh:retail-run-monitored-job"
   "check-backend-health.sh:retail-check-backend-health"
+  "check-public-health.sh:retail-check-public-health"
   "check-disk-usage.sh:retail-check-disk-usage"
   "check-ssl-expiry.sh:retail-check-ssl-expiry"
   "offsite-sync-backups.sh:retail-offsite-sync-backups"
@@ -41,7 +42,8 @@ cat > "${CRON_FILE}" <<'EOF'
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-*/5 * * * * root retail-check-backend-health >> /var/log/telegram-retail-health.log 2>&1
+*/5 * * * * root retail-check-backend-health >> /var/log/telegram-retail-backend-health.log 2>&1
+2-59/5 * * * * root retail-check-public-health >> /var/log/telegram-retail-public-health.log 2>&1
 */15 * * * * root retail-check-disk-usage >> /var/log/telegram-retail-disk.log 2>&1
 17 3 * * * root retail-check-ssl-expiry >> /var/log/telegram-retail-ssl.log 2>&1
 0 3 * * * root retail-run-monitored-job sql-backup "SQL backup" retail-backup-postgres >> /var/log/telegram-retail-sql-backup.log 2>&1
