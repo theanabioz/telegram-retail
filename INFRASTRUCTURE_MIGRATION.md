@@ -52,6 +52,16 @@ Temporary operational note:
 - [scripts/server/pitr-drill-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/pitr-drill-postgres.sh)
 - [scripts/server/bootstrap-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/bootstrap-postgres.sh)
 
+## Operations Docs
+
+- [RESTORE_RUNBOOK.md](/Users/theanabioz/Documents/telegram-retail/RESTORE_RUNBOOK.md)
+- [SERVER_HARDENING_CHECKLIST.md](/Users/theanabioz/Documents/telegram-retail/SERVER_HARDENING_CHECKLIST.md)
+
+These two docs are now the main operational references:
+
+- `RESTORE_RUNBOOK.md` for real restore steps and recovery decisions
+- `SERVER_HARDENING_CHECKLIST.md` for server stability, maintenance, and next hardening priorities
+
 ## What This Gives Us
 
 - a server-native deployment path without deleting the current Vercel setup
