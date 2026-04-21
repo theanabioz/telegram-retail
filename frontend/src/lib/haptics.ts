@@ -7,6 +7,7 @@ import { getTelegramWebApp } from "./telegramWebApp";
 
 type ImpactStyle = "light" | "medium" | "heavy" | "rigid" | "soft";
 type NotificationType = "error" | "success" | "warning";
+type HapticAttribute = ImpactStyle | "selection" | "none";
 
 const CLICKABLE_SELECTOR = [
   "button",
@@ -70,7 +71,9 @@ export function attachGlobalHaptics() {
       return;
     }
 
-    if (!target.closest(CLICKABLE_SELECTOR)) {
+    const clickable = target.closest(CLICKABLE_SELECTOR);
+
+    if (!clickable) {
       return;
     }
 
@@ -84,6 +87,23 @@ export function attachGlobalHaptics() {
     }
 
     lastPointerFeedbackAt = now;
+
+    const customHaptic = clickable.getAttribute("data-haptic") as HapticAttribute | null;
+
+    if (customHaptic === "none") {
+      return;
+    }
+
+    if (customHaptic === "selection") {
+      triggerSelection();
+      return;
+    }
+
+    if (customHaptic === "soft" || customHaptic === "rigid" || customHaptic === "light" || customHaptic === "medium" || customHaptic === "heavy") {
+      triggerImpact(customHaptic);
+      return;
+    }
+
     triggerImpact("light");
   };
 

@@ -173,11 +173,13 @@ function getWeekEndSunday(weekStart: Date) {
 function formatWeekRangeLabel(weekStart: Date, weekEnd: Date) {
   const locale = getLocaleTag();
   const sameMonth = weekStart.getMonth() === weekEnd.getMonth() && weekStart.getFullYear() === weekEnd.getFullYear();
+  const formatCapitalMonth = (value: Date) => {
+    const month = value.toLocaleDateString(locale, { month: "long" });
+    return month.charAt(0).toUpperCase() + month.slice(1);
+  };
 
   if (sameMonth) {
-    return `${weekStart.getDate()}-${weekEnd.getDate()} ${weekEnd.toLocaleDateString(locale, {
-      month: "long",
-    })}`;
+    return `${weekStart.getDate()}-${weekEnd.getDate()} ${formatCapitalMonth(weekEnd)}`;
   }
 
   return `${weekStart.toLocaleDateString(locale, {
@@ -187,6 +189,29 @@ function formatWeekRangeLabel(weekStart: Date, weekEnd: Date) {
     day: "numeric",
     month: "short",
   })}`;
+}
+
+function formatProfileShiftDateLabel(value: string) {
+  const date = new Date(value);
+  const locale = getLocaleTag();
+
+  if (locale === "ru-RU") {
+    const month = date.toLocaleDateString(locale, { month: "long" });
+    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+    return `${date.getDate()} ${capitalizedMonth} ${date.getFullYear()}`;
+  }
+
+  if (locale === "pt-PT") {
+    const month = date.toLocaleDateString(locale, { month: "long" });
+    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+    return `${date.getDate()} ${capitalizedMonth} ${date.getFullYear()}`;
+  }
+
+  return date.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function formatSellerPaymentMethod(method: "cash" | "card") {
@@ -2276,10 +2301,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               >
                 <VStack align="start" spacing={0.5}>
                   <Text fontWeight="800">
-                    {new Date(entry.shift.started_at).toLocaleDateString(getLocaleTag(), {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {formatProfileShiftDateLabel(entry.shift.started_at)}
                   </Text>
                   <Text fontSize="sm" color="surface.500">
                     {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
@@ -2463,6 +2485,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <HStack
                   as="button"
                   type="button"
+                  data-haptic="selection"
                   spacing={2.5}
                   bg="rgba(255,255,255,0.6)"
                   backdropFilter="blur(10px)"
