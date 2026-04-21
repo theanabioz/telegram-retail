@@ -127,6 +127,17 @@ function mapNumbers<T extends NumericRow>(row: T, keys: string[]) {
   return clone as T;
 }
 
+function mapTimestamps<T extends NumericRow>(row: T, keys: string[]) {
+  const clone = { ...row } as Record<string, unknown>;
+  for (const key of keys) {
+    const value = clone[key];
+    if (value instanceof Date) {
+      clone[key] = value.toISOString();
+    }
+  }
+  return clone as T;
+}
+
 export async function listAdminSales(limit: number) {
   try {
     const result = await queryDb<AdminSaleRow>(
@@ -138,7 +149,12 @@ export async function listAdminSales(limit: number) {
       [limit]
     );
 
-    return result.rows.map((row) => mapNumbers(row, ["subtotal_amount", "discount_amount", "total_amount"]));
+    return result.rows.map((row) =>
+      mapTimestamps(mapNumbers(row, ["subtotal_amount", "discount_amount", "total_amount"]), [
+        "created_at",
+        "deleted_at",
+      ])
+    );
   } catch (error) {
     throw new HttpError(500, `Failed to load admin sales: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -175,7 +191,7 @@ export async function listAdminReturns(limit: number) {
       [limit]
     );
 
-    return result.rows.map((row) => mapNumbers(row, ["total_amount"]));
+    return result.rows.map((row) => mapTimestamps(mapNumbers(row, ["total_amount"]), ["created_at"]));
   } catch (error) {
     throw new HttpError(500, `Failed to load admin returns: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -208,7 +224,7 @@ export async function listAdminStores() {
        from public.stores
        order by name asc`
     );
-    return result.rows;
+    return result.rows.map((row) => mapTimestamps(row, ["created_at", "updated_at"]));
   } catch (error) {
     throw new HttpError(500, `Failed to load stores: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -221,7 +237,7 @@ export async function listAdminUsers() {
        from public.users
        order by full_name asc`
     );
-    return result.rows;
+    return result.rows.map((row) => mapTimestamps(row, ["started_at"]));
   } catch (error) {
     throw new HttpError(500, `Failed to load users: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -267,7 +283,9 @@ export async function listOpenShifts() {
        order by started_at desc`
     );
 
-    return result.rows.map((row) => mapNumbers(row, ["paused_total_seconds"]));
+    return result.rows.map((row) =>
+      mapTimestamps(mapNumbers(row, ["paused_total_seconds"]), ["started_at"])
+    );
   } catch (error) {
     throw new HttpError(500, `Failed to load open shifts: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -295,7 +313,9 @@ export async function listProducts(options?: { archived?: boolean }) {
        order by name asc`
     );
 
-    return result.rows.map((row) => mapNumbers(row, ["default_price"]));
+    return result.rows.map((row) =>
+      mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"])
+    );
   } catch (error) {
     throw new HttpError(500, `Failed to load products: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -310,7 +330,9 @@ export async function findAdminProductById(productId: string) {
       [productId]
     );
 
-    return row ? mapNumbers(row, ["default_price"]) : null;
+    return row
+      ? mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"])
+      : null;
   } catch (error) {
     throw new HttpError(500, `Failed to load product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -330,7 +352,7 @@ export async function createAdminProduct(input: {
       [input.name, input.sku, input.default_price, input.is_active]
     );
 
-    return mapNumbers(row, ["default_price"]);
+    return mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"]);
   } catch (error) {
     throw new HttpError(500, `Failed to create product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -356,7 +378,9 @@ export async function updateAdminProduct(
       [productId, ...values]
     );
 
-    return row ? mapNumbers(row, ["default_price"]) : null;
+    return row
+      ? mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"])
+      : null;
   } catch (error) {
     throw new HttpError(500, `Failed to update product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -400,7 +424,9 @@ export async function archiveAdminProduct(productId: string) {
        returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
       [productId]
     );
-    return row ? mapNumbers(row, ["default_price"]) : null;
+    return row
+      ? mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"])
+      : null;
   } catch (error) {
     throw new HttpError(500, `Failed to archive product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -415,7 +441,9 @@ export async function restoreAdminProduct(productId: string) {
        returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
       [productId]
     );
-    return row ? mapNumbers(row, ["default_price"]) : null;
+    return row
+      ? mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"])
+      : null;
   } catch (error) {
     throw new HttpError(500, `Failed to restore product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -481,7 +509,7 @@ export async function listAdminStoreProducts(storeId?: string) {
       storeId ? [storeId] : []
     );
 
-    return result.rows.map((row) => mapNumbers(row, ["price"]));
+    return result.rows.map((row) => mapTimestamps(mapNumbers(row, ["price"]), ["updated_at"]));
   } catch (error) {
     throw new HttpError(500, `Failed to load store products: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -495,7 +523,7 @@ export async function findAdminStoreProductById(storeProductId: string) {
        where id = $1`,
       [storeProductId]
     );
-    return row ? mapNumbers(row, ["price"]) : null;
+    return row ? mapTimestamps(mapNumbers(row, ["price"]), ["updated_at"]) : null;
   } catch (error) {
     throw new HttpError(500, `Failed to load store product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -521,7 +549,7 @@ export async function updateAdminStoreProduct(
       [storeProductId, ...values]
     );
 
-    return row ? mapNumbers(row, ["price"]) : null;
+    return row ? mapTimestamps(mapNumbers(row, ["price"]), ["updated_at"]) : null;
   } catch (error) {
     throw new HttpError(500, `Failed to update store product: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -529,12 +557,13 @@ export async function updateAdminStoreProduct(
 
 export async function findAdminStoreById(storeId: string) {
   try {
-    return await maybeOne<AdminStoreRow>(
+    const row = await maybeOne<AdminStoreRow>(
       `select id, name, address, is_active, created_at, updated_at
        from public.stores
        where id = $1`,
       [storeId]
     );
+    return row ? mapTimestamps(row, ["created_at", "updated_at"]) : null;
   } catch (error) {
     throw new HttpError(500, `Failed to load store: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -542,12 +571,13 @@ export async function findAdminStoreById(storeId: string) {
 
 export async function createAdminStore(input: { name: string; address: string | null; is_active: boolean }) {
   try {
-    return await one<AdminStoreRow>(
+    const row = await one<AdminStoreRow>(
       `insert into public.stores (name, address, is_active)
        values ($1, $2, $3)
        returning id, name, address, is_active, created_at, updated_at`,
       [input.name, input.address, input.is_active]
     );
+    return mapTimestamps(row, ["created_at", "updated_at"]);
   } catch (error) {
     throw new HttpError(500, `Failed to create store: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -565,13 +595,14 @@ export async function updateAdminStore(
 
     const columns = entries.map(([key], index) => `${key} = $${index + 2}`);
     const values = entries.map(([, value]) => value);
-    return await maybeOne<AdminStoreRow>(
+    const row = await maybeOne<AdminStoreRow>(
       `update public.stores
        set ${columns.join(", ")}
        where id = $1
        returning id, name, address, is_active, created_at, updated_at`,
       [storeId, ...values]
     );
+    return row ? mapTimestamps(row, ["created_at", "updated_at"]) : null;
   } catch (error) {
     throw new HttpError(500, `Failed to update store: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -594,12 +625,13 @@ export async function closeCurrentAssignment(userId: string) {
 
 export async function createUserStoreAssignment(input: { userId: string; storeId: string; assignedBy: string }) {
   try {
-    return await one<AdminAssignmentRow>(
+    const row = await one<AdminAssignmentRow>(
       `insert into public.user_store_assignments (user_id, store_id, assigned_by, is_current)
        values ($1, $2, $3, true)
        returning id, user_id, store_id, assigned_by, started_at, is_current`,
       [input.userId, input.storeId, input.assignedBy]
     );
+    return mapTimestamps(row, ["started_at"]);
   } catch (error) {
     throw new HttpError(500, `Failed to create assignment: ${error instanceof Error ? error.message : String(error)}`);
   }
