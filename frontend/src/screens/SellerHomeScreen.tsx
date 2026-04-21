@@ -439,6 +439,28 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   }, [shiftHistory]);
 
   const activeSellerProfileWeek = sellerProfileShiftWeeks[sellerProfileWeekIndex] ?? null;
+  const canOpenNewerSellerProfileWeek = sellerProfileWeekIndex > 0;
+  const canOpenOlderSellerProfileWeek =
+    sellerProfileWeekIndex < sellerProfileShiftWeeks.length - 1 || Boolean(shiftHistoryPagination?.hasMore);
+
+  const goToOlderSellerProfileWeek = useCallback(async () => {
+    if (sellerProfileWeekIndex < sellerProfileShiftWeeks.length - 1) {
+      setSellerProfileWeekIndex((current) => current + 1);
+      return;
+    }
+
+    if (!shiftHistoryPagination?.hasMore) {
+      return;
+    }
+
+    const nextIndex = sellerProfileShiftWeeks.length;
+    await loadShiftHistory(50, shiftHistory.length);
+    setSellerProfileWeekIndex(nextIndex);
+  }, [loadShiftHistory, sellerProfileShiftWeeks.length, sellerProfileWeekIndex, shiftHistory.length, shiftHistoryPagination?.hasMore]);
+
+  const goToNewerSellerProfileWeek = useCallback(() => {
+    setSellerProfileWeekIndex((current) => Math.max(current - 1, 0));
+  }, []);
 
   const formatCartItemsCount = (count: number) => {
     if (locale === "ru") {
@@ -2138,40 +2160,42 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
-          <HStack justify="space-between" align="center">
-            <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentShifts")}</Text>
-            {activeSellerProfileWeek ? (
-              <HStack spacing={2}>
-                <IconButton
-                  aria-label={t("orders.back")}
-                  icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} />}
-                  size="sm"
-                  borderRadius="14px"
-                  variant="ghost"
-                  color="surface.600"
-                  isDisabled={sellerProfileWeekIndex >= sellerProfileShiftWeeks.length - 1}
-                  onClick={() => setSellerProfileWeekIndex((current) => Math.min(current + 1, sellerProfileShiftWeeks.length - 1))}
-                />
-                <IconButton
-                  aria-label={t("shift.viewAll")}
-                  icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} transform="rotate(180deg)" />}
-                  size="sm"
-                  borderRadius="14px"
-                  variant="ghost"
-                  color="surface.600"
-                  isDisabled={sellerProfileWeekIndex <= 0}
-                  onClick={() => setSellerProfileWeekIndex((current) => Math.max(current - 1, 0))}
-                />
-              </HStack>
-            ) : null}
-          </HStack>
+          <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentShifts")}</Text>
 
           {activeSellerProfileWeek ? (
-            <Box bg={innerSurface} borderRadius="18px" px={4} py={3}>
-              <Text fontSize="sm" color="surface.700" fontWeight="800" textAlign="center">
-                {formatWeekRangeLabel(activeSellerProfileWeek.start, activeSellerProfileWeek.end)}
-              </Text>
-            </Box>
+            <HStack spacing={3}>
+              <IconButton
+                aria-label={t("orders.back")}
+                icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} />}
+                size="sm"
+                borderRadius="16px"
+                bg={innerSurface}
+                color="surface.700"
+                flexShrink={0}
+                isDisabled={!canOpenOlderSellerProfileWeek}
+                onClick={() => void goToOlderSellerProfileWeek()}
+                _hover={{ bg: "rgba(231,228,222,0.92)" }}
+                _active={{ transform: "scale(0.96)" }}
+              />
+              <Box bg={innerSurface} borderRadius="18px" px={4} py={3} flex="1">
+                <Text fontSize="sm" color="surface.700" fontWeight="800" textAlign="center">
+                  {formatWeekRangeLabel(activeSellerProfileWeek.start, activeSellerProfileWeek.end)}
+                </Text>
+              </Box>
+              <IconButton
+                aria-label={t("shift.viewAll")}
+                icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} transform="rotate(180deg)" />}
+                size="sm"
+                borderRadius="16px"
+                bg={innerSurface}
+                color="surface.700"
+                flexShrink={0}
+                isDisabled={!canOpenNewerSellerProfileWeek}
+                onClick={goToNewerSellerProfileWeek}
+                _hover={{ bg: "rgba(231,228,222,0.92)" }}
+                _active={{ transform: "scale(0.96)" }}
+              />
+            </HStack>
           ) : null}
 
           <VStack spacing={3} align="stretch">
@@ -2410,7 +2434,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   onClick={() => {
                     setSellerProfileWeekIndex(0);
                     setIsSellerProfileOpen(true);
-                    void loadShiftHistory(50, 0);
+                    void loadShiftHistory(200, 0);
                   }}
                   _active={{ transform: "scale(0.98)" }}
                 >
