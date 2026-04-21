@@ -5,6 +5,8 @@ services:
       dockerfile: frontend/Dockerfile.server
     container_name: telegram-retail-frontend
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     depends_on:
       backend:
         condition: service_healthy
@@ -16,6 +18,17 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
@@ -23,6 +36,8 @@ services:
       dockerfile: backend/Dockerfile.server
     container_name: telegram-retail-backend
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     env_file:
       - .env.server
     environment:
@@ -35,6 +50,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   postgres:
     image: postgres:16-alpine
@@ -55,9 +75,63 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: telegram-retail-autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 15
+      CURL_TIMEOUT: 10
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  postgres-backup:
+    image: postgres:16-alpine
+    container_name: telegram-retail-postgres-backup
+    profiles: ["selfhosted-db"]
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set in .env.server}
+      POSTGRES_DB: ${POSTGRES_DB:-telegram_retail}
+      POSTGRES_USER: ${POSTGRES_USER:-telegram_retail}
+      POSTGRES_HOST: postgres
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        while true; do
+          stamp="$$(date +%Y-%m-%d_%H-%M-%S)";
+          target="$$BACKUP_DIR/postgres_$$stamp.sql.gz";
+          pg_dump -h "$$POSTGRES_HOST" -U "$$POSTGRES_USER" "$$POSTGRES_DB" | gzip > "$$target";
+          find "$$BACKUP_DIR" -type f -name 'postgres_*.sql.gz' -mtime +"$$BACKUP_RETENTION_DAYS" -delete;
+          sleep 86400;
+        done
+    volumes:
+      - /opt/telegram-retail/backups:/backups
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
 
 volumes:
   caddy_data:
   caddy_config:
   postgres_data:
-

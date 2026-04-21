@@ -27,7 +27,13 @@ Completed on the droplet:
   - `443/tcp`
 - Docker installed
 - Docker Compose v2 installed
-- SSH hardened with password auth disabled and root restricted to key auth
+- runtime deployed under Docker
+- domain `albufeirashop.xyz` pointed to the droplet
+- `Caddy` serving HTTPS with automatic Let's Encrypt renewal
+
+Temporary operational note:
+
+- password SSH access is currently enabled by request and should be disabled again after the migration settles
 
 ## Repo Files Added For Server Runtime
 
@@ -37,6 +43,9 @@ Completed on the droplet:
 - [infra/Caddyfile](/Users/theanabioz/Documents/telegram-retail/infra/Caddyfile)
 - [.env.server.example](/Users/theanabioz/Documents/telegram-retail/.env.server.example)
 - [.dockerignore](/Users/theanabioz/Documents/telegram-retail/.dockerignore)
+- [scripts/server/deploy.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/deploy.sh)
+- [scripts/server/smoke-check.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/smoke-check.sh)
+- [scripts/server/backup-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/backup-postgres.sh)
 
 ## What This Gives Us
 
@@ -44,22 +53,37 @@ Completed on the droplet:
 - same backend code and same frontend code
 - same Supabase project for now
 - a future-ready optional Postgres container profile for self-hosting later
+- auto-healing for unhealthy stateless containers
+- bounded Docker logs to reduce disk growth
+- reusable deploy/smoke scripts for lower-friction operations
+
+## Current Runtime Notes
+
+- `frontend` and `backend` are live on the droplet
+- `Supabase` remains the production database in phase 1
+- the self-hosted `postgres` profile exists but is not enabled yet
+- `postgres-backup` is also profile-gated and will only run once we switch the database locally
 
 ## Suggested Next Steps
 
-1. Point the new `.xyz` domain to the droplet.
-2. Copy `.env.server.example` to `.env.server` and fill real values.
-3. Copy the repo to the droplet at `/opt/telegram-retail/app`.
-4. Run:
+1. Run smoke tests against `https://albufeirashop.xyz`.
+2. Add deploy helper scripts on the server path.
+3. Keep validating real seller/admin flows on the new runtime.
+4. Only after runtime confidence is high, plan the Postgres migration off Supabase.
+5. Disable temporary password SSH access once no longer needed.
+
+## Deploy Command
 
 ```bash
 docker compose -f docker-compose.server.yml --env-file .env.server up -d --build
 ```
 
-5. Verify:
-   - `https://your-domain/health`
-   - frontend loads
-   - auth works inside Telegram
+## Verify
+
+- `https://albufeirashop.xyz/health`
+- frontend loads
+- auth works inside Telegram
+- `scripts/server/smoke-check.sh albufeirashop.xyz`
 
 ## Rollback
 
