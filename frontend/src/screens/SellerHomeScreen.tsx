@@ -2494,9 +2494,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </VStack>
 
                 <HStack
-                  as="button"
-                  type="button"
-                  data-haptic="none"
                   spacing={2.5}
                   bg="rgba(255,255,255,0.6)"
                   backdropFilter="blur(10px)"
@@ -2507,6 +2504,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   border="1px solid"
                   borderColor="rgba(255,255,255,0.8)"
                   boxShadow="0 4px 12px rgba(0,0,0,0.03)"
+                  cursor="pointer"
+                  userSelect="none"
+                  sx={{
+                    WebkitTapHighlightColor: "transparent",
+                    touchAction: "manipulation",
+                  }}
                   onClick={() => {
                     setSellerProfileWeekIndex(0);
                     setIsSellerProfileOpen(true);
