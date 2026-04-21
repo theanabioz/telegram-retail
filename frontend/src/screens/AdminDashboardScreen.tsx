@@ -1058,6 +1058,54 @@ export function AdminDashboardScreen({
     [products]
   );
 
+  const formatInventoryProductsInStore = (count: number) => {
+    if (locale === "ru") {
+      return `${count} товаров в этом магазине`;
+    }
+
+    if (locale === "pt") {
+      return `${count} produtos nesta loja`;
+    }
+
+    return `${count} products in this store`;
+  };
+
+  const formatInventoryItemsCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} позиций`;
+    }
+
+    if (locale === "pt") {
+      return `${count} itens`;
+    }
+
+    return `${count} items`;
+  };
+
+  const formatInventoryStoresEnabled = (count: number) => {
+    if (locale === "ru") {
+      return `${count} магазинов активно`;
+    }
+
+    if (locale === "pt") {
+      return `${count} lojas ativas`;
+    }
+
+    return `${count} stores enabled`;
+  };
+
+  const formatInventoryLatestCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} последних`;
+    }
+
+    if (locale === "pt") {
+      return `${count} mais recentes`;
+    }
+
+    return `${count} latest`;
+  };
+
   const handleSaveStoreProduct = async (storeProductId: string) => {
     const draft = inventoryEdits[storeProductId];
 
@@ -1068,7 +1116,7 @@ export function AdminDashboardScreen({
     const parsedPrice = parseDecimalInput(draft.price);
 
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      window.alert("Enter a valid price. You can use either 12.50 or 12,50.");
+      window.alert(t("admin.inventory.invalidPrice"));
       return;
     }
 
@@ -1082,7 +1130,7 @@ export function AdminDashboardScreen({
     const parsedPrice = parseDecimalInput(newProduct.defaultPrice);
 
     if (!newProduct.name.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      window.alert("Enter product name and a valid price. You can use either 12.50 or 12,50.");
+      window.alert(t("admin.inventory.invalidProduct"));
       return;
     }
 
@@ -1103,7 +1151,7 @@ export function AdminDashboardScreen({
     const parsedPrice = parseDecimalInput(draft?.defaultPrice ?? "");
 
     if (!draft || !draft.name.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      window.alert("Enter product name and a valid price. You can use either 12.50 or 12,50.");
+      window.alert(t("admin.inventory.invalidProduct"));
       return;
     }
 
@@ -1116,7 +1164,7 @@ export function AdminDashboardScreen({
   };
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
-    const confirmed = window.confirm(`Delete ${productName}? This is only possible if the product has no history.`);
+    const confirmed = window.confirm(t("admin.inventory.confirmDelete", { name: productName }));
 
     if (!confirmed) {
       return;
@@ -1125,7 +1173,7 @@ export function AdminDashboardScreen({
     try {
       await deleteProduct(productId);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete product";
+      const message = error instanceof Error ? error.message : t("admin.inventory.deleteFailed");
       window.alert(message);
       return;
     }
@@ -1140,7 +1188,7 @@ export function AdminDashboardScreen({
   };
 
   const handleArchiveProduct = async (productId: string, productName: string) => {
-    const confirmed = window.confirm(`Archive ${productName}? It will be removed from the active product catalog.`);
+    const confirmed = window.confirm(t("admin.inventory.confirmArchive", { name: productName }));
 
     if (!confirmed) {
       return;
@@ -1149,7 +1197,7 @@ export function AdminDashboardScreen({
     try {
       await archiveProduct(productId);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to archive product";
+      const message = error instanceof Error ? error.message : t("admin.inventory.archiveFailed");
       window.alert(message);
       return;
     }
@@ -1160,7 +1208,7 @@ export function AdminDashboardScreen({
   };
 
   const handleRestoreProduct = async (productId: string, productName: string) => {
-    const confirmed = window.confirm(`Restore ${productName} back to the active product catalog?`);
+    const confirmed = window.confirm(t("admin.inventory.confirmRestore", { name: productName }));
 
     if (!confirmed) {
       return;
@@ -1169,7 +1217,7 @@ export function AdminDashboardScreen({
     try {
       await restoreProduct(productId);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to restore product";
+      const message = error instanceof Error ? error.message : t("admin.inventory.restoreFailed");
       window.alert(message);
       return;
     }
@@ -1189,7 +1237,7 @@ export function AdminDashboardScreen({
     const parsedPrice = parseDecimalInput(draft.price);
 
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      window.alert("Enter a valid price. You can use either 12.50 or 12,50.");
+      window.alert(t("admin.inventory.invalidPrice"));
       return;
     }
 
@@ -1218,7 +1266,7 @@ export function AdminDashboardScreen({
         : undefined);
 
     if (!item || !draft) {
-      window.alert("Product details are not ready yet. Please reopen the product and try again.");
+      window.alert(t("admin.inventory.detailsNotReady"));
       return;
     }
 
@@ -1230,8 +1278,8 @@ export function AdminDashboardScreen({
     ) {
       window.alert(
         movementType === "manual_adjustment"
-          ? "Enter a stock quantity of 0 or more."
-          : "Enter a quantity greater than 0."
+          ? t("admin.inventory.absoluteQuantityInvalid")
+          : t("admin.inventory.quantityInvalid")
       );
       return;
     }
@@ -1244,10 +1292,10 @@ export function AdminDashboardScreen({
       reason:
         draft.adjustReason.trim() ||
         (movementType === "restock"
-          ? "Admin restock"
+          ? t("admin.inventory.adminRestockReason")
           : movementType === "writeoff"
-            ? "Admin writeoff"
-            : `Admin set stock to ${parsedQuantity}`),
+            ? t("admin.inventory.adminWriteoffReason")
+            : t("admin.inventory.adminSetStockReason", { count: parsedQuantity })),
     });
 
     setInventoryEdits((current) => ({
@@ -2063,8 +2111,8 @@ export function AdminDashboardScreen({
     const totalUnits = visibleInventoryItems.reduce((total, item) => total + item.stockQuantity, 0);
     const lowStockCount = visibleInventoryItems.filter((item) => item.stockQuantity <= 10).length;
     const inventorySummaryCards = [
-      { label: "Total Units", value: String(totalUnits) },
-      { label: "Low Stock", value: String(lowStockCount) },
+      { label: t("admin.inventory.totalUnits"), value: String(totalUnits) },
+      { label: t("admin.inventory.lowStock"), value: String(lowStockCount) },
     ];
     const itemMovementHistory = selectedItem
       ? visibleInventoryHistory.filter((entry) => entry.product?.id === selectedItem.productId).slice(0, 6)
@@ -2072,7 +2120,7 @@ export function AdminDashboardScreen({
     const getInventoryMovementUi = (movementType: string, quantityDelta: number) => {
       if (movementType === "sale") {
         return {
-          title: "Sale",
+          title: t("admin.inventory.sale"),
           icon: LuReceiptText,
           iconBg: "rgba(74,132,244,0.14)",
           iconColor: "brand.600",
@@ -2081,7 +2129,7 @@ export function AdminDashboardScreen({
 
       if (movementType === "return") {
         return {
-          title: "Return",
+          title: t("admin.inventory.return"),
           icon: LuReceiptText,
           iconBg: "rgba(34,197,94,0.12)",
           iconColor: "green.600",
@@ -2090,7 +2138,7 @@ export function AdminDashboardScreen({
 
       if (movementType === "restock") {
         return {
-          title: "Restock",
+          title: t("admin.inventory.restock"),
           icon: LuPlus,
           iconBg: "rgba(74,132,244,0.14)",
           iconColor: "brand.600",
@@ -2099,7 +2147,7 @@ export function AdminDashboardScreen({
 
       if (movementType === "writeoff") {
         return {
-          title: "Write-off",
+          title: t("admin.inventory.writeoff"),
           icon: LuMinus,
           iconBg: "rgba(248,113,113,0.14)",
           iconColor: "red.500",
@@ -2108,7 +2156,7 @@ export function AdminDashboardScreen({
 
       if (movementType === "manual_adjustment") {
         return {
-          title: "Set Stock",
+          title: t("admin.inventory.setStock"),
           icon: quantityDelta >= 0 ? LuPlus : LuMinus,
           iconBg: quantityDelta >= 0 ? "rgba(34,197,94,0.12)" : "rgba(248,113,113,0.14)",
           iconColor: quantityDelta >= 0 ? "green.600" : "red.500",
@@ -2117,7 +2165,7 @@ export function AdminDashboardScreen({
 
       if (movementType === "sale_deletion") {
         return {
-          title: "Sale Deleted",
+          title: t("admin.inventory.saleDeleted"),
           icon: LuMinus,
           iconBg: "rgba(248,113,113,0.14)",
           iconColor: "red.500",
@@ -2158,7 +2206,7 @@ export function AdminDashboardScreen({
                       setProductDetailMode("overview");
                     }}
                   >
-                    Back
+                    {t("admin.inventory.back")}
                   </Button>
                 </HStack>
               ) : null}
@@ -2170,12 +2218,18 @@ export function AdminDashboardScreen({
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
                     {selectedProduct.isArchived
-                      ? `Archived ${selectedProduct.archivedAt ? formatShortDate(selectedProduct.archivedAt) : ""}`.trim()
-                      : `${selectedProduct.enabledStoreCount} stores enabled`}
+                      ? `${t("admin.inventory.archived")} ${selectedProduct.archivedAt ? formatShortDate(selectedProduct.archivedAt) : ""}`.trim()
+                      : formatInventoryStoresEnabled(selectedProduct.enabledStoreCount)}
                   </Text>
                 </VStack>
                 <StatusPill
-                  label={selectedProduct.isArchived ? "Archived" : selectedProduct.isActive ? "Active" : "Inactive"}
+                  label={
+                    selectedProduct.isArchived
+                      ? t("admin.inventory.archived")
+                      : selectedProduct.isActive
+                        ? t("admin.inventory.active")
+                        : t("admin.inventory.inactive")
+                  }
                   tone={selectedProduct.isArchived ? "orange" : selectedProduct.isActive ? "green" : "red"}
                 />
               </HStack>
@@ -2196,9 +2250,13 @@ export function AdminDashboardScreen({
                     bg={isActive ? "surface.900" : "transparent"}
                     color={isActive ? "white" : "surface.500"}
                     _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                    onClick={() => setProductDetailMode(mode)}
-                  >
-                    {mode === "overview" ? "Overview" : mode === "settings" ? "Settings" : "Stores"}
+                  onClick={() => setProductDetailMode(mode)}
+                >
+                    {mode === "overview"
+                      ? t("admin.inventory.overviewTab")
+                      : mode === "settings"
+                        ? t("admin.inventory.settingsTab")
+                        : t("admin.inventory.storesTab")}
                   </Button>
                 );
               })}
@@ -2210,14 +2268,18 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <SimpleGrid columns={2} spacing={3}>
                   {[
-                    { label: "Default Price", value: formatEur(selectedProduct.defaultPrice) },
+                    { label: t("admin.inventory.defaultPrice"), value: formatEur(selectedProduct.defaultPrice) },
                     {
-                      label: "Status",
-                      value: selectedProduct.isArchived ? "Archived" : selectedProduct.isActive ? "Active" : "Inactive",
+                      label: t("admin.inventory.status"),
+                      value: selectedProduct.isArchived
+                        ? t("admin.inventory.archived")
+                        : selectedProduct.isActive
+                          ? t("admin.inventory.active")
+                          : t("admin.inventory.inactive"),
                     },
-                    { label: "Stores Enabled", value: `${selectedProduct.enabledStoreCount}` },
+                    { label: t("admin.inventory.storesEnabled"), value: `${selectedProduct.enabledStoreCount}` },
                     {
-                      label: selectedProduct.isArchived ? "Archived" : "Updated",
+                      label: selectedProduct.isArchived ? t("admin.inventory.archived") : t("admin.inventory.updated"),
                       value: formatShortDate(selectedProduct.isArchived ? selectedProduct.archivedAt ?? selectedProduct.updatedAt : selectedProduct.updatedAt),
                     },
                   ].map((card) => (
@@ -2240,7 +2302,7 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <VStack align="stretch" spacing={2}>
                   <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                    Product name
+                    {t("admin.inventory.productName")}
                   </Text>
                   <Input
                     value={draft.name}
@@ -2250,7 +2312,7 @@ export function AdminDashboardScreen({
                         [selectedProduct.id]: { ...draft, name: event.target.value },
                       }))
                     }
-                    placeholder="Product name"
+                    placeholder={t("admin.inventory.productName")}
                     borderRadius="18px"
                     bg="white"
                     borderColor="rgba(226,224,218,0.95)"
@@ -2259,7 +2321,7 @@ export function AdminDashboardScreen({
 
                 <VStack align="stretch" spacing={2}>
                   <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                    Default price
+                    {t("admin.inventory.defaultPrice")}
                   </Text>
                   <Input
                     value={draft.defaultPrice}
@@ -2269,7 +2331,7 @@ export function AdminDashboardScreen({
                         [selectedProduct.id]: { ...draft, defaultPrice: event.target.value },
                       }))
                     }
-                    placeholder="Default price"
+                    placeholder={t("admin.inventory.defaultPrice")}
                     inputMode="decimal"
                     borderRadius="18px"
                     bg="white"
@@ -2290,7 +2352,7 @@ export function AdminDashboardScreen({
                       }))
                     }
                   >
-                    Active
+                    {t("admin.inventory.active")}
                   </Button>
                   <Button
                     borderRadius="16px"
@@ -2304,7 +2366,7 @@ export function AdminDashboardScreen({
                       }))
                     }
                   >
-                    Inactive
+                    {t("admin.inventory.inactive")}
                   </Button>
                 </SimpleGrid>
 
@@ -2317,7 +2379,7 @@ export function AdminDashboardScreen({
                   isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                   onClick={() => void handleSaveProduct(selectedProduct.id)}
                 >
-                  Save Product
+                  {t("admin.inventory.saveProduct")}
                 </Button>
 
                 {selectedProduct.isArchived ? (
@@ -2331,7 +2393,7 @@ export function AdminDashboardScreen({
                       isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleRestoreProduct(selectedProduct.id, selectedProduct.name)}
                     >
-                      Restore Product
+                      {t("admin.inventory.restoreProduct")}
                     </Button>
                     <Button
                       size="sm"
@@ -2342,7 +2404,7 @@ export function AdminDashboardScreen({
                       isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
                     >
-                      Delete Product
+                      {t("admin.inventory.deleteProduct")}
                     </Button>
                   </>
                 ) : (
@@ -2356,7 +2418,7 @@ export function AdminDashboardScreen({
                       isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
                     >
-                      Delete Product
+                      {t("admin.inventory.deleteProduct")}
                     </Button>
                     <Button
                       size="sm"
@@ -2367,7 +2429,7 @@ export function AdminDashboardScreen({
                       isLoading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleArchiveProduct(selectedProduct.id, selectedProduct.name)}
                     >
-                      Archive Product
+                      {t("admin.inventory.archiveProduct")}
                     </Button>
                   </>
                 )}
@@ -2380,10 +2442,10 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="lg">
-                    Store Availability
+                    {t("admin.inventory.storeAvailability")}
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="700">
-                    Enable the product and set store-specific pricing.
+                    {t("admin.inventory.storeAvailabilityDescription")}
                   </Text>
                 </VStack>
 
@@ -2403,15 +2465,18 @@ export function AdminDashboardScreen({
                               {setting.storeName}
                             </Text>
                             <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                              {storeInfo?.address?.trim() || "Store location not specified"}
+                              {storeInfo?.address?.trim() || t("admin.inventory.storeLocationMissing")}
                             </Text>
                           </VStack>
-                          <StatusPill label={storeDraft.isEnabled ? "Enabled" : "Disabled"} tone={storeDraft.isEnabled ? "green" : "red"} />
+                          <StatusPill
+                            label={storeDraft.isEnabled ? t("admin.inventory.enabled") : t("admin.inventory.disabled")}
+                            tone={storeDraft.isEnabled ? "green" : "red"}
+                          />
                         </HStack>
 
                         <VStack align="stretch" spacing={2}>
                           <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                            Store price
+                            {t("admin.inventory.storePrice")}
                           </Text>
                           <Input
                             value={storeDraft.price}
@@ -2424,7 +2489,7 @@ export function AdminDashboardScreen({
                                 },
                               }))
                             }
-                            placeholder="Store price"
+                            placeholder={t("admin.inventory.storePrice")}
                             inputMode="decimal"
                             borderRadius="16px"
                             bg="white"
@@ -2445,7 +2510,7 @@ export function AdminDashboardScreen({
                               }))
                             }
                           >
-                            Enabled
+                            {t("admin.inventory.enabled")}
                           </Button>
                           <Button
                             borderRadius="16px"
@@ -2459,7 +2524,7 @@ export function AdminDashboardScreen({
                               }))
                             }
                           >
-                            Disabled
+                            {t("admin.inventory.disabled")}
                           </Button>
                         </SimpleGrid>
 
@@ -2472,7 +2537,7 @@ export function AdminDashboardScreen({
                           isLoading={Boolean(pendingStoreProductIds[setting.storeProductId])}
                           onClick={() => void handleSaveProductStoreSetting(setting.storeProductId)}
                         >
-                          Save Store Settings
+                          {t("admin.inventory.saveStoreSettings")}
                         </Button>
                       </VStack>
                     </Box>
@@ -2498,7 +2563,11 @@ export function AdminDashboardScreen({
         ? Math.max(0, Number(draft.adjustQuantity) || 0)
         : Math.max(1, Number(draft.adjustQuantity) || 1);
       const movementLabel =
-        movementType === "restock" ? "Restock" : movementType === "writeoff" ? "Write-off" : "Set Stock";
+        movementType === "restock"
+          ? t("admin.inventory.restock")
+          : movementType === "writeoff"
+            ? t("admin.inventory.writeoff")
+            : t("admin.inventory.setStock");
       const movementTone =
         movementType === "restock"
           ? { bg: "brand.500", hover: "brand.600", color: "white" }
@@ -2523,7 +2592,7 @@ export function AdminDashboardScreen({
                       setInventoryDetailMode("overview");
                     }}
                   >
-                    Back
+                    {t("admin.inventory.back")}
                   </Button>
                 </HStack>
               ) : null}
@@ -2539,10 +2608,13 @@ export function AdminDashboardScreen({
                 </VStack>
                 <VStack align="end" spacing={1} flexShrink={0}>
                   <StatusPill
-                    label={`${selectedItem.stockQuantity} units`}
+                    label={`${selectedItem.stockQuantity} ${t("admin.inventory.units")}`}
                     tone={selectedItem.stockQuantity <= 10 ? "orange" : "blue"}
                   />
-                  <StatusPill label={isProductAvailable ? "Active" : "Inactive"} tone={isProductAvailable ? "green" : "red"} />
+                  <StatusPill
+                    label={isProductAvailable ? t("admin.inventory.active") : t("admin.inventory.inactive")}
+                    tone={isProductAvailable ? "green" : "red"}
+                  />
                 </VStack>
               </HStack>
             </VStack>
@@ -2562,9 +2634,13 @@ export function AdminDashboardScreen({
                     bg={isActive ? "surface.900" : "transparent"}
                     color={isActive ? "white" : "surface.500"}
                     _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                    onClick={() => setInventoryDetailMode(mode)}
-                  >
-                    {mode === "overview" ? "Overview" : mode === "settings" ? "Settings" : "Stock"}
+                  onClick={() => setInventoryDetailMode(mode)}
+                >
+                    {mode === "overview"
+                      ? t("admin.inventory.overviewTab")
+                      : mode === "settings"
+                        ? t("admin.inventory.settingsTab")
+                        : t("admin.inventory.stockTab")}
                   </Button>
                 );
               })}
@@ -2576,19 +2652,19 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
-                    Product Overview
+                    {t("admin.inventory.productOverview")}
                   </Text>
                   <Text color="surface.500" fontWeight="800" fontSize="sm">
-                    Updated {formatShortDate(selectedItem.updatedAt)}
+                    {t("admin.inventory.updated")} {formatShortDate(selectedItem.updatedAt)}
                   </Text>
                 </HStack>
 
                 <SimpleGrid columns={2} spacing={3}>
                   {[
-                    { label: "Store Price", value: formatEur(selectedItem.storePrice) },
-                    { label: "Default Price", value: formatEur(selectedItem.defaultPrice) },
-                    { label: "Current Stock", value: `${selectedItem.stockQuantity}` },
-                    { label: "Status", value: isProductAvailable ? "Active" : "Inactive" },
+                    { label: t("admin.inventory.storePrice"), value: formatEur(selectedItem.storePrice) },
+                    { label: t("admin.inventory.defaultPrice"), value: formatEur(selectedItem.defaultPrice) },
+                    { label: t("admin.inventory.currentStock"), value: `${selectedItem.stockQuantity}` },
+                    { label: t("admin.inventory.status"), value: isProductAvailable ? t("admin.inventory.active") : t("admin.inventory.inactive") },
                   ].map((card) => (
                     <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                       <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
@@ -2604,10 +2680,10 @@ export function AdminDashboardScreen({
                 <VStack align="stretch" spacing={0}>
                   <HStack justify="space-between" pb={2}>
                     <Text fontWeight="900" fontSize="lg">
-                      Recent Movements
+                      {t("admin.inventory.recentMovements")}
                     </Text>
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
-                      {itemMovementHistory.length} latest
+                      {formatInventoryLatestCount(itemMovementHistory.length)}
                     </Text>
                   </HStack>
 
@@ -2638,7 +2714,7 @@ export function AdminDashboardScreen({
                               </Text>
                             ) : null}
                             <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
-                              {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? "Unknown actor"}
+                              {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? t("admin.inventory.unknownActor")}
                             </Text>
                           </VStack>
                           <VStack align="end" spacing={0} flexShrink={0}>
@@ -2647,7 +2723,7 @@ export function AdminDashboardScreen({
                               {entry.quantityDelta}
                             </Text>
                             <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase">
-                              Units
+                              {t("admin.inventory.units")}
                             </Text>
                           </VStack>
                         </HStack>
@@ -2655,7 +2731,7 @@ export function AdminDashboardScreen({
                     })
                   ) : (
                     <Text color="surface.500" fontSize="sm" py={2}>
-                      No recent product movements yet.
+                      {t("admin.inventory.noRecentMovements")}
                     </Text>
                   )}
                 </VStack>
@@ -2668,16 +2744,16 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="lg">
-                    Price & Availability
+                    {t("admin.inventory.priceAvailability")}
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="700">
-                    Store-specific price and product visibility.
+                    {t("admin.inventory.priceAvailabilityDescription")}
                   </Text>
                 </VStack>
 
                 <VStack align="stretch" spacing={2}>
                   <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                    Store price
+                    {t("admin.inventory.storePrice")}
                   </Text>
                   <Input
                     value={draft.price}
@@ -2690,7 +2766,7 @@ export function AdminDashboardScreen({
                         },
                       }))
                     }
-                    placeholder="Store price"
+                    placeholder={t("admin.inventory.storePrice")}
                     inputMode="decimal"
                     borderRadius="18px"
                     bg="white"
@@ -2711,7 +2787,7 @@ export function AdminDashboardScreen({
                       }))
                     }
                   >
-                    Enabled
+                    {t("admin.inventory.enabled")}
                   </Button>
                   <Button
                     borderRadius="16px"
@@ -2725,7 +2801,7 @@ export function AdminDashboardScreen({
                       }))
                     }
                   >
-                    Disabled
+                    {t("admin.inventory.disabled")}
                   </Button>
                 </SimpleGrid>
 
@@ -2738,7 +2814,7 @@ export function AdminDashboardScreen({
                   isLoading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
                   onClick={() => void handleSaveStoreProduct(selectedItem.storeProductId)}
                 >
-                  Save Price & Status
+                  {t("admin.inventory.savePriceStatus")}
                 </Button>
               </VStack>
             </Box>
@@ -2749,18 +2825,18 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="lg">
-                    Stock Movement
+                    {t("admin.inventory.stockMovement")}
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="700">
-                    Restock, write off or set a manual balance.
+                    {t("admin.inventory.stockMovementDescription")}
                   </Text>
                 </VStack>
 
                 <SimpleGrid columns={3} spacing={2}>
                   {([
-                    ["restock", "Restock"],
-                    ["writeoff", "Write-off"],
-                    ["manual_adjustment", "Adjust"],
+                    ["restock", t("admin.inventory.restock")],
+                    ["writeoff", t("admin.inventory.writeoff")],
+                    ["manual_adjustment", t("admin.inventory.adjust")],
                   ] as Array<[InventoryMovementType, string]>).map(([type, label]) => {
                     const isActive = movementType === type;
 
@@ -2823,7 +2899,7 @@ export function AdminDashboardScreen({
                       {movementQuantity}
                     </Text>
                     <Text fontSize="10px" fontWeight="800" color="surface.400" textTransform="uppercase">
-                      Units
+                      {t("admin.inventory.units")}
                     </Text>
                   </VStack>
                   <Button
@@ -2861,7 +2937,7 @@ export function AdminDashboardScreen({
                       },
                     }))
                   }
-                  placeholder="Reason (optional)"
+                  placeholder={t("admin.inventory.reasonOptional")}
                   borderRadius="18px"
                   bg="white"
                   borderColor="rgba(226,224,218,0.95)"
@@ -2876,7 +2952,7 @@ export function AdminDashboardScreen({
                   isLoading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
                   onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, movementType)}
                 >
-                  {movementLabel} {movementQuantity} Units
+                  {movementLabel} {movementQuantity} {t("admin.inventory.units")}
                 </Button>
               </VStack>
             </Box>
@@ -2904,7 +2980,7 @@ export function AdminDashboardScreen({
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
                   onClick={() => setInventoryMode(mode)}
                 >
-                  {mode === "stock" ? "Stock" : "Products"}
+                  {mode === "stock" ? t("admin.inventory.stockTab") : t("admin.inventory.productsTab")}
                 </Button>
               );
             })}
@@ -2921,7 +2997,7 @@ export function AdminDashboardScreen({
                 px={4}
                 py={4}
                 boxShadow={panelShadow}
-                {...getLowStockCardProps(card.label === "Low Stock" && lowStockCount > 0)}
+                {...getLowStockCardProps(card.label === t("admin.inventory.lowStock") && lowStockCount > 0)}
               >
                 <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
                   {card.label}
@@ -2949,10 +3025,10 @@ export function AdminDashboardScreen({
               >
                 <VStack align="start" spacing={0} minW={0}>
                   <Text fontWeight="900" fontSize="lg" noOfLines={1}>
-                    {selectedStore?.name ?? "Select store"}
+                    {selectedStore?.name ?? t("admin.inventory.selectStore")}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
-                    {visibleInventoryItems.length} products in this store
+                    {formatInventoryProductsInStore(visibleInventoryItems.length)}
                   </Text>
                 </VStack>
                 <Box color="surface.500" flexShrink={0}>
@@ -2967,11 +3043,11 @@ export function AdminDashboardScreen({
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
-                <Text fontWeight="900" fontSize="lg">
-                  Stock List
+                  <Text fontWeight="900" fontSize="lg">
+                  {t("admin.inventory.stockList")}
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {visibleInventoryItems.length} items
+                  {formatInventoryItemsCount(visibleInventoryItems.length)}
                 </Text>
               </HStack>
 
@@ -2995,13 +3071,13 @@ export function AdminDashboardScreen({
                     <VStack align="start" spacing={1} minW={0}>
                       <HStack spacing={2}>
                         <Text fontWeight="900">{item.productName}</Text>
-                        {!item.isProductActive ? <StatusPill label="Product Off" tone="orange" /> : null}
+                        {!item.isProductActive ? <StatusPill label={t("admin.inventory.productOff")} tone="orange" /> : null}
                       </HStack>
                       <Text fontSize="sm" color="surface.600" fontWeight="700">
                         {formatEur(item.storePrice)}
                       </Text>
                       <Text fontSize="xs" color="surface.500">
-                        Default {formatEur(item.defaultPrice)} · Updated {formatShortDate(item.updatedAt)}
+                        {t("admin.inventory.defaultPrice")} {formatEur(item.defaultPrice)} · {t("admin.inventory.updated")} {formatShortDate(item.updatedAt)}
                       </Text>
                     </VStack>
                     <VStack align="center" justify="center" spacing={0} minW="56px" flexShrink={0} alignSelf="stretch">
@@ -3009,7 +3085,7 @@ export function AdminDashboardScreen({
                         {item.stockQuantity}
                       </Text>
                       <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.08em">
-                        Units
+                        {t("admin.inventory.units")}
                       </Text>
                     </VStack>
                   </HStack>
@@ -3023,10 +3099,10 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
-                    {productCatalogMode === "archive" ? "Product Archive" : "Product Catalog"}
+                    {productCatalogMode === "archive" ? t("admin.inventory.productArchive") : t("admin.inventory.productCatalog")}
                   </Text>
                   <Text color="surface.500" fontWeight="700" fontSize="sm">
-                    {visibleProductCatalog.length} items
+                    {formatInventoryItemsCount(visibleProductCatalog.length)}
                   </Text>
                 </HStack>
 
@@ -3053,16 +3129,22 @@ export function AdminDashboardScreen({
                             {product.name}
                           </Text>
                           <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                            Default {formatEur(product.defaultPrice)}
+                            {t("admin.inventory.defaultPrice")} {formatEur(product.defaultPrice)}
                           </Text>
                           <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
                             {productCatalogMode === "archive"
-                              ? `Archived ${product.archivedAt ? formatShortDate(product.archivedAt) : ""}`.trim()
-                              : `${product.enabledStoreCount} stores enabled`}
+                              ? `${t("admin.inventory.archived")} ${product.archivedAt ? formatShortDate(product.archivedAt) : ""}`.trim()
+                              : formatInventoryStoresEnabled(product.enabledStoreCount)}
                           </Text>
                         </VStack>
                         <StatusPill
-                          label={productCatalogMode === "archive" ? "Archived" : product.isActive ? "Active" : "Inactive"}
+                          label={
+                            productCatalogMode === "archive"
+                              ? t("admin.inventory.archived")
+                              : product.isActive
+                                ? t("admin.inventory.active")
+                                : t("admin.inventory.inactive")
+                          }
                           tone={productCatalogMode === "archive" ? "orange" : product.isActive ? "green" : "red"}
                         />
                       </HStack>
@@ -3073,12 +3155,12 @@ export function AdminDashboardScreen({
                 {visibleProductCatalog.length === 0 ? (
                   <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={4}>
                     <Text fontWeight="900">
-                      {productCatalogMode === "archive" ? "Archive is empty" : "No products yet"}
+                      {productCatalogMode === "archive" ? t("admin.inventory.archiveEmpty") : t("admin.inventory.noProductsYet")}
                     </Text>
                     <Text color="surface.500" fontSize="sm" mt={1}>
                       {productCatalogMode === "archive"
-                        ? "Archived products will appear here and can be restored anytime."
-                        : "Create your first product to start filling the catalog."}
+                        ? t("admin.inventory.archiveDescription")
+                        : t("admin.inventory.createFirstProduct")}
                     </Text>
                   </Box>
                 ) : null}
@@ -3097,7 +3179,7 @@ export function AdminDashboardScreen({
                       setProductCatalogMode("catalog");
                     }}
                   >
-                    Back to Products
+                    {t("admin.inventory.backToProducts")}
                   </Button>
                 ) : (
                   <>
@@ -3114,7 +3196,7 @@ export function AdminDashboardScreen({
                         setShowNewProductModal(true);
                       }}
                     >
-                      New Product
+                      {t("admin.inventory.newProduct")}
                     </Button>
                     <Button
                       w="full"
@@ -3129,7 +3211,7 @@ export function AdminDashboardScreen({
                         setProductCatalogMode("archive");
                       }}
                     >
-                      Product Archive
+                      {t("admin.inventory.productArchive")}
                     </Button>
                   </>
                 )}
@@ -4762,7 +4844,7 @@ export function AdminDashboardScreen({
         <Box
           role="dialog"
           aria-modal="true"
-          aria-label="New Product"
+          aria-label={t("admin.inventory.newProduct")}
           position="absolute"
           left={0}
           right={0}
@@ -4786,14 +4868,14 @@ export function AdminDashboardScreen({
             <HStack justify="space-between" align="center">
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                  New Product
+                  {t("admin.inventory.newProduct")}
                 </Text>
                 <Text color="surface.500" fontSize="xs" fontWeight="700">
-                  Create a product and make it available across stores.
+                  {t("admin.inventory.newProductDescription")}
                 </Text>
               </VStack>
               <Button
-                aria-label="Close new product modal"
+                aria-label={t("admin.inventory.back")}
                 minW="42px"
                 h="42px"
                 px={0}
@@ -4812,14 +4894,14 @@ export function AdminDashboardScreen({
 
             {renderProductVirtualField({
               field: "productName",
-              label: "Product name",
+              label: t("admin.inventory.productName"),
               value: newProduct.name,
-              placeholder: "Product name",
+              placeholder: t("admin.inventory.productName"),
             })}
 
             {renderProductVirtualField({
               field: "productPrice",
-              label: "Default price",
+              label: t("admin.inventory.defaultPrice"),
               value: newProduct.defaultPrice,
               placeholder: "24,90",
             })}
@@ -4832,7 +4914,7 @@ export function AdminDashboardScreen({
                 _hover={{ bg: newProductIsActive ? "brand.600" : "rgba(225,223,218,0.95)" }}
                 onClick={() => setNewProductIsActive(true)}
               >
-                Active
+                {t("admin.inventory.active")}
               </Button>
               <Button
                 borderRadius="16px"
@@ -4841,7 +4923,7 @@ export function AdminDashboardScreen({
                 _hover={{ bg: !newProductIsActive ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)" }}
                 onClick={() => setNewProductIsActive(false)}
               >
-                Inactive
+                {t("admin.inventory.inactive")}
               </Button>
             </SimpleGrid>
 
@@ -4873,7 +4955,7 @@ export function AdminDashboardScreen({
               isDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
               onClick={() => void handleCreateProduct()}
             >
-              Create Product
+              {t("admin.inventory.createProduct")}
             </Button>
           </Box>
         </Box>
@@ -4894,7 +4976,7 @@ export function AdminDashboardScreen({
         <Box
           role="dialog"
           aria-modal="true"
-          aria-label="Select Store"
+          aria-label={t("admin.inventory.selectStoreTitle")}
           position="absolute"
           left={0}
           right={0}
@@ -4918,10 +5000,10 @@ export function AdminDashboardScreen({
             <HStack justify="space-between" align="center">
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                  Select Store
+                  {t("admin.inventory.selectStoreTitle")}
                 </Text>
                 <Text color="surface.500" fontSize="xs" fontWeight="700">
-                  Switch inventory view between your active locations.
+                  {t("admin.inventory.selectStoreDescription")}
                 </Text>
               </VStack>
               <Button
@@ -5139,7 +5221,7 @@ export function AdminDashboardScreen({
               _active={{ transform: "scale(0.92)", bg: "surface.100" }}
               onClick={() => pressProductKeyboardKey(key)}
             >
-              {key === "clear" ? "Clear" : key}
+              {key === "clear" ? t("admin.inventory.clear") : key}
             </Button>
           ))}
           <Button
@@ -5153,7 +5235,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressProductKeyboardKey("delete")}
           >
-            Del
+            {t("admin.inventory.deleteShort")}
           </Button>
         </SimpleGrid>
       );
@@ -5198,7 +5280,7 @@ export function AdminDashboardScreen({
             borderColor={productKeyboardCapsLock ? "brand.500" : "surface.100"}
             onClick={() => pressProductKeyboardKey("caps")}
           >
-            Caps
+            {t("admin.inventory.caps")}
           </Button>
           <Button
             flex="1"
@@ -5211,7 +5293,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressProductKeyboardKey("clear")}
           >
-            Clear
+            {t("admin.inventory.clear")}
           </Button>
           <Button
             flex="2"
@@ -5224,7 +5306,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressProductKeyboardKey("space")}
           >
-            Space
+            {t("admin.inventory.space")}
           </Button>
           <Button
             flex="1"
@@ -5237,7 +5319,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressProductKeyboardKey("delete")}
           >
-            Del
+            {t("admin.inventory.deleteShort")}
           </Button>
         </HStack>
       </VStack>
