@@ -1215,6 +1215,36 @@ export function AdminDashboardScreen({
     return `${count} ${count === 1 ? "event" : "events"}`;
   };
 
+  const formatSalesLedgerEntityCount = (count: number, mode: SalesLedgerMode) => {
+    if (locale === "ru") {
+      return mode === "sales"
+        ? `${count} ${getRussianPlural(count, "продажа", "продажи", "продаж")}`
+        : `${count} ${getRussianPlural(count, "возврат", "возврата", "возвратов")}`;
+    }
+
+    if (locale === "pt") {
+      return mode === "sales"
+        ? `${count} ${count === 1 ? "venda" : "vendas"}`
+        : `${count} ${count === 1 ? "devolução" : "devoluções"}`;
+    }
+
+    return mode === "sales"
+      ? `${count} ${count === 1 ? "sale" : "sales"}`
+      : `${count} ${count === 1 ? "return" : "returns"}`;
+  };
+
+  const formatSaleItemsCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} ${getRussianPlural(count, "товар", "товара", "товаров")}`;
+    }
+
+    if (locale === "pt") {
+      return `${count} ${count === 1 ? "item" : "itens"}`;
+    }
+
+    return `${count} ${count === 1 ? "item" : "items"}`;
+  };
+
   const formatTeamLoadedCount = (count: number) => {
     if (locale === "ru") {
       return `${count} загружено`;
@@ -3407,7 +3437,7 @@ export function AdminDashboardScreen({
     const ledgerCountLabel =
       visibleLedgerCount < totalLedgerCount
         ? `${visibleLedgerCount} ${t("admin.sales.latestOf")} ${totalLedgerCount}`
-        : `${visibleLedgerCount} ${t("admin.sales.itemsSuffix")}`;
+        : formatSalesLedgerEntityCount(visibleLedgerCount, salesLedgerMode);
 
     if (selectedSale) {
       return (
@@ -3793,7 +3823,7 @@ export function AdminDashboardScreen({
                         </Text>
                         <Text fontSize="xs" color="surface.500">
                           {formatShortDate(sale.createdAt)} · {formatSalesTime(sale.createdAt)} ·{" "}
-                          {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {sale.items.length} {t("admin.sales.itemsSuffix")}
+                          {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatSaleItemsCount(sale.items.length)}
                         </Text>
                       </VStack>
                       <VStack align="end" spacing={1}>
@@ -3831,7 +3861,7 @@ export function AdminDashboardScreen({
                         </Text>
                         <Text fontSize="xs" color="surface.500">
                           {formatShortDate(entry.createdAt)} · {formatSalesTime(entry.createdAt)} ·{" "}
-                          {entry.seller?.fullName ?? t("admin.sales.unknownSeller")} · {entry.items.length} {t("admin.sales.itemsSuffix")}
+                          {entry.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatSaleItemsCount(entry.items.length)}
                         </Text>
                       </VStack>
                       <VStack align="end" spacing={1}>
