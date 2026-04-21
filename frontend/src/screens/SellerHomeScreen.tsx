@@ -477,6 +477,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   }, [shiftHistory]);
 
   const todaySalesCount = todaySales.length;
+  const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total_amount, 0);
   const monthSalesCount = monthSales.length;
   const sellerProfileShiftWeeks = useMemo(() => {
     const groups = new Map<string, { key: string; start: Date; end: Date; items: ShiftHistoryItem[] }>();
@@ -1388,6 +1389,42 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const renderOrdersTab = () => selectedSale ? renderReceipt() : (
     <VStack spacing={4} align="stretch">
+      <SimpleGrid columns={2} spacing={3}>
+        {[
+          {
+            label: t("sellerProfile.todayRevenue"),
+            value: formatEur(todayRevenue),
+            icon: HiOutlineChartBar,
+          },
+          {
+            label: t("sellerProfile.todaySales"),
+            value: String(todaySalesCount),
+            icon: HiOutlineShoppingBag,
+          },
+        ].map((item) => (
+          <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
+            <HStack justify="space-between" align="start">
+              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+                {item.label}
+              </Text>
+              <Box color="brand.500">
+                <Box as={item.icon} boxSize={4.5} />
+              </Box>
+            </HStack>
+            <Text
+              mt={2}
+              fontWeight="900"
+              fontSize="2xl"
+              lineHeight="1.15"
+              letterSpacing="-0.03em"
+              color="surface.900"
+            >
+              {item.value}
+            </Text>
+          </Box>
+        ))}
+      </SimpleGrid>
+
       {sales.length > 0 ? (
         sales.map((sale) => (
           <HStack
