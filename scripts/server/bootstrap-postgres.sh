@@ -25,6 +25,9 @@ set +a
 POSTGRES_DB="${POSTGRES_DB:-telegram_retail}"
 POSTGRES_USER="${POSTGRES_USER:-telegram_retail}"
 
+mkdir -p /opt/telegram-retail/backups/manual /opt/telegram-retail/backups/base /opt/telegram-retail/backups/wal
+chown -R 70:70 /opt/telegram-retail/backups
+
 echo "==> Starting self-hosted postgres profile"
 docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d postgres postgres-backup >/dev/null
 

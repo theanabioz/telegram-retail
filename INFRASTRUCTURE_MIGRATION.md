@@ -46,7 +46,9 @@ Temporary operational note:
 - [scripts/server/deploy.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/deploy.sh)
 - [scripts/server/smoke-check.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/smoke-check.sh)
 - [scripts/server/backup-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/backup-postgres.sh)
+- [scripts/server/basebackup-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/basebackup-postgres.sh)
 - [scripts/server/restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/restore-postgres.sh)
+- [scripts/server/pitr-restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/pitr-restore-postgres.sh)
 - [scripts/server/bootstrap-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/bootstrap-postgres.sh)
 
 ## What This Gives Us
@@ -82,6 +84,61 @@ For the self-hosted profile we now prepare both:
 
 - `postgres-backup` for scheduled dump backups
 - WAL files archived under `/opt/telegram-retail/backups/wal`
+- periodic base backups under `/opt/telegram-retail/backups/base`
+
+## PITR Layer
+
+We now prepare the proper PostgreSQL recovery stack:
+
+- SQL dumps for simple full restores
+- WAL archive for change history
+- base backups for point-in-time recovery anchors
+
+That gives us a Git-like recovery model for the database:
+
+- nightly or manual full checkpoints
+- continuous WAL changes between them
+- restore to a chosen timestamp instead of only “last dump wins”
+
+### Manual Base Backup
+
+```bash
+scripts/server/basebackup-postgres.sh
+```
+
+This writes a new base backup into:
+
+```bash
+/opt/telegram-retail/backups/base/base_YYYY-MM-DD_HH-MM-SS
+```
+
+Recommended production setup:
+
+- keep SQL dumps in the `postgres-backup` container
+- schedule `scripts/server/basebackup-postgres.sh` from host cron once per day
+- retain WAL files for at least the same recovery window as base backups
+
+### PITR Restore
+
+```bash
+scripts/server/pitr-restore-postgres.sh \
+  /opt/telegram-retail/backups/base/base_YYYY-MM-DD_HH-MM-SS \
+  '2026-04-21 18:17:00+01' \
+  --yes
+```
+
+This will:
+
+- stop app containers
+- replace the Postgres data directory from a chosen base backup
+- instruct PostgreSQL to replay WAL files until the requested timestamp
+- start PostgreSQL in recovery mode
+
+After validation, bring app containers back:
+
+```bash
+docker compose --profile selfhosted-db --env-file .env.server -f docker-compose.server.yml up -d backend frontend postgres-backup
+```
 
 ## Suggested Next Steps
 
@@ -123,8 +180,21 @@ scripts/server/bootstrap-postgres.sh
 scripts/server/restore-postgres.sh /opt/telegram-retail/backups/manual/postgres_YYYY-MM-DD_HH-MM-SS.sql.gz --yes
 ```
 
-6. run smoke checks again
-7. only then point the backend to local Postgres as the primary database
+6. also verify PITR inputs exist:
+
+```bash
+ls -lah /opt/telegram-retail/backups/base
+ls -lah /opt/telegram-retail/backups/wal
+```
+
+7. if needed, test point-in-time recovery with:
+
+```bash
+scripts/server/pitr-restore-postgres.sh /opt/telegram-retail/backups/base/base_YYYY-MM-DD_HH-MM-SS '2026-04-21 18:17:00+01' --yes
+```
+
+8. run smoke checks again
+9. only then point the backend to local Postgres as the primary database
 
 This keeps the database migration itself reversible and testable instead of relying on unverified dumps.
 

@@ -19,5 +19,8 @@ fi
 
 cd "${ROOT_DIR}"
 
+mkdir -p /opt/telegram-retail/backups/manual /opt/telegram-retail/backups/base /opt/telegram-retail/backups/wal
+chown -R 70:70 /opt/telegram-retail/backups
+
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" --profile selfhosted-db up -d --build
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" --profile selfhosted-db ps
