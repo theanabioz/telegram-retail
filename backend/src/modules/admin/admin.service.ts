@@ -33,11 +33,10 @@ import { findCurrentAssignment, findUserById } from "../users/users.repository.j
 import { listInventoryHistory } from "../inventory/inventory.repository.js";
 import { runAdminInventoryAdjustment } from "../inventory/inventory.service.js";
 import { findOpenShiftByUserId } from "../shifts/shifts.repository.js";
+import { getBusinessHour, getBusinessPeriodStarts } from "../../lib/business-time.js";
 
 function startOfTodayIso() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return start.toISOString();
+  return getBusinessPeriodStarts().todayStartIso;
 }
 
 function buildAdminSalesSummary(input: {
@@ -198,7 +197,7 @@ export async function getAdminDashboard(input: {
   );
   const hourlyRevenueToday = Array.from({ length: 24 }, (_, hour) => {
     const total = todaySales
-      .filter((sale) => new Date(sale.created_at).getHours() === hour)
+      .filter((sale) => getBusinessHour(sale.created_at) === hour)
       .reduce((sum, sale) => sum + sale.total_amount, 0);
 
     return {
@@ -1034,15 +1033,9 @@ export async function getAdminSalesPeriodSummaries() {
   const [sales, returns] = await Promise.all([listAdminSales(4000), listAdminReturns(4000)]);
   const returnItems = await listAdminReturnItems(returns.map((entry) => entry.id));
 
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  const weekday = weekStart.getDay();
-  weekStart.setDate(weekStart.getDate() + (weekday === 0 ? -6 : 1 - weekday));
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const { todayStartIso, weekStartIso, monthStartIso } = getBusinessPeriodStarts();
 
-  const buildPeriodSummary = (dateFrom: Date) => {
-    const iso = dateFrom.toISOString();
+  const buildPeriodSummary = (iso: string) => {
     const periodSales = sales.filter((sale) => sale.created_at >= iso);
     const periodReturns = returns.filter((entry) => entry.created_at >= iso);
     const periodReturnIds = new Set(periodReturns.map((entry) => entry.id));
@@ -1055,8 +1048,8 @@ export async function getAdminSalesPeriodSummaries() {
   };
 
   return {
-    today: buildPeriodSummary(todayStart),
-    week: buildPeriodSummary(weekStart),
-    month: buildPeriodSummary(monthStart),
+    today: buildPeriodSummary(todayStartIso),
+    week: buildPeriodSummary(weekStartIso),
+    month: buildPeriodSummary(monthStartIso),
   };
 }

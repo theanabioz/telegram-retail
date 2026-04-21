@@ -41,20 +41,14 @@ import {
   updateStoreProductSettings,
 } from "../modules/admin/admin.service.js";
 import { emitRealtimeEvent } from "../realtime/server.js";
+import { getBusinessDayRange } from "../lib/business-time.js";
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAuth, requireRole("admin"));
 
 function todaySalesRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-  return {
-    dateFrom: start.toISOString(),
-    dateTo: end.toISOString(),
-  };
+  return getBusinessDayRange();
 }
 
 adminRouter.get(

@@ -38,6 +38,7 @@ const envSchema = z.object({
     ),
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default("7d"),
+  APP_TIME_ZONE: z.string().min(1).default("Europe/Lisbon"),
   DEV_AUTH_ENABLED: z
     .string()
     .optional()
