@@ -1347,10 +1347,10 @@ export function AdminDashboardScreen({
     <VStack spacing={4} align="stretch">
       <SimpleGrid columns={2} spacing={3}>
         {[
-          { label: "Today Revenue", value: data ? formatEur(data.summary.totalRevenueToday) : "..." },
-          { label: "Sales Today", value: data ? String(data.summary.completedSalesToday) : "..." },
-          { label: "Low Stock", value: data ? String(data.summary.lowStockCount) : "..." },
-          { label: "Active Sellers", value: data ? String(data.summary.totalSellers) : "..." },
+          { label: t("admin.overview.todayRevenue"), value: data ? formatEur(data.summary.totalRevenueToday) : "..." },
+          { label: t("admin.overview.salesToday"), value: data ? String(data.summary.completedSalesToday) : "..." },
+          { label: t("admin.overview.lowStock"), value: data ? String(data.summary.lowStockCount) : "..." },
+          { label: t("admin.overview.activeSellers"), value: data ? String(data.summary.totalSellers) : "..." },
         ].map((card) => (
           <Box
             key={card.label}
@@ -1359,7 +1359,7 @@ export function AdminDashboardScreen({
             px={4}
             py={4}
             boxShadow={panelShadow}
-            {...getLowStockCardProps(card.label === "Low Stock" && Boolean(data && data.summary.lowStockCount > 0))}
+            {...getLowStockCardProps(card.label === t("admin.overview.lowStock") && Boolean(data && data.summary.lowStockCount > 0))}
           >
             <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
               {card.label}
@@ -1376,10 +1376,10 @@ export function AdminDashboardScreen({
           <HStack justify="space-between" align="center">
             <VStack align="start" spacing={0}>
               <Text fontWeight="900" fontSize="lg">
-                Today Revenue Flow
+                {t("admin.overview.revenueFlow")}
               </Text>
               <Text color="surface.500" fontSize="sm">
-                Revenue by hour across today
+                {t("admin.overview.revenueFlowDescription")}
               </Text>
             </VStack>
             <Text color="surface.500" fontWeight="800" fontSize="sm">
@@ -1487,19 +1487,19 @@ export function AdminDashboardScreen({
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
           <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">
-              Recent Sales
+              <Text fontWeight="900" fontSize="lg">
+              {t("admin.overview.recentSales")}
             </Text>
             <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {(data?.recentSales ?? []).slice(0, 5).length} latest
+              {(data?.recentSales ?? []).slice(0, 5).length} {t("admin.overview.latest")}
             </Text>
           </HStack>
           {(data?.recentSales ?? []).slice(0, 5).map((sale) => (
             <HStack key={sale.id} justify="space-between" align="start">
               <VStack align="start" spacing={0}>
-                <Text fontWeight="800">{sale.store?.name ?? "Unknown store"}</Text>
+                <Text fontWeight="800">{sale.store?.name ?? t("admin.sales.unknownStore")}</Text>
                 <Text fontSize="sm" color="surface.500">
-                  {sale.seller?.fullName ?? "Unknown seller"} · {sale.paymentMethod.toUpperCase()}
+                  {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {sale.paymentMethod.toUpperCase()}
                 </Text>
                 <Text fontSize="xs" color="surface.500">
                   {formatDateTime(sale.createdAt)}
@@ -1514,11 +1514,11 @@ export function AdminDashboardScreen({
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
           <HStack justify="space-between">
-            <Text fontWeight="900" fontSize="lg">
-              Store Performance
+              <Text fontWeight="900" fontSize="lg">
+              {t("admin.overview.storePerformance")}
             </Text>
             <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {data?.storePerformance.length ?? 0} stores
+              {data?.storePerformance.length ?? 0} {t("admin.overview.stores")}
             </Text>
           </HStack>
           {(data?.storePerformance ?? []).map((store) => (
@@ -1527,16 +1527,16 @@ export function AdminDashboardScreen({
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="800">{store.name}</Text>
                   <Text fontSize="sm" color="surface.500">
-                    {store.address?.trim() || "Address not specified"}
+                    {store.address?.trim() || t("admin.overview.addressMissing")}
                   </Text>
                   <Text fontSize="xs" color="surface.500">
-                    {store.stockUnits} Units in stock
+                    {store.stockUnits} {t("admin.overview.unitsInStock")}
                   </Text>
                 </VStack>
                 <VStack align="end" spacing={0.5}>
                   <Text fontWeight="900">{formatEur(store.revenue)}</Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
-                    {store.salesCount} sales
+                    {store.salesCount} {t("admin.overview.salesCountSuffix")}
                   </Text>
                 </VStack>
               </HStack>
@@ -3184,16 +3184,16 @@ export function AdminDashboardScreen({
         : computedSalesSummary;
     const salesSummaryCards = salesLedgerMode === "sales"
       ? [
-          { label: "Revenue", value: formatEur(activeSalesSummary.revenue) },
-          { label: "Sales", value: String(activeSalesSummary.salesCount) },
-          { label: "Cash", value: formatEur(activeSalesSummary.cashTotal) },
-          { label: "Card", value: formatEur(activeSalesSummary.cardTotal) },
+          { label: t("admin.sales.revenue"), value: formatEur(activeSalesSummary.revenue) },
+          { label: t("admin.sales.sales"), value: String(activeSalesSummary.salesCount) },
+          { label: t("admin.sales.cash"), value: formatEur(activeSalesSummary.cashTotal) },
+          { label: t("admin.sales.card"), value: formatEur(activeSalesSummary.cardTotal) },
         ]
       : [
-          { label: "Returned", value: formatEur(activeSalesSummary.returnsTotal) },
-          { label: "Returns", value: String(activeSalesSummary.returnsCount) },
-          { label: "Units", value: String(activeSalesSummary.returnedUnits) },
-          { label: "Avg Return", value: formatEur(activeSalesSummary.averageReturn) },
+          { label: t("admin.sales.returned"), value: formatEur(activeSalesSummary.returnsTotal) },
+          { label: t("admin.sales.returns"), value: String(activeSalesSummary.returnsCount) },
+          { label: t("admin.sales.units"), value: String(activeSalesSummary.returnedUnits) },
+          { label: t("admin.sales.avgReturn"), value: formatEur(activeSalesSummary.averageReturn) },
         ];
     const ledgerSalesCount = activeSalesSummary.salesCount;
     const ledgerReturnsCount = activeSalesSummary.returnsCount;
@@ -3201,8 +3201,8 @@ export function AdminDashboardScreen({
     const totalLedgerCount = salesLedgerMode === "sales" ? ledgerSalesCount : ledgerReturnsCount;
     const ledgerCountLabel =
       visibleLedgerCount < totalLedgerCount
-        ? `${visibleLedgerCount} latest of ${totalLedgerCount}`
-        : `${visibleLedgerCount} items`;
+        ? `${visibleLedgerCount} ${t("admin.sales.latestOf")} ${totalLedgerCount}`
+        : `${visibleLedgerCount} ${t("admin.sales.itemsSuffix")}`;
 
     if (selectedSale) {
       return (
@@ -3212,10 +3212,10 @@ export function AdminDashboardScreen({
               <HStack justify="space-between" align="start">
                 <VStack align="start" spacing={1}>
                   <Text fontWeight="900" fontSize="xl">
-                    Sale Receipt
+                    {t("admin.sales.saleReceipt")}
                   </Text>
                   <Text fontSize="sm" color="surface.500">
-                    {selectedSale.store?.name ?? "Unknown store"} · {selectedSale.seller?.fullName ?? "Unknown seller"}
+                    {selectedSale.store?.name ?? t("admin.sales.unknownStore")} · {selectedSale.seller?.fullName ?? t("admin.sales.unknownSeller")}
                   </Text>
                   <Text fontSize="sm" color="surface.500">
                     {formatDateTime(selectedSale.createdAt)}
@@ -3229,14 +3229,14 @@ export function AdminDashboardScreen({
                     borderColor="var(--app-border)"
                     onClick={() => setSelectedAdminSaleId(null)}
                   >
-                    Back
+                    {t("orders.back")}
                   </Button>
                 ) : null}
               </HStack>
 
               <HStack justify="space-between">
                 <StatusPill
-                  label={selectedSale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
+                  label={selectedSale.status === "deleted" ? t("admin.sales.deletedSale") : t("admin.sales.completedSale")}
                   tone={selectedSale.status === "deleted" ? "red" : "green"}
                 />
                 <Text fontWeight="900">{selectedSale.paymentMethod.toUpperCase()}</Text>
@@ -3249,11 +3249,11 @@ export function AdminDashboardScreen({
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      Qty {item.quantity} x {formatEur(item.finalPrice)}
+                      {t("admin.sales.qty")} {item.quantity} x {formatEur(item.finalPrice)}
                     </Text>
                     {item.discountType ? (
                       <Text fontSize="xs" color="surface.500">
-                        Discount {item.discountType}: {item.discountValue}
+                        {t("admin.sales.discount")} {item.discountType}: {item.discountValue}
                       </Text>
                     ) : null}
                   </VStack>
@@ -3266,19 +3266,19 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={2}>
                 <HStack justify="space-between">
                   <Text color="surface.500" fontWeight="700">
-                    Subtotal
+                    {t("admin.sales.subtotal")}
                   </Text>
                   <Text fontWeight="800">{formatEur(selectedSale.subtotalAmount)}</Text>
                 </HStack>
                 <HStack justify="space-between">
                   <Text color="surface.500" fontWeight="700">
-                    Discount
+                    {t("admin.sales.discount")}
                   </Text>
                   <Text fontWeight="800">{formatEur(selectedSale.discountAmount)}</Text>
                 </HStack>
                 <HStack justify="space-between">
                   <Text fontSize="lg" fontWeight="900">
-                    Total
+                    {t("admin.sales.total")}
                   </Text>
                   <Text fontSize="lg" fontWeight="900">
                     {formatEur(selectedSale.totalAmount)}
@@ -3289,16 +3289,16 @@ export function AdminDashboardScreen({
               {selectedSale.status === "deleted" ? (
                 <Box bg="rgba(248,113,113,0.08)" borderRadius="16px" px={3} py={3}>
                   <Text fontSize="sm" fontWeight="800" color="red.500">
-                    Deleted {selectedSale.deletedAt ? formatDateTime(selectedSale.deletedAt) : ""}
+                    {t("admin.sales.deletedAt")} {selectedSale.deletedAt ? formatDateTime(selectedSale.deletedAt) : ""}
                   </Text>
                   <Text fontSize="xs" color="surface.500">
-                    {selectedSale.deletedBy?.fullName ?? "Unknown user"} · {selectedSale.deletionReason ?? "No reason"}
+                    {selectedSale.deletedBy?.fullName ?? t("admin.sales.unknownUser")} · {selectedSale.deletionReason ?? t("admin.sales.noReason")}
                   </Text>
                 </Box>
               ) : null}
 
               <Text fontSize="xs" color="surface.500">
-                Sale ID: {selectedSale.id}
+                {t("admin.sales.saleId")}: {selectedSale.id}
               </Text>
             </VStack>
           </Box>
@@ -3314,10 +3314,10 @@ export function AdminDashboardScreen({
               <HStack justify="space-between" align="start">
                 <VStack align="start" spacing={1}>
                   <Text fontWeight="900" fontSize="xl">
-                    Return Receipt
+                    {t("admin.sales.returnReceipt")}
                   </Text>
                   <Text fontSize="sm" color="surface.500">
-                    {selectedReturn.store?.name ?? "Unknown store"} · {selectedReturn.seller?.fullName ?? "Unknown seller"}
+                    {selectedReturn.store?.name ?? t("admin.sales.unknownStore")} · {selectedReturn.seller?.fullName ?? t("admin.sales.unknownSeller")}
                   </Text>
                   <Text fontSize="sm" color="surface.500">
                     {formatDateTime(selectedReturn.createdAt)}
@@ -3331,14 +3331,14 @@ export function AdminDashboardScreen({
                     borderColor="var(--app-border)"
                     onClick={() => setSelectedAdminReturnId(null)}
                   >
-                    Back
+                    {t("orders.back")}
                   </Button>
                 ) : null}
               </HStack>
 
               <Box bg="rgba(74,132,244,0.08)" borderRadius="16px" px={3} py={3}>
                 <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Reason
+                  {t("admin.sales.reason")}
                 </Text>
                 <Text fontWeight="800">{selectedReturn.reason}</Text>
               </Box>
@@ -3350,7 +3350,7 @@ export function AdminDashboardScreen({
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
-                      Qty {item.quantity} x {formatEur(item.returnedPrice)}
+                      {t("admin.sales.qty")} {item.quantity} x {formatEur(item.returnedPrice)}
                     </Text>
                   </VStack>
                   <Text fontWeight="900">{formatEur(item.lineTotal)}</Text>
@@ -3361,7 +3361,7 @@ export function AdminDashboardScreen({
 
               <HStack justify="space-between">
                 <Text fontSize="lg" fontWeight="900">
-                  Total Returned
+                  {t("admin.sales.totalReturned")}
                 </Text>
                 <Text fontSize="lg" fontWeight="900">
                   {formatEur(selectedReturn.totalAmount)}
@@ -3369,7 +3369,7 @@ export function AdminDashboardScreen({
               </HStack>
 
               <Text fontSize="xs" color="surface.500">
-                Return ID: {selectedReturn.id} · Sale {selectedReturn.saleId.slice(0, 8)}
+                {t("admin.sales.returnId")}: {selectedReturn.id} · {t("admin.sales.saleRef")} {selectedReturn.saleId.slice(0, 8)}
               </Text>
             </VStack>
           </Box>
@@ -3409,7 +3409,7 @@ export function AdminDashboardScreen({
                     _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
                     onClick={() => void handleSelectSalesPeriod(period)}
                   >
-                    {period === "today" ? "Today" : period === "week" ? "Week" : period === "month" ? "Month" : "Custom"}
+                    {period === "today" ? t("admin.sales.today") : period === "week" ? t("admin.sales.week") : period === "month" ? t("admin.sales.month") : t("admin.sales.custom")}
                   </Button>
                 );
               })}
@@ -3427,7 +3427,7 @@ export function AdminDashboardScreen({
                 bg="white"
                 borderColor="rgba(226,224,218,0.95)"
               >
-                <option value="">All stores</option>
+                <option value="">{t("admin.sales.allStores")}</option>
                 {salesStores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -3445,7 +3445,7 @@ export function AdminDashboardScreen({
                 bg="white"
                 borderColor="rgba(226,224,218,0.95)"
               >
-                <option value="">All sellers</option>
+                <option value="">{t("admin.sales.allSellers")}</option>
                 {salesSellers.map((seller) => (
                   <option key={seller.id} value={seller.id}>
                     {seller.fullName}
@@ -3463,9 +3463,9 @@ export function AdminDashboardScreen({
                 bg="white"
                 borderColor="rgba(226,224,218,0.95)"
               >
-                <option value="all">All sales</option>
-                <option value="completed">Completed</option>
-                <option value="deleted">Deleted</option>
+                <option value="all">{t("admin.sales.allSales")}</option>
+                <option value="completed">{t("admin.sales.completed")}</option>
+                <option value="deleted">{t("admin.sales.deleted")}</option>
               </Select>
               <Button
                 borderRadius="18px"
@@ -3475,7 +3475,7 @@ export function AdminDashboardScreen({
                 isLoading={loadingSales}
                 onClick={() => void handleApplySalesFilters()}
               >
-                Refresh
+                {t("admin.sales.refresh")}
               </Button>
             </SimpleGrid>
 
@@ -3506,7 +3506,7 @@ export function AdminDashboardScreen({
                   isLoading={loadingSales}
                   onClick={() => void handleApplySalesFilters()}
                 >
-                  Apply Custom Range
+                  {t("admin.sales.applyCustomRange")}
                 </Button>
               </SimpleGrid>
             ) : null}
@@ -3529,7 +3529,7 @@ export function AdminDashboardScreen({
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
                   onClick={() => setSalesLedgerMode(mode)}
                 >
-                  {mode === "sales" ? `Sales · ${ledgerSalesCount}` : `Returns · ${ledgerReturnsCount}`}
+                  {mode === "sales" ? `${t("admin.sales.salesTab")} · ${ledgerSalesCount}` : `${t("admin.sales.returnsTab")} · ${ledgerReturnsCount}`}
                 </Button>
               );
             })}
@@ -3540,7 +3540,7 @@ export function AdminDashboardScreen({
           <VStack align="stretch" spacing={3}>
             <HStack justify="space-between">
               <Text fontWeight="900" fontSize="lg">
-                {salesLedgerMode === "sales" ? "Sales Ledger" : "Returns Ledger"}
+                {salesLedgerMode === "sales" ? t("admin.sales.salesLedger") : t("admin.sales.returnsLedger")}
               </Text>
               <Text color="surface.500" fontWeight="700" fontSize="sm">
                 {ledgerCountLabel}
@@ -3549,13 +3549,13 @@ export function AdminDashboardScreen({
 
             {salesLedgerMode === "sales" && visibleSales.length === 0 ? (
               <Text color="surface.500" fontSize="sm">
-                No sales match the current filters.
+                {t("admin.sales.noSalesMatch")}
               </Text>
             ) : null}
 
             {salesLedgerMode === "returns" && visibleReturns.length === 0 ? (
               <Text color="surface.500" fontSize="sm">
-                No returns match the current filters.
+                {t("admin.sales.noReturnsMatch")}
               </Text>
             ) : null}
 
@@ -3576,7 +3576,7 @@ export function AdminDashboardScreen({
                       <VStack align="start" spacing={1} minW={0}>
                         <HStack spacing={2}>
                           <Text fontWeight="900">
-                            {sale.status === "deleted" ? "Deleted Sale" : "Completed Sale"}
+                            {sale.status === "deleted" ? t("admin.sales.deletedSale") : t("admin.sales.completedSale")}
                           </Text>
                           <StatusPill
                             label={sale.paymentMethod.toUpperCase()}
@@ -3584,17 +3584,17 @@ export function AdminDashboardScreen({
                           />
                         </HStack>
                         <Text fontSize="sm" color="surface.600" fontWeight="700">
-                          {sale.store?.name ?? "Unknown store"}
+                          {sale.store?.name ?? t("admin.sales.unknownStore")}
                         </Text>
                         <Text fontSize="xs" color="surface.500">
                           {formatShortDate(sale.createdAt)} · {formatSalesTime(sale.createdAt)} ·{" "}
-                          {sale.seller?.fullName ?? "Unknown seller"} · {sale.items.length} items
+                          {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {sale.items.length} {t("admin.sales.itemsSuffix")}
                         </Text>
                       </VStack>
                       <VStack align="end" spacing={1}>
                         <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
                         <StatusPill
-                          label={sale.status === "deleted" ? "Deleted" : "Completed"}
+                          label={sale.status === "deleted" ? t("status.deleted") : t("status.completed")}
                           tone={sale.status === "deleted" ? "red" : "green"}
                         />
                       </VStack>
@@ -3616,15 +3616,15 @@ export function AdminDashboardScreen({
                     <HStack justify="space-between" align="start">
                       <VStack align="start" spacing={1} minW={0}>
                         <HStack spacing={2}>
-                          <Text fontWeight="900">Return</Text>
-                          <StatusPill label="Return" tone="orange" />
+                          <Text fontWeight="900">{t("admin.sales.return")}</Text>
+                          <StatusPill label={t("admin.sales.return")} tone="orange" />
                         </HStack>
                         <Text fontSize="sm" color="surface.600" fontWeight="700">
-                          {entry.store?.name ?? "Unknown store"}
+                          {entry.store?.name ?? t("admin.sales.unknownStore")}
                         </Text>
                         <Text fontSize="xs" color="surface.500">
                           {formatShortDate(entry.createdAt)} · {formatSalesTime(entry.createdAt)} ·{" "}
-                          {entry.seller?.fullName ?? "Unknown seller"} · {entry.items.length} items
+                          {entry.seller?.fullName ?? t("admin.sales.unknownSeller")} · {entry.items.length} {t("admin.sales.itemsSuffix")}
                         </Text>
                       </VStack>
                       <VStack align="end" spacing={1}>
