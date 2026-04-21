@@ -56,11 +56,13 @@ Temporary operational note:
 
 - [RESTORE_RUNBOOK.md](/Users/theanabioz/Documents/telegram-retail/RESTORE_RUNBOOK.md)
 - [SERVER_HARDENING_CHECKLIST.md](/Users/theanabioz/Documents/telegram-retail/SERVER_HARDENING_CHECKLIST.md)
+- [OPERATIONS_DASHBOARD.md](/Users/theanabioz/Documents/telegram-retail/OPERATIONS_DASHBOARD.md)
 
 These two docs are now the main operational references:
 
 - `RESTORE_RUNBOOK.md` for real restore steps and recovery decisions
 - `SERVER_HARDENING_CHECKLIST.md` for server stability, maintenance, and next hardening priorities
+- `OPERATIONS_DASHBOARD.md` for the short daily and weekly operational routine
 
 ## What This Gives Us
 

@@ -291,3 +291,7 @@ scripts/server/install-ops-cron.sh
 3. Offsite backups
 
 Это даст больше реальной надежности, чем десяток мелких security-тюнингов.
+
+Для повседневной эксплуатации теперь есть отдельная короткая шпаргалка:
+
+- [OPERATIONS_DASHBOARD.md](/Users/theanabioz/Documents/telegram-retail/OPERATIONS_DASHBOARD.md)
