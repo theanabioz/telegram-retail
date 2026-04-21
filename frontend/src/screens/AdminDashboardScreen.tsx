@@ -17,6 +17,7 @@ import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
+import { addRealtimeEventListener, type RetailRealtimeEvent } from "../lib/realtime";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
@@ -723,6 +724,82 @@ export function AdminDashboardScreen({
     salesSellerFilter,
     salesStatusFilter,
     salesStoreFilter,
+    selectedInventoryStoreId,
+  ]);
+
+  useEffect(() => {
+    let refreshTimerId: number | null = null;
+
+    const scheduleAdminRealtimeRefresh = (event: RetailRealtimeEvent) => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (event.type === "connected") {
+        return;
+      }
+
+      if (refreshTimerId !== null) {
+        window.clearTimeout(refreshTimerId);
+      }
+
+      refreshTimerId = window.setTimeout(() => {
+        refreshTimerId = null;
+
+        if (activeTab === "overview" || activeTab === "sales") {
+          void refreshActiveAdminTab();
+          return;
+        }
+
+        if (activeTab === "inventory") {
+          if (
+            inventoryMode === "stock" &&
+            (event.type === "inventory.updated" || event.type === "sales.updated" || event.type === "products.updated")
+          ) {
+            if (selectedInventoryStoreId) {
+              void loadInventory(selectedInventoryStoreId, { silent: true });
+            } else {
+              void loadInventory(undefined, { silent: true });
+            }
+            return;
+          }
+
+          if (inventoryMode === "products" && event.type === "products.updated") {
+            void loadProducts({ archived: productCatalogMode === "archive" });
+          }
+          return;
+        }
+
+        if (
+          activeTab === "team" &&
+          (event.type === "staff.updated" ||
+            event.type === "stores.updated" ||
+            event.type === "shift.updated" ||
+            event.type === "sales.updated" ||
+            event.type === "inventory.updated")
+        ) {
+          void Promise.allSettled([loadStores(), loadStaff()]);
+        }
+      }, 180);
+    };
+
+    const cleanup = addRealtimeEventListener(scheduleAdminRealtimeRefresh);
+
+    return () => {
+      cleanup();
+      if (refreshTimerId !== null) {
+        window.clearTimeout(refreshTimerId);
+      }
+    };
+  }, [
+    activeTab,
+    inventoryMode,
+    loadInventory,
+    loadProducts,
+    loadStaff,
+    loadStores,
+    productCatalogMode,
+    refreshActiveAdminTab,
     selectedInventoryStoreId,
   ]);
 

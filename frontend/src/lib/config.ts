@@ -42,6 +42,7 @@ function resolveDefaultApiBaseUrl() {
 
 export const config = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? resolveDefaultApiBaseUrl(),
+  realtimeUrl: import.meta.env.VITE_REALTIME_URL,
   devTelegramId: Number(import.meta.env.VITE_DEV_TELEGRAM_ID ?? 100000101),
   devPanel: import.meta.env.VITE_DEV_PANEL ?? "seller",
   devSellerTelegramId: Number(import.meta.env.VITE_DEV_SELLER_TELEGRAM_ID ?? 100000101),

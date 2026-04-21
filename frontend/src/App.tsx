@@ -4,6 +4,7 @@ import { apiGet, apiPost } from "./lib/api";
 import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
+import { disconnectRealtimeConnection, ensureRealtimeConnection } from "./lib/realtime";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
 import { bootstrapTelegramSdk, expandTelegramApp, notifyTelegramAppReady } from "./lib/telegramSdk";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
@@ -220,6 +221,21 @@ export function App() {
   useEffect(() => {
     void bootstrap(currentPanel);
   }, [bootstrap, currentPanel]);
+
+  useEffect(() => {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+
+    if (session.loading || !token) {
+      disconnectRealtimeConnection();
+      return;
+    }
+
+    ensureRealtimeConnection(token);
+
+    return () => {
+      disconnectRealtimeConnection();
+    };
+  }, [currentPanel, session.loading, session.operatorName, session.role]);
 
   const switchPanel = async (nextPanel: DevPanel) => {
     if (nextPanel === currentPanel) {

@@ -5,7 +5,7 @@
 {$APP_DOMAIN} {
   encode zstd gzip
 
-  @api path /health /auth* /seller* /shifts* /admin*
+  @api path /health /ws /auth* /seller* /shifts* /admin*
   handle @api {
     reverse_proxy backend:4000
   }
@@ -20,7 +20,7 @@
 :80 {
   encode zstd gzip
 
-  @api path /health /auth* /seller* /shifts* /admin*
+  @api path /health /ws /auth* /seller* /shifts* /admin*
   handle @api {
     reverse_proxy backend:4000
   }

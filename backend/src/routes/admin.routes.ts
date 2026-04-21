@@ -40,6 +40,7 @@ import {
   updateProduct,
   updateStoreProductSettings,
 } from "../modules/admin/admin.service.js";
+import { emitRealtimeEvent } from "../realtime/server.js";
 
 export const adminRouter = Router();
 
@@ -116,6 +117,19 @@ adminRouter.post(
   asyncHandler(async (req, res) => {
     const body = createAdminStoreBodySchema.parse(req.body);
     const result = await createStore(body);
+    emitRealtimeEvent(
+      {
+        type: "stores.updated",
+        scope: {
+          storeId: result.store.id,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin"] }
+    );
     res.status(201).json(result);
   })
 );
@@ -126,6 +140,19 @@ adminRouter.patch(
     const params = adminStoreParamsSchema.parse(req.params);
     const body = updateAdminStoreBodySchema.parse(req.body);
     const result = await updateStore(params.storeId, body);
+    emitRealtimeEvent(
+      {
+        type: "stores.updated",
+        scope: {
+          storeId: params.storeId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin"] }
+    );
     res.json(result);
   })
 );
@@ -149,6 +176,20 @@ adminRouter.post(
       storeId: body.storeId,
       isActive: body.isActive,
     });
+    emitRealtimeEvent(
+      {
+        type: "staff.updated",
+        scope: {
+          storeId: body.storeId ?? null,
+          sellerId: result.seller.id,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin"] }
+    );
     res.status(201).json(result);
   })
 );
@@ -185,6 +226,19 @@ adminRouter.post(
   asyncHandler(async (req, res) => {
     const body = createAdminProductBodySchema.parse(req.body);
     const result = await createProduct(body);
+    emitRealtimeEvent(
+      {
+        type: "products.updated",
+        scope: {
+          productId: result.product.id,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"] }
+    );
     res.status(201).json(result);
   })
 );
@@ -195,6 +249,19 @@ adminRouter.patch(
     const params = adminProductParamsSchema.parse(req.params);
     const body = updateAdminProductBodySchema.parse(req.body);
     const result = await updateProduct(params.productId, body);
+    emitRealtimeEvent(
+      {
+        type: "products.updated",
+        scope: {
+          productId: params.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"] }
+    );
     res.json(result);
   })
 );
@@ -204,6 +271,19 @@ adminRouter.delete(
   asyncHandler(async (req, res) => {
     const params = adminProductParamsSchema.parse(req.params);
     const result = await deleteProduct(params.productId);
+    emitRealtimeEvent(
+      {
+        type: "products.updated",
+        scope: {
+          productId: params.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"] }
+    );
     res.json(result);
   })
 );
@@ -213,6 +293,19 @@ adminRouter.post(
   asyncHandler(async (req, res) => {
     const params = adminProductParamsSchema.parse(req.params);
     const result = await archiveProduct(params.productId);
+    emitRealtimeEvent(
+      {
+        type: "products.updated",
+        scope: {
+          productId: params.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"] }
+    );
     res.json(result);
   })
 );
@@ -222,6 +315,19 @@ adminRouter.post(
   asyncHandler(async (req, res) => {
     const params = adminProductParamsSchema.parse(req.params);
     const result = await restoreProduct(params.productId);
+    emitRealtimeEvent(
+      {
+        type: "products.updated",
+        scope: {
+          productId: params.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"] }
+    );
     res.json(result);
   })
 );
@@ -236,6 +342,34 @@ adminRouter.patch(
       price: body.price,
       isEnabled: body.isEnabled,
     });
+    emitRealtimeEvent(
+      {
+        type: "products.updated",
+        scope: {
+          storeId: result.item.storeId,
+          productId: result.item.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"], storeIds: [result.item.storeId] }
+    );
+    emitRealtimeEvent(
+      {
+        type: "inventory.updated",
+        scope: {
+          storeId: result.item.storeId,
+          productId: result.item.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"], storeIds: [result.item.storeId] }
+    );
     res.json(result);
   })
 );
@@ -252,6 +386,20 @@ adminRouter.post(
       quantity: body.quantity,
       reason: body.reason,
     });
+    emitRealtimeEvent(
+      {
+        type: "inventory.updated",
+        scope: {
+          storeId: body.storeId,
+          productId: body.productId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin", "seller"], storeIds: [body.storeId] }
+    );
     res.status(201).json(result);
   })
 );
@@ -266,6 +414,20 @@ adminRouter.post(
       sellerUserId: params.sellerId,
       storeId: body.storeId,
     });
+    emitRealtimeEvent(
+      {
+        type: "staff.updated",
+        scope: {
+          storeId: body.storeId,
+          sellerId: params.sellerId,
+        },
+        meta: {
+          sourceUserId: req.auth!.app_user_id,
+          sourceRole: req.auth!.app_role,
+        },
+      },
+      { roles: ["admin"], userIds: [params.sellerId] }
+    );
     res.json(result);
   })
 );

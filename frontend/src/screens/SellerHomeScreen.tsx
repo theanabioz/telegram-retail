@@ -41,6 +41,7 @@ import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
 import { suppressGlobalHaptics } from "../lib/haptics";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
+import { addRealtimeEventListener, type RetailRealtimeEvent } from "../lib/realtime";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
@@ -465,6 +466,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     shiftSummary,
     startShift,
     stopShift,
+    storeId,
     storeName,
     updateDraftItem,
     writeoffProduct,
@@ -472,6 +474,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     showShiftDetails,
     clearShiftDetails,
   } = useSellerHomeStore();
+
+  const realtimeRefreshTimerRef = useRef<number | null>(null);
 
   const [activeTab, setActiveTab] = useState<SellerTab>("checkout");
   const [searchQuery, setSearchQuery] = useState("");
@@ -546,6 +550,50 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       window.removeEventListener("appfullscreenchange", syncFullscreenState);
     };
   }, []);
+
+  useEffect(() => {
+    const scheduleRealtimeRefresh = (event: RetailRealtimeEvent) => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (event.type === "connected") {
+        return;
+      }
+
+      if (event.scope?.storeId && storeId && event.scope.storeId !== storeId) {
+        return;
+      }
+
+      if (
+        event.type !== "sales.updated" &&
+        event.type !== "inventory.updated" &&
+        event.type !== "shift.updated" &&
+        event.type !== "products.updated"
+      ) {
+        return;
+      }
+
+      if (realtimeRefreshTimerRef.current !== null) {
+        window.clearTimeout(realtimeRefreshTimerRef.current);
+      }
+
+      realtimeRefreshTimerRef.current = window.setTimeout(() => {
+        realtimeRefreshTimerRef.current = null;
+        void bootstrap({ skipCache: true });
+      }, 180);
+    };
+
+    const cleanup = addRealtimeEventListener(scheduleRealtimeRefresh);
+
+    return () => {
+      cleanup();
+      if (realtimeRefreshTimerRef.current !== null) {
+        window.clearTimeout(realtimeRefreshTimerRef.current);
+        realtimeRefreshTimerRef.current = null;
+      }
+    };
+  }, [bootstrap, storeId]);
 
   useEffect(() => {
     if (!draft?.items.length && isDraftCartOpen) {
