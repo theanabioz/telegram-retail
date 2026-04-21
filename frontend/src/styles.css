@@ -95,3 +95,26 @@ html.app-force-portrait #root {
 .low-stock-card-pulse {
   animation: lowStockCardPulse 3.8s ease-in-out infinite;
 }
+
+@keyframes softScreenEnter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.995);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.soft-screen-transition {
+  animation: softScreenEnter 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soft-screen-transition {
+    animation: none;
+  }
+}

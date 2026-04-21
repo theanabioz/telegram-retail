@@ -108,8 +108,8 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
                 touchAction: "manipulation",
                 userSelect: "none",
               }}
-              transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
-              _active={{ bg: "transparent", boxShadow: "none", transform: "scale(0.94)" }}
+              transition="transform 180ms cubic-bezier(0.22, 1, 0.36, 1), color 160ms ease"
+              _active={{ bg: "transparent", boxShadow: "none", transform: "scale(0.965)" }}
               _focus={{ boxShadow: "none" }}
               _focusVisible={{ boxShadow: "none" }}
               position="relative"
@@ -122,7 +122,8 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
                 placeItems="center"
                 color={isActive ? "brand.500" : "surface.500"}
                 bg={isActive ? "rgba(74, 132, 244, 0.08)" : "transparent"}
-                transition="all 0.2s ease"
+                transition="background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                transform={isActive ? "translateY(-1px)" : "translateY(0)"}
               >
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
               </Box>
@@ -131,7 +132,8 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
                 letterSpacing="0.01em"
                 lineHeight="1.2"
                 fontWeight={isActive ? "800" : "600"}
-                transition="all 0.2s ease"
+                transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
               >
                 {label}
               </Text>

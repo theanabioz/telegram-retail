@@ -96,7 +96,6 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
               minH="48px"
               borderRadius="12px"
               bg="transparent"
-              _active={{ bg: "transparent", boxShadow: "none" }}
               _focus={{ boxShadow: "none" }}
               _focusVisible={{ boxShadow: "none" }}
               sx={{
@@ -105,7 +104,8 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
                 touchAction: "manipulation",
                 userSelect: "none",
               }}
-              transition="all 0.18s ease"
+              transition="transform 180ms cubic-bezier(0.22, 1, 0.36, 1), color 160ms ease"
+              _active={{ bg: "transparent", boxShadow: "none", transform: "scale(0.97)" }}
             >
               <Box
                 w="38px"
@@ -115,6 +115,8 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
                 placeItems="center"
                 color={isActive ? "brand.500" : "surface.500"}
                 bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
+                transition="background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                transform={isActive ? "translateY(-1px)" : "translateY(0)"}
               >
                 <Icon size={23} strokeWidth={2.2} />
               </Box>
@@ -125,6 +127,8 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
                 noOfLines={1}
                 color={isActive ? "brand.500" : "surface.500"}
                 fontWeight={isActive ? "800" : "700"}
+                transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
               >
                 {label}
               </Text>

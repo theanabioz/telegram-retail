@@ -2750,6 +2750,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
   };
 
+  const sellerMotionKey = `${activeTab}:${activeTabTitle[activeTab]}:${isSellerProfileOpen ? "profile" : "main"}`;
+
   return (
     <Box
       minH="100vh"
@@ -2760,7 +2762,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         : bottomDockReservedSpace}
     >
       <Container maxW="container.sm" px={0}>
-        <VStack spacing={5} align="stretch">
+        <VStack key={sellerMotionKey} spacing={5} align="stretch" className="soft-screen-transition">
           <VStack spacing={6} align="stretch" pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
             <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1}>
               {showFullscreenHeaderContext ? (

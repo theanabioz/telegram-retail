@@ -5718,10 +5718,12 @@ export function AdminDashboardScreen({
     }
   };
 
+  const adminMotionKey = `${activeTab}:${adminPageTitle}:${adminPageSubtitle ?? ""}`;
+
   return (
     <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
-        <VStack spacing={5} align="stretch">
+        <VStack key={adminMotionKey} spacing={5} align="stretch" className="soft-screen-transition">
           <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1} pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
             {showFullscreenHeaderContext ? (
               <HStack justify="space-between" align="center">
