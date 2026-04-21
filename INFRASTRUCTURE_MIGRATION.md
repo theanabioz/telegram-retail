@@ -46,6 +46,7 @@ Temporary operational note:
 - [scripts/server/deploy.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/deploy.sh)
 - [scripts/server/smoke-check.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/smoke-check.sh)
 - [scripts/server/backup-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/backup-postgres.sh)
+- [scripts/server/restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/restore-postgres.sh)
 
 ## What This Gives Us
 
@@ -56,6 +57,7 @@ Temporary operational note:
 - auto-healing for unhealthy stateless containers
 - bounded Docker logs to reduce disk growth
 - reusable deploy/smoke scripts for lower-friction operations
+- an explicit restore path for future self-hosted Postgres drills
 
 ## Current Runtime Notes
 
@@ -84,6 +86,23 @@ docker compose -f docker-compose.server.yml --env-file .env.server up -d --build
 - frontend loads
 - auth works inside Telegram
 - `scripts/server/smoke-check.sh albufeirashop.xyz`
+
+## Future Self-Hosted Postgres Safety
+
+When we switch the database from Supabase to the local `postgres` profile, the minimum safe loop should be:
+
+1. take a fresh backup
+2. verify the backup file exists on disk
+3. restore it into the local Postgres profile with:
+
+```bash
+scripts/server/restore-postgres.sh /opt/telegram-retail/backups/manual/postgres_YYYY-MM-DD_HH-MM-SS.sql.gz --yes
+```
+
+4. run smoke checks again
+5. only then point the backend to local Postgres as the primary database
+
+This keeps the database migration itself reversible and testable instead of relying on unverified dumps.
 
 ## Rollback
 
