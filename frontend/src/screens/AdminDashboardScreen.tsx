@@ -3772,8 +3772,8 @@ export function AdminDashboardScreen({
                     <HStack justify="space-between" align="start">
                       <VStack align="start" spacing={1} minW={0}>
                         <HStack spacing={2}>
-                          <Text fontWeight="900">
-                            {sale.status === "deleted" ? t("admin.sales.deletedSale") : t("admin.sales.completedSale")}
+                          <Text fontWeight="900" noOfLines={1}>
+                            {t("admin.sales.saleRef")}
                           </Text>
                           <StatusPill
                             label={formatAdminPaymentMethod(sale.paymentMethod)}
@@ -3790,10 +3790,12 @@ export function AdminDashboardScreen({
                       </VStack>
                       <VStack align="end" spacing={1}>
                         <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
-                        <StatusPill
-                          label={sale.status === "deleted" ? t("status.deleted") : t("status.completed")}
-                          tone={sale.status === "deleted" ? "red" : "green"}
-                        />
+                        {sale.status === "deleted" ? (
+                          <StatusPill
+                            label={t("status.deleted")}
+                            tone="red"
+                          />
+                        ) : null}
                       </VStack>
                     </HStack>
                   </Box>
