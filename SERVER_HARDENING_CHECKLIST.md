@@ -24,6 +24,8 @@
 - `autoheal` поднят
 - Docker logs ограничены по размеру
 - `backup`, `base backup`, `PITR`, `restore drill` уже работают
+- operational alert scripts добавлены
+- offsite backup sync подготовлен в ready-to-enable виде
 
 ## Что держим в текущей конфигурации
 
@@ -65,6 +67,21 @@
 - SSL renewal неожиданно не сработал
 
 Это даст самый большой реальный комфорт.
+
+Скрипты уже подготовлены:
+
+- `scripts/server/send-telegram-alert.sh`
+- `scripts/server/check-backend-health.sh`
+- `scripts/server/check-disk-usage.sh`
+- `scripts/server/check-ssl-expiry.sh`
+- `scripts/server/run-monitored-job.sh`
+
+Для установки symlink-ов и cron:
+
+```bash
+cd /opt/telegram-retail/app
+scripts/server/install-ops-cron.sh
+```
 
 ### 2. Проверка server reboot recovery
 
@@ -143,6 +160,18 @@ ls -lah /opt/telegram-retail/backups/wal | tail
 - или другой внешний backup target
 
 Это важнее многих “красивых” hardening-мер, потому что защищает от полной потери сервера.
+
+Под это уже подготовлен скрипт:
+
+- `scripts/server/offsite-sync-backups.sh`
+
+Он включится, когда в `.env.server` будут заданы:
+
+- `OFFSITE_BACKUP_ENABLED=true`
+- `OFFSITE_S3_ENDPOINT`
+- `OFFSITE_S3_BUCKET`
+- `OFFSITE_AWS_ACCESS_KEY_ID`
+- `OFFSITE_AWS_SECRET_ACCESS_KEY`
 
 ## Операционный чек-лист раз в неделю
 
@@ -244,6 +273,13 @@ PITR restore:
 
 ```bash
 retail-pitr-restore-postgres /opt/telegram-retail/backups/base/base_YYYY-MM-DD_HH-MM-SS '2026-04-21 18:45:00+01' --yes
+```
+
+Install ops cron:
+
+```bash
+cd /opt/telegram-retail/app
+scripts/server/install-ops-cron.sh
 ```
 
 ## Что я бы считал следующим лучшим шагом
