@@ -363,11 +363,10 @@ function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "b
 
   return (
     <Box
-      px={2.25}
-      py={0.75}
+      px={2.5}
+      py={1}
       borderRadius="999px"
-      fontSize="11px"
-      lineHeight="1.1"
+      fontSize="xs"
       fontWeight="800"
       letterSpacing="0.02em"
       bg={styles[tone].bg}
@@ -1831,8 +1830,8 @@ export function AdminDashboardScreen({
       })),
       ...activeStoreShifts.map((seller) => ({
         id: `shift-${seller.activeShift?.id ?? seller.id}`,
-        title: seller.activeShift?.status === "paused" ? t("admin.team.shiftPaused") : t("admin.team.shiftActive"),
-        meta: `${seller.fullName} · ${seller.activeShift?.startedAt ? formatShortDate(seller.activeShift.startedAt) : t("common.noActivityYet")}`,
+        title: seller.activeShift?.status === "paused" ? t("admin.team.shiftPausedEvent") : t("admin.team.shiftStartedEvent"),
+        meta: seller.fullName,
         date: seller.activeShift?.startedAt ?? new Date().toISOString(),
         icon: LuClock3,
         iconLabel: t("admin.team.shift"),
@@ -3994,8 +3993,8 @@ export function AdminDashboardScreen({
         ? [
             {
               id: `shift-${seller.activeShift.id}`,
-              title: seller.activeShift.status === "paused" ? t("admin.team.shiftPaused") : t("admin.team.shiftActive"),
-              meta: `${seller.activeShift.storeName} · ${formatShortDate(seller.activeShift.startedAt)}`,
+              title: seller.activeShift.status === "paused" ? t("admin.team.shiftPausedEvent") : t("admin.team.shiftStartedEvent"),
+              meta: seller.activeShift.storeName,
               date: seller.activeShift.startedAt,
               icon: LuClock3,
               iconLabel: t("admin.team.shift"),
@@ -4397,8 +4396,8 @@ export function AdminDashboardScreen({
                               </Text>
                             </VStack>
                           </HStack>
-                          <Text fontSize="xs" color="surface.400" fontWeight="900" textTransform="uppercase" pt={1}>
-                            {item.iconLabel}
+                          <Text fontSize="xs" color="surface.400" fontWeight="900" pt={1}>
+                            {formatSalesTime(item.date)}
                           </Text>
                         </HStack>
                       );
