@@ -5723,7 +5723,7 @@ export function AdminDashboardScreen({
   return (
     <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
-        <VStack spacing={5} align="stretch">
+        <VStack key={adminMotionKey} spacing={5} align="stretch" className="soft-screen-transition">
           <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1} pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
             {showFullscreenHeaderContext ? (
               <HStack justify="space-between" align="center">
@@ -5781,27 +5781,23 @@ export function AdminDashboardScreen({
             </HStack>
           </VStack>
 
-          <Box key={adminMotionKey} className="soft-screen-transition">
-            <VStack spacing={5} align="stretch">
-              {loading || loadingStores || loadingStaff ? (
-                <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
-                  <Text fontWeight="800">
-                    {activeTab === "team" ? t("admin.loadingTeamData") : t("admin.loadingAdminData")}
-                  </Text>
-                </Box>
-              ) : null}
+          {loading || loadingStores || loadingStaff ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
+              <Text fontWeight="800">
+                {activeTab === "team" ? t("admin.loadingTeamData") : t("admin.loadingAdminData")}
+              </Text>
+            </Box>
+          ) : null}
 
-              {managementStatus ? (
-                <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
-                  <Text fontWeight="800" color="red.400">
-                    {managementStatus}
-                  </Text>
-                </Box>
-              ) : null}
+          {managementStatus ? (
+            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
+              <Text fontWeight="800" color="red.400">
+                {managementStatus}
+              </Text>
+            </Box>
+          ) : null}
 
-              {renderTab()}
-            </VStack>
-          </Box>
+          {renderTab()}
         </VStack>
       </Container>
 
