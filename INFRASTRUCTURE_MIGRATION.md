@@ -49,6 +49,7 @@ Temporary operational note:
 - [scripts/server/basebackup-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/basebackup-postgres.sh)
 - [scripts/server/restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/restore-postgres.sh)
 - [scripts/server/pitr-restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/pitr-restore-postgres.sh)
+- [scripts/server/pitr-drill-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/pitr-drill-postgres.sh)
 - [scripts/server/bootstrap-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/bootstrap-postgres.sh)
 
 ## What This Gives Us
@@ -139,6 +140,21 @@ After validation, bring app containers back:
 ```bash
 docker compose --profile selfhosted-db --env-file .env.server -f docker-compose.server.yml up -d backend frontend postgres-backup
 ```
+
+### Safe PITR Drill
+
+To verify recovery without touching production:
+
+```bash
+scripts/server/pitr-drill-postgres.sh
+```
+
+This will:
+
+- pick the latest base backup by default
+- replay WAL into a temporary PostgreSQL instance on `127.0.0.1:55432`
+- verify the database opens and core tables are readable
+- remove the temporary drill container and data directory afterwards
 
 ## Suggested Next Steps
 
