@@ -16,7 +16,7 @@ import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
-import { useI18n } from "../lib/i18n";
+import { translate, useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
@@ -244,7 +244,7 @@ function generateInternalProductCode(name: string) {
 
 function formatDateTime(value: string | null) {
   if (!value) {
-    return "No activity yet";
+    return translate("common.noActivityYet");
   }
 
   return new Date(value).toLocaleString(undefined, {
@@ -269,11 +269,11 @@ const demoStoreAddressOverrides: Record<string, string> = {
   "Riverside Store": "Largo do Toural 9, Guimaraes",
 };
 
-function getStoreAddressLabel(store: { name: string; address?: string | null }) {
+function getStoreAddressLabel(store: { name: string; address?: string | null }, fallbackLabel: string) {
   const normalizedAddress = store.address?.trim();
 
   if (!normalizedAddress) {
-    return demoStoreAddressOverrides[store.name] ?? "Address not specified";
+    return demoStoreAddressOverrides[store.name] ?? fallbackLabel;
   }
 
   return demoStoreAddressOverrides[store.name] ?? normalizedAddress;
@@ -485,18 +485,18 @@ export function AdminDashboardScreen({
     : null;
   const headerContextLabel =
     activeTab === "overview"
-      ? "Live dashboard"
+      ? t("admin.context.liveDashboard")
       : activeTab === "sales"
-        ? "Revenue and returns"
+        ? t("admin.context.revenueReturns")
         : activeTab === "inventory"
-          ? "Stock across stores"
+          ? t("admin.context.stockAcrossStores")
           : activeTab === "team"
             ? selectedStaffSeller
-              ? "Seller management"
+              ? t("admin.team.sellerManagement")
               : selectedTeamStore
-                ? "Store management"
-                : "Stores and staff"
-            : "Workspace settings";
+                ? t("admin.team.storeManagement")
+                : t("admin.team.storesAndStaff")
+            : t("admin.context.workspaceSettings");
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
     if (tab === "overview") {
@@ -535,13 +535,13 @@ export function AdminDashboardScreen({
 
   const adminPageTitle =
     activeTab === "inventory" && selectedInventoryItemId
-      ? "Product Details"
+      ? t("admin.inventory.productDetails")
       : activeTab === "inventory" && selectedProductId
-        ? "Product Details"
+        ? t("admin.inventory.productDetails")
       : activeTab === "team" && selectedStaffSeller
-        ? "Seller Details"
+        ? t("admin.team.sellerDetails")
         : activeTab === "team" && selectedTeamStore
-          ? "Store Details"
+          ? t("admin.team.storeDetails")
       : ({
           overview: t("nav.overview"),
           sales: t("nav.sales"),
@@ -559,8 +559,8 @@ export function AdminDashboardScreen({
         selectedInventoryHeaderItem.storeName
       : activeTab === "inventory" && selectedProductId
         ? productCatalogMode === "archive"
-          ? "Product archive"
-          : "Product catalog"
+          ? t("admin.inventory.productArchiveLabel")
+          : t("admin.inventory.productCatalogLabel")
       : null;
 
   useTelegramBackButton(
@@ -1106,6 +1106,74 @@ export function AdminDashboardScreen({
     return `${count} latest`;
   };
 
+  const getRussianPlural = (count: number, one: string, few: string, many: string) => {
+    const absCount = Math.abs(count);
+    const lastTwo = absCount % 100;
+    const lastOne = absCount % 10;
+
+    if (lastTwo >= 11 && lastTwo <= 14) {
+      return many;
+    }
+
+    if (lastOne === 1) {
+      return one;
+    }
+
+    if (lastOne >= 2 && lastOne <= 4) {
+      return few;
+    }
+
+    return many;
+  };
+
+  const formatTeamSellerCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} ${getRussianPlural(count, "продавец", "продавца", "продавцов")}`;
+    }
+
+    if (locale === "pt") {
+      return `${count} ${count === 1 ? "vendedor" : "vendedores"}`;
+    }
+
+    return `${count} ${count === 1 ? "seller" : "sellers"}`;
+  };
+
+  const formatTeamActionCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} ${getRussianPlural(count, "действие", "действия", "действий")}`;
+    }
+
+    if (locale === "pt") {
+      return `${count} ${count === 1 ? "ação" : "ações"}`;
+    }
+
+    return `${count} ${count === 1 ? "action" : "actions"}`;
+  };
+
+  const formatTeamEventCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} ${getRussianPlural(count, "событие", "события", "событий")}`;
+    }
+
+    if (locale === "pt") {
+      return `${count} ${count === 1 ? "evento" : "eventos"}`;
+    }
+
+    return `${count} ${count === 1 ? "event" : "events"}`;
+  };
+
+  const formatTeamLoadedCount = (count: number) => {
+    if (locale === "ru") {
+      return `${count} загружено`;
+    }
+
+    if (locale === "pt") {
+      return `${count} carregados`;
+    }
+
+    return `${count} loaded`;
+  };
+
   const handleSaveStoreProduct = async (storeProductId: string) => {
     const draft = inventoryEdits[storeProductId];
 
@@ -1599,14 +1667,14 @@ export function AdminDashboardScreen({
     <VStack spacing={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={3}>
-          <VStack align="start" spacing={0}>
-            <Text fontWeight="900" fontSize="lg">
-              Store Directory
-            </Text>
-            <Text color="surface.500" fontSize="sm" fontWeight="700">
-              Tap a store to manage profile, staff and activity.
-            </Text>
-          </VStack>
+        <VStack align="start" spacing={0}>
+          <Text fontWeight="900" fontSize="lg">
+            {t("admin.team.storeDirectory")}
+          </Text>
+          <Text color="surface.500" fontSize="sm" fontWeight="700">
+            {t("admin.team.storeDirectoryDescription")}
+          </Text>
+        </VStack>
 
           {stores.map((store) => (
             <Box
@@ -1632,13 +1700,13 @@ export function AdminDashboardScreen({
                     {store.name}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {store.address || `Created ${formatShortDate(store.createdAt)}`}
+                    {store.address || `${t("admin.team.created")} ${formatShortDate(store.createdAt)}`}
                   </Text>
                 </VStack>
 
                 <Box flexShrink={0}>
                   <StatusPill
-                    label={store.isActive ? "Active" : "Inactive"}
+                    label={store.isActive ? t("admin.team.active") : t("admin.team.inactive")}
                     tone={store.isActive ? "green" : "red"}
                   />
                 </Box>
@@ -1658,9 +1726,9 @@ export function AdminDashboardScreen({
               setTeamKeyboardCapsLock(false);
               setShowNewStoreModal(true);
             }}
-          >
-            New Store
-          </Button>
+        >
+          {t("admin.team.newStore")}
+        </Button>
         </VStack>
       </Box>
 
@@ -1689,31 +1757,31 @@ export function AdminDashboardScreen({
     }> = [
       ...storeSales.map((sale) => ({
         id: `sale-${sale.id}`,
-        title: sale.status === "deleted" ? "Sale deleted" : "Sale completed",
-        meta: `${sale.seller?.fullName ?? "Unknown seller"} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
+        title: sale.status === "deleted" ? t("admin.team.saleDeleted") : t("admin.team.saleCompleted"),
+        meta: `${sale.seller?.fullName ?? t("admin.team.unknownSeller")} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
         date: sale.createdAt,
         icon: LuReceiptText,
-        iconLabel: sale.status === "deleted" ? "Deleted" : "Sale",
+        iconLabel: sale.status === "deleted" ? t("admin.team.deleted") : t("admin.team.sale"),
         iconBg: sale.status === "deleted" ? "rgba(248,113,113,0.14)" : "rgba(34,197,94,0.12)",
         iconColor: sale.status === "deleted" ? "red.500" : "green.600",
       })),
       ...storeReturns.map((entry) => ({
         id: `return-${entry.id}`,
-        title: "Return created",
-        meta: `${entry.seller?.fullName ?? "Unknown seller"} · ${formatEur(entry.totalAmount)}`,
+        title: t("admin.team.returnCreated"),
+        meta: `${entry.seller?.fullName ?? t("admin.team.unknownSeller")} · ${formatEur(entry.totalAmount)}`,
         date: entry.createdAt,
         icon: LuActivity,
-        iconLabel: "Return",
+        iconLabel: t("admin.team.return"),
         iconBg: "rgba(251,191,36,0.18)",
         iconColor: "orange.500",
       })),
       ...activeStoreShifts.map((seller) => ({
         id: `shift-${seller.activeShift?.id ?? seller.id}`,
-        title: seller.activeShift?.status === "paused" ? "Shift paused" : "Shift active",
-        meta: `${seller.fullName} · started ${formatDateTime(seller.activeShift?.startedAt ?? null)}`,
+        title: seller.activeShift?.status === "paused" ? t("admin.team.shiftPaused") : t("admin.team.shiftActive"),
+        meta: `${seller.fullName} · ${t("admin.team.startedLower")} ${formatDateTime(seller.activeShift?.startedAt ?? null)}`,
         date: seller.activeShift?.startedAt ?? new Date().toISOString(),
         icon: LuClock3,
-        iconLabel: "Shift",
+        iconLabel: t("admin.team.shift"),
         iconBg: seller.activeShift?.status === "paused" ? "rgba(251,191,36,0.18)" : "rgba(74,132,244,0.14)",
         iconColor: seller.activeShift?.status === "paused" ? "orange.500" : "brand.600",
       })),
@@ -1743,7 +1811,7 @@ export function AdminDashboardScreen({
                     setStoreDetailMode("overview");
                   }}
                 >
-                  Back
+                  {t("admin.inventory.back")}
                 </Button>
               </HStack>
             ) : null}
@@ -1754,10 +1822,10 @@ export function AdminDashboardScreen({
                   {store.name}
                 </Text>
                 <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                  {store.address || "Address not specified"}
+                  {store.address || t("admin.overview.addressMissing")}
                 </Text>
               </VStack>
-              <StatusPill label={store.isActive ? "Active" : "Inactive"} tone={store.isActive ? "green" : "red"} />
+              <StatusPill label={store.isActive ? t("admin.team.active") : t("admin.team.inactive")} tone={store.isActive ? "green" : "red"} />
             </HStack>
           </VStack>
         </Box>
@@ -1780,12 +1848,12 @@ export function AdminDashboardScreen({
                   onClick={() => setStoreDetailMode(mode)}
                 >
                   {mode === "overview"
-                    ? "Overview"
+                    ? t("admin.team.overviewTab")
                     : mode === "profile"
-                      ? "Profile"
+                      ? t("admin.team.profileTab")
                       : mode === "staff"
-                        ? "Staff"
-                        : "Activity"}
+                        ? t("admin.team.staffMembersTab")
+                        : t("admin.team.activityTab")}
                 </Button>
               );
             })}
@@ -1796,10 +1864,10 @@ export function AdminDashboardScreen({
           <VStack spacing={4} align="stretch">
             <SimpleGrid columns={2} spacing={3}>
               {[
-                { label: "Today Revenue", value: formatEur(store.revenueToday) },
-                { label: "Sales Today", value: String(store.salesCount) },
-                { label: "Stock Units", value: String(store.stockUnits) },
-                { label: "Low Stock", value: String(store.lowStockCount) },
+                { label: t("admin.overview.todayRevenue"), value: formatEur(store.revenueToday) },
+                { label: t("admin.overview.salesToday"), value: String(store.salesCount) },
+                { label: t("admin.sales.units"), value: String(store.stockUnits) },
+                { label: t("admin.overview.lowStock"), value: String(store.lowStockCount) },
               ].map((card) => (
                 <Box
                   key={card.label}
@@ -1808,7 +1876,7 @@ export function AdminDashboardScreen({
                   px={4}
                   py={4}
                   boxShadow={panelShadow}
-                  {...getLowStockCardProps(card.label === "Low Stock" && store.lowStockCount > 0)}
+                  {...getLowStockCardProps(card.label === t("admin.overview.lowStock") && store.lowStockCount > 0)}
                 >
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                     {card.label}
@@ -1824,17 +1892,17 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
-                    Store Snapshot
+                    {t("admin.team.storeSnapshot")}
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="800">
-                    {assignedStaff.length} sellers
+                    {formatTeamSellerCount(assignedStaff.length)}
                   </Text>
                 </HStack>
                 {[
-                  { label: "Address", value: store.address || "Address not specified" },
-                  { label: "Active Shifts", value: String(store.activeShiftCount) },
-                  { label: "All-Time Revenue", value: formatEur(store.revenueAllTime) },
-                  { label: "Created", value: formatShortDate(store.createdAt) },
+                  { label: t("admin.team.address"), value: store.address || t("admin.overview.addressMissing") },
+                  { label: t("admin.team.activeShifts"), value: String(store.activeShiftCount) },
+                  { label: t("admin.team.allTimeRevenue"), value: formatEur(store.revenueAllTime) },
+                  { label: t("admin.team.created"), value: formatShortDate(store.createdAt) },
                 ].map((item) => (
                   <HStack key={item.label} justify="space-between" bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                     <Text color="surface.500" fontSize="sm" fontWeight="800">
@@ -1855,16 +1923,16 @@ export function AdminDashboardScreen({
             <VStack align="stretch" spacing={4}>
               <VStack align="start" spacing={0}>
                 <Text fontWeight="900" fontSize="lg">
-                  Store Profile
+                  {t("admin.team.storeProfile")}
                 </Text>
                 <Text color="surface.500" fontSize="sm" fontWeight="700">
-                  Update public store name, address and availability.
+                  {t("admin.team.storeProfileDescription")}
                 </Text>
               </VStack>
 
               <VStack align="stretch" spacing={2}>
                 <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Store name
+                  {t("admin.team.storeName")}
                 </Text>
                 <Input
                   value={draft.name}
@@ -1874,7 +1942,7 @@ export function AdminDashboardScreen({
                       [store.id]: { ...draft, name: event.target.value },
                     }))
                   }
-                  placeholder="Store name"
+                  placeholder={t("admin.team.storeName")}
                   borderRadius="16px"
                   bg="white"
                   borderColor="rgba(226,224,218,0.95)"
@@ -1883,7 +1951,7 @@ export function AdminDashboardScreen({
 
               <VStack align="stretch" spacing={2}>
                 <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Address
+                  {t("admin.team.address")}
                 </Text>
                 <Input
                   value={draft.address}
@@ -1893,7 +1961,7 @@ export function AdminDashboardScreen({
                       [store.id]: { ...draft, address: event.target.value },
                     }))
                   }
-                  placeholder="Address or short location note"
+                  placeholder={t("admin.team.addressPlaceholder")}
                   borderRadius="16px"
                   bg="white"
                   borderColor="rgba(226,224,218,0.95)"
@@ -1902,8 +1970,8 @@ export function AdminDashboardScreen({
 
               <SimpleGrid columns={2} spacing={2}>
                 {[
-                  { label: "Enabled", value: true },
-                  { label: "Disabled", value: false },
+                  { label: t("admin.team.enabled"), value: true },
+                  { label: t("admin.team.disabled"), value: false },
                 ].map((option) => {
                   const isActive = draft.isActive === option.value;
 
@@ -1935,7 +2003,7 @@ export function AdminDashboardScreen({
                 isLoading={Boolean(pendingStoreIds[store.id])}
                 onClick={() => void handleSaveStore(store.id)}
               >
-                Save Store
+                {t("admin.team.saveStore")}
               </Button>
             </VStack>
           </Box>
@@ -1946,10 +2014,10 @@ export function AdminDashboardScreen({
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
-                  Assigned Staff
+                  {t("admin.team.assignedStaff")}
                 </Text>
                 <Text color="surface.500" fontSize="sm" fontWeight="800">
-                  {assignedStaff.length} sellers
+                  {formatTeamSellerCount(assignedStaff.length)}
                 </Text>
               </HStack>
 
@@ -1983,7 +2051,7 @@ export function AdminDashboardScreen({
                               {seller.fullName}
                             </Text>
                             <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                              {seller.salesCount} sales · {formatEur(seller.revenue)}
+                              {seller.salesCount} {t("admin.team.sales").toLowerCase()} · {formatEur(seller.revenue)}
                             </Text>
                           </VStack>
                         </HStack>
@@ -1994,9 +2062,9 @@ export function AdminDashboardScreen({
                 })
               ) : (
                 <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={4}>
-                  <Text fontWeight="900">No assigned sellers</Text>
+                  <Text fontWeight="900">{t("admin.team.noAssignedSellers")}</Text>
                   <Text color="surface.500" fontSize="sm" mt={1}>
-                    Assign sellers from a staff profile when this store is ready.
+                    {t("admin.team.noAssignedSellersHint")}
                   </Text>
                 </Box>
               )}
@@ -2009,10 +2077,10 @@ export function AdminDashboardScreen({
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
-                  Activity Feed
+                  {t("admin.team.activityFeed")}
                 </Text>
                 <Text color="surface.500" fontSize="sm" fontWeight="800">
-                  {activityItems.length} events
+                  {formatTeamEventCount(activityItems.length)}
                 </Text>
               </HStack>
 
@@ -2050,9 +2118,9 @@ export function AdminDashboardScreen({
                 })
               ) : (
                 <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={4}>
-                  <Text fontWeight="900">No recent activity</Text>
+                  <Text fontWeight="900">{t("admin.team.noRecentActivity")}</Text>
                   <Text color="surface.500" fontSize="sm" mt={1}>
-                    Sales, returns and active shift events will appear here.
+                    {t("admin.team.noRecentActivityHint")}
                   </Text>
                 </Box>
               )}
@@ -2067,10 +2135,10 @@ export function AdminDashboardScreen({
                     isDisabled={safeActivityPage === 0}
                     onClick={() => setStoreActivityPage((page) => Math.max(0, page - 1))}
                   >
-                    Previous
+                    {t("admin.team.previous")}
                   </Button>
                   <Text color="surface.500" fontSize="sm" fontWeight="800">
-                    Page {safeActivityPage + 1} of {activityTotalPages}
+                    {t("admin.team.page")} {safeActivityPage + 1} {t("admin.team.of")} {activityTotalPages}
                   </Text>
                   <Button
                     size="sm"
@@ -2080,7 +2148,7 @@ export function AdminDashboardScreen({
                     isDisabled={safeActivityPage >= activityTotalPages - 1}
                     onClick={() => setStoreActivityPage((page) => Math.min(activityTotalPages - 1, page + 1))}
                   >
-                    Next
+                    {t("admin.team.next")}
                   </Button>
                 </HStack>
               ) : null}
@@ -3726,18 +3794,18 @@ export function AdminDashboardScreen({
 
   const getSellerStatus = (seller: StaffSeller) => {
     if (!seller.isActive) {
-      return { label: "Inactive", tone: "red" as const };
+      return { label: t("admin.team.inactive"), tone: "red" as const };
     }
 
     if (seller.activeShift?.status === "paused") {
-      return { label: "Paused", tone: "orange" as const };
+      return { label: t("admin.team.paused"), tone: "orange" as const };
     }
 
     if (seller.activeShift) {
-      return { label: "Online", tone: "blue" as const };
+      return { label: t("admin.team.online"), tone: "blue" as const };
     }
 
-    return { label: "Offline", tone: "gray" as const };
+    return { label: t("admin.team.offline"), tone: "gray" as const };
   };
 
   const renderStaffSection = () => (
@@ -3745,10 +3813,10 @@ export function AdminDashboardScreen({
       <VStack align="stretch" spacing={3}>
         <VStack align="start" spacing={0}>
           <Text fontWeight="900" fontSize="lg">
-            Staff Directory
+            {t("admin.team.staffDirectory")}
           </Text>
           <Text color="surface.500" fontSize="sm" fontWeight="700">
-            Tap a seller to manage profile, schedule and activity.
+            {t("admin.team.staffDirectoryDescription")}
           </Text>
         </VStack>
 
@@ -3779,7 +3847,7 @@ export function AdminDashboardScreen({
                     {seller.fullName}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {seller.currentAssignment?.storeName ?? "Unassigned"}
+                    {seller.currentAssignment?.storeName ?? t("admin.team.unassigned")}
                   </Text>
                 </VStack>
 
@@ -3804,7 +3872,7 @@ export function AdminDashboardScreen({
             setShowNewSellerModal(true);
           }}
         >
-          New Seller
+          {t("admin.team.newSeller")}
         </Button>
       </VStack>
     </Box>
@@ -3831,21 +3899,21 @@ export function AdminDashboardScreen({
     }> = [
       ...sellerSales.map((sale) => ({
         id: `sale-${sale.id}`,
-        title: sale.status === "deleted" ? "Sale deleted" : "Sale completed",
-        meta: `${sale.store?.name ?? "Unknown store"} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
+        title: sale.status === "deleted" ? t("admin.team.saleDeleted") : t("admin.team.saleCompleted"),
+        meta: `${sale.store?.name ?? t("admin.team.unknownStore")} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
         date: sale.createdAt,
         icon: LuReceiptText,
-        iconLabel: sale.status === "deleted" ? "Deleted" : "Sale",
+        iconLabel: sale.status === "deleted" ? t("admin.team.deleted") : t("admin.team.sale"),
         iconBg: sale.status === "deleted" ? "rgba(248,113,113,0.14)" : "rgba(34,197,94,0.12)",
         iconColor: sale.status === "deleted" ? "red.500" : "green.600",
       })),
       ...sellerReturns.map((entry) => ({
         id: `return-${entry.id}`,
-        title: "Return created",
-        meta: `${entry.store?.name ?? "Unknown store"} · ${formatEur(entry.totalAmount)}`,
+        title: t("admin.team.returnCreated"),
+        meta: `${entry.store?.name ?? t("admin.team.unknownStore")} · ${formatEur(entry.totalAmount)}`,
         date: entry.createdAt,
         icon: LuActivity,
-        iconLabel: "Return",
+        iconLabel: t("admin.team.return"),
         iconBg: "rgba(251,191,36,0.18)",
         iconColor: "orange.500",
       })),
@@ -3853,14 +3921,14 @@ export function AdminDashboardScreen({
         id: `stock-${entry.id}`,
         title:
           entry.movementType === "restock"
-            ? "Stock restocked"
+            ? t("admin.team.stockRestocked")
             : entry.movementType === "writeoff"
-              ? "Stock written off"
-              : "Stock adjusted",
-        meta: `${entry.product?.name ?? "Unknown product"} · ${entry.quantityDelta > 0 ? "+" : ""}${entry.quantityDelta} units`,
+              ? t("admin.team.stockWrittenOff")
+              : t("admin.team.stockAdjusted"),
+        meta: `${entry.product?.name ?? t("admin.team.unknownProduct")} · ${entry.quantityDelta > 0 ? "+" : ""}${entry.quantityDelta} ${t("admin.inventory.units")}`,
         date: entry.createdAt,
         icon: entry.quantityDelta < 0 ? LuMinus : LuPlus,
-        iconLabel: entry.quantityDelta < 0 ? "Write-off" : "Restock",
+        iconLabel: entry.quantityDelta < 0 ? t("admin.team.writeoffShort") : t("admin.team.restockShort"),
         iconBg: entry.quantityDelta < 0 ? "rgba(248,113,113,0.14)" : "rgba(74,132,244,0.14)",
         iconColor: entry.quantityDelta < 0 ? "red.500" : "brand.600",
       })),
@@ -3868,11 +3936,11 @@ export function AdminDashboardScreen({
         ? [
             {
               id: `shift-${seller.activeShift.id}`,
-              title: seller.activeShift.status === "paused" ? "Shift paused" : "Shift active",
-              meta: `${seller.activeShift.storeName} · started ${formatDateTime(seller.activeShift.startedAt)}`,
+              title: seller.activeShift.status === "paused" ? t("admin.team.shiftPaused") : t("admin.team.shiftActive"),
+              meta: `${seller.activeShift.storeName} · ${t("admin.team.startedLower")} ${formatDateTime(seller.activeShift.startedAt)}`,
               date: seller.activeShift.startedAt,
               icon: LuClock3,
-              iconLabel: "Shift",
+              iconLabel: t("admin.team.shift"),
               iconBg: seller.activeShift.status === "paused" ? "rgba(251,191,36,0.18)" : "rgba(74,132,244,0.14)",
               iconColor: seller.activeShift.status === "paused" ? "orange.500" : "brand.600",
             },
@@ -3904,7 +3972,7 @@ export function AdminDashboardScreen({
                     setStaffDetailMode("overview");
                   }}
                 >
-                  Back
+                  {t("admin.inventory.back")}
                 </Button>
               </HStack>
             ) : null}
@@ -3917,7 +3985,7 @@ export function AdminDashboardScreen({
                     {seller.fullName}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {seller.currentAssignment?.storeName ?? "Unassigned"}
+                    {seller.currentAssignment?.storeName ?? t("admin.team.unassigned")}
                   </Text>
                 </VStack>
               </HStack>
@@ -3945,12 +4013,12 @@ export function AdminDashboardScreen({
                   onClick={() => setStaffDetailMode(mode)}
                 >
                   {mode === "overview"
-                    ? "Overview"
+                    ? t("admin.team.overviewTab")
                     : mode === "profile"
-                      ? "Profile"
+                      ? t("admin.team.profileTab")
                       : mode === "worklog"
-                        ? "Worklog"
-                        : "Activity"}
+                        ? t("admin.team.worklogTab")
+                        : t("admin.team.activityTab")}
                 </Button>
               );
             })}
@@ -3961,16 +4029,16 @@ export function AdminDashboardScreen({
           <VStack spacing={4} align="stretch">
             <SimpleGrid columns={2} spacing={3}>
               {[
-                { label: "Revenue", value: formatEur(seller.revenue) },
-                { label: "Sales", value: String(seller.salesCount) },
-                { label: "Commission", value: "0%" },
-                { label: "Last Sale", value: seller.lastSaleAt ? formatDateTime(seller.lastSaleAt) : "No activity" },
+                { label: t("admin.team.revenue"), value: formatEur(seller.revenue) },
+                { label: t("admin.team.sales"), value: String(seller.salesCount) },
+                { label: t("admin.team.commission"), value: "0%" },
+                { label: t("admin.team.lastSale"), value: seller.lastSaleAt ? formatDateTime(seller.lastSaleAt) : t("admin.team.noActivity") },
               ].map((card) => (
                 <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                     {card.label}
                   </Text>
-                  <Text mt={2} fontWeight="900" fontSize={card.label === "Last Sale" ? "sm" : "2xl"} noOfLines={2}>
+                  <Text mt={2} fontWeight="900" fontSize={card.label === t("admin.team.lastSale") ? "sm" : "2xl"} noOfLines={2}>
                     {card.value}
                   </Text>
                 </Box>
@@ -3982,16 +4050,16 @@ export function AdminDashboardScreen({
                 <VStack align="stretch" spacing={3}>
                   <HStack justify="space-between">
                     <Text fontWeight="900" fontSize="lg">
-                      Current Shift
+                      {t("admin.team.currentShift")}
                     </Text>
                     <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
                   </HStack>
                   <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
                     <VStack align="stretch" spacing={0}>
                       {[
-                        { label: "Started", value: formatSalesTime(seller.activeShift.startedAt) },
-                        { label: "Time Open", value: `${Math.floor(activeShiftMinutes / 60)}h ${activeShiftMinutes % 60}m` },
-                        { label: "Store", value: seller.activeShift.storeName },
+                        { label: t("admin.team.started"), value: formatSalesTime(seller.activeShift.startedAt) },
+                        { label: t("admin.team.timeOpen"), value: `${Math.floor(activeShiftMinutes / 60)}h ${activeShiftMinutes % 60}m` },
+                        { label: t("admin.team.store"), value: seller.activeShift.storeName },
                       ].map((row, index, rows) => (
                         <HStack
                           key={row.label}
@@ -4019,10 +4087,10 @@ export function AdminDashboardScreen({
               <VStack align="stretch" spacing={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
-                    Recent Seller Sales
+                    {t("admin.team.recentSellerSales")}
                   </Text>
                   <Text color="surface.500" fontWeight="700" fontSize="sm">
-                    {sellerSales.length} loaded
+                    {formatTeamLoadedCount(sellerSales.length)}
                   </Text>
                 </HStack>
                 {sellerSales.length > 0 ? (
@@ -4048,7 +4116,7 @@ export function AdminDashboardScreen({
                         >
                           <HStack justify="space-between" align="start">
                             <VStack align="start" spacing={0}>
-                              <Text fontWeight="900">{sale.store?.name ?? "Unknown store"}</Text>
+                              <Text fontWeight="900">{sale.store?.name ?? t("admin.team.unknownStore")}</Text>
                               <Text fontSize="xs" color="surface.500">
                                 {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
                               </Text>
@@ -4056,7 +4124,7 @@ export function AdminDashboardScreen({
                             <VStack align="end" spacing={0}>
                               <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
                               <Text fontSize="xs" color="brand.500" fontWeight="800">
-                                Open receipt
+                                {t("admin.team.openReceipt")}
                               </Text>
                             </VStack>
                           </HStack>
@@ -4067,7 +4135,7 @@ export function AdminDashboardScreen({
                 ) : null}
                 {sellerSales.length === 0 ? (
                   <Text color="surface.500" fontSize="sm">
-                    No seller sales are loaded in the current admin sales snapshot.
+                    {t("admin.team.noSellerSalesLoaded")}
                   </Text>
                 ) : null}
               </VStack>
@@ -4080,27 +4148,27 @@ export function AdminDashboardScreen({
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between" align="center">
                 <Text fontWeight="900" fontSize="lg">
-                  Profile
+                  {t("admin.team.profile")}
                 </Text>
-                <StatusPill label={seller.isActive ? "Active" : "Inactive"} tone={seller.isActive ? "green" : "red"} />
+                <StatusPill label={seller.isActive ? t("admin.team.active") : t("admin.team.inactive")} tone={seller.isActive ? "green" : "red"} />
               </HStack>
               <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
                 <VStack align="stretch" spacing={0}>
                   <HStack justify="space-between" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
-                      Telegram ID
+                      {t("admin.team.telegramId")}
                     </Text>
                     <Text fontWeight="900">{seller.telegramId}</Text>
                   </HStack>
                   <HStack justify="space-between" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
-                      Account
+                      {t("admin.team.account")}
                     </Text>
-                    <Text fontWeight="900">{seller.isActive ? "Active" : "Inactive"}</Text>
+                    <Text fontWeight="900">{seller.isActive ? t("admin.team.active") : t("admin.team.inactive")}</Text>
                   </HStack>
                   <HStack justify="space-between" align="center" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
-                      Assigned Store
+                      {t("admin.team.assignedStore")}
                     </Text>
                     <Select
                       value={staffAssignments[seller.id] ?? ""}
@@ -4118,7 +4186,7 @@ export function AdminDashboardScreen({
                       fontWeight="800"
                     >
                       <option value="" disabled>
-                        Select store
+                        {t("admin.team.selectStore")}
                       </option>
                       {stores
                         .filter((store) => store.isActive)
@@ -4131,7 +4199,7 @@ export function AdminDashboardScreen({
                   </HStack>
                   <HStack justify="space-between" align="center" px={1} py={3}>
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
-                      Commission %
+                      {t("admin.team.commission")} %
                     </Text>
                     <Input
                       value={commissionDraft}
@@ -4155,7 +4223,7 @@ export function AdminDashboardScreen({
                 </VStack>
               </Box>
               <Text fontSize="sm" color="surface.500" lineHeight="1.45">
-                Commission editing is prepared visually. The next backend step is to persist a personal commission rate and feed it into shift reports.
+                {t("admin.team.commissionHint")}
               </Text>
 
               <Button
@@ -4167,7 +4235,7 @@ export function AdminDashboardScreen({
                 isDisabled={!seller.isActive || !staffAssignments[seller.id]}
                 onClick={() => void handleAssignSeller(seller.id)}
               >
-                Save Assignment
+                {t("admin.team.saveAssignment")}
               </Button>
               <Button
                 borderRadius="18px"
@@ -4177,7 +4245,7 @@ export function AdminDashboardScreen({
                 isDisabled={!seller.currentAssignment || !seller.isActive}
                 onClick={() => void onViewAsSeller(seller.id)}
               >
-                View as Seller
+                {t("admin.team.viewAsSeller")}
               </Button>
             </VStack>
           </Box>
@@ -4188,10 +4256,10 @@ export function AdminDashboardScreen({
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
-                  Worklog
+                  {t("admin.team.worklog")}
                 </Text>
                 <Text color="surface.500" fontSize="sm" fontWeight="700">
-                  Timesheet
+                  {t("admin.team.timesheet")}
                 </Text>
               </HStack>
               <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
@@ -4199,19 +4267,18 @@ export function AdminDashboardScreen({
                   {seller.activeShift ? (
                     <HStack justify="space-between" align="start" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
                       <VStack align="start" spacing={0}>
-                        <Text fontWeight="900">Current shift</Text>
+                        <Text fontWeight="900">{t("admin.team.currentShiftLower")}</Text>
                         <Text fontSize="sm" color="surface.500">
-                          {seller.activeShift.storeName} · started {formatSalesTime(seller.activeShift.startedAt)}
+                          {seller.activeShift.storeName} · {t("admin.team.startedLower")} {formatSalesTime(seller.activeShift.startedAt)}
                         </Text>
                       </VStack>
                       <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
                     </HStack>
                   ) : null}
                   <Box px={1} py={3}>
-                    <Text fontWeight="900">Full shift history needs the next backend payload</Text>
+                    <Text fontWeight="900">{t("admin.team.fullShiftHistoryPending")}</Text>
                     <Text mt={1} fontSize="sm" color="surface.500" lineHeight="1.45">
-                      We need `/admin/staff/:sellerId/details` to show monthly timesheets with start, end, worked hours,
-                      pauses, sales, revenue and commission per shift.
+                      {t("admin.team.fullShiftHistoryHint")}
                     </Text>
                   </Box>
                 </VStack>
@@ -4225,10 +4292,10 @@ export function AdminDashboardScreen({
             <VStack align="stretch" spacing={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
-                  Activity Feed
+                  {t("admin.team.activityFeed")}
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {activityItems.length} actions
+                  {formatTeamActionCount(activityItems.length)}
                 </Text>
               </HStack>
               {visibleActivityItems.length > 0 ? (
@@ -4289,7 +4356,7 @@ export function AdminDashboardScreen({
                     isDisabled={safeActivityPage === 0}
                     onClick={() => setStaffActivityPage((current) => Math.max(0, current - 1))}
                   >
-                    Previous
+                    {t("admin.team.previous")}
                   </Button>
                   <Text color="surface.500" fontSize="sm" fontWeight="800">
                     {safeActivityPage + 1} / {activityTotalPages}
@@ -4302,15 +4369,15 @@ export function AdminDashboardScreen({
                     isDisabled={safeActivityPage >= activityTotalPages - 1}
                     onClick={() => setStaffActivityPage((current) => Math.min(activityTotalPages - 1, current + 1))}
                   >
-                    Next
+                    {t("admin.team.next")}
                   </Button>
                 </HStack>
               ) : null}
               {activityItems.length === 0 ? (
                 <Box bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                  <Text fontWeight="900">No loaded activity yet</Text>
+                  <Text fontWeight="900">{t("admin.team.noLoadedActivity")}</Text>
                   <Text mt={1} fontSize="sm" color="surface.500" lineHeight="1.45">
-                    The complete seller action log should be built from shifts, sales, returns and inventory movements in the next backend step.
+                    {t("admin.team.noLoadedActivityHint")}
                   </Text>
                 </Box>
               ) : null}
@@ -4464,7 +4531,7 @@ export function AdminDashboardScreen({
               _active={{ transform: "scale(0.92)", bg: "surface.100" }}
               onClick={() => pressTeamKeyboardKey(key)}
             >
-              {key === "delete" ? "Del" : key === "clear" ? "Clear" : key}
+              {key === "delete" ? t("admin.inventory.deleteShort") : key === "clear" ? t("admin.inventory.clear") : key}
             </Button>
           ))}
         </SimpleGrid>
@@ -4510,7 +4577,7 @@ export function AdminDashboardScreen({
             borderColor={teamKeyboardCapsLock ? "brand.500" : "surface.100"}
             onClick={() => pressTeamKeyboardKey("caps")}
           >
-            Caps
+            {t("admin.inventory.caps")}
           </Button>
           <Button
             flex="1"
@@ -4523,7 +4590,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressTeamKeyboardKey("clear")}
           >
-            Clear
+            {t("admin.inventory.clear")}
           </Button>
           <Button
             flex="2"
@@ -4536,7 +4603,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressTeamKeyboardKey("space")}
           >
-            Space
+            {t("admin.inventory.space")}
           </Button>
           <Button
             flex="1"
@@ -4549,7 +4616,7 @@ export function AdminDashboardScreen({
             borderColor="surface.100"
             onClick={() => pressTeamKeyboardKey("delete")}
           >
-            Del
+            {t("admin.inventory.deleteShort")}
           </Button>
         </HStack>
       </VStack>
@@ -4571,7 +4638,7 @@ export function AdminDashboardScreen({
           <Box
             role="dialog"
             aria-modal="true"
-            aria-label="New Store"
+            aria-label={t("admin.team.newStore")}
             position="absolute"
             left={0}
             right={0}
@@ -4595,14 +4662,14 @@ export function AdminDashboardScreen({
               <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                    New Store
+                    {t("admin.team.newStore")}
                   </Text>
                   <Text color="surface.500" fontSize="xs" fontWeight="700">
-                    Create a new sales location.
+                    {t("admin.team.newStoreDescription")}
                   </Text>
                 </VStack>
                 <Button
-                  aria-label="Close new store modal"
+                  aria-label={t("admin.inventory.back")}
                   minW="42px"
                   h="42px"
                   px={0}
@@ -4621,16 +4688,16 @@ export function AdminDashboardScreen({
 
               {renderTeamVirtualField({
                 field: "storeName",
-                label: "Store name",
+                label: t("admin.team.storeName"),
                 value: newStoreName,
-                placeholder: "Central Mall Store",
+                placeholder: t("admin.team.storeNamePlaceholder"),
               })}
 
               {renderTeamVirtualField({
                 field: "storeAddress",
-                label: "Address",
+                label: t("admin.team.address"),
                 value: newStoreAddress,
-                placeholder: "Address or short location note",
+                placeholder: t("admin.team.addressPlaceholder"),
               })}
 
               <Box
@@ -4661,7 +4728,7 @@ export function AdminDashboardScreen({
                 isDisabled={!newStoreName.trim()}
                 onClick={() => void handleCreateStore()}
               >
-                Create Store
+                {t("admin.team.createStore")}
               </Button>
             </Box>
           </Box>
@@ -4681,7 +4748,7 @@ export function AdminDashboardScreen({
           <Box
             role="dialog"
             aria-modal="true"
-            aria-label="New Seller"
+            aria-label={t("admin.team.newSeller")}
             position="absolute"
             left={0}
             right={0}
@@ -4705,14 +4772,14 @@ export function AdminDashboardScreen({
               <HStack justify="space-between" align="center">
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                    New Seller
+                    {t("admin.team.newSeller")}
                   </Text>
                   <Text color="surface.500" fontSize="xs" fontWeight="700">
-                    Add seller account and optional store assignment.
+                    {t("admin.team.newSellerDescription")}
                   </Text>
                 </VStack>
                 <Button
-                  aria-label="Close new seller modal"
+                  aria-label={t("admin.inventory.back")}
                   minW="42px"
                   h="42px"
                   px={0}
@@ -4731,21 +4798,21 @@ export function AdminDashboardScreen({
 
               {renderTeamVirtualField({
                 field: "sellerName",
-                label: "Full name",
+                label: t("admin.team.fullName"),
                 value: newSeller.fullName,
-                placeholder: "John Seller",
+                placeholder: t("admin.team.fullNamePlaceholder"),
               })}
 
               {renderTeamVirtualField({
                 field: "sellerTelegramId",
-                label: "Telegram ID",
+                label: t("admin.team.telegramId"),
                 value: newSeller.telegramId,
                 placeholder: "123456789",
               })}
 
               <VStack align="stretch" spacing={2}>
                 <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  Assigned store
+                  {t("admin.team.assignedStore")}
                 </Text>
                 <Select
                   value={newSeller.storeId}
@@ -4758,7 +4825,7 @@ export function AdminDashboardScreen({
                   fontWeight="800"
                   h="44px"
                 >
-                  <option value="">No store yet</option>
+                  <option value="">{t("admin.team.noStoreYet")}</option>
                   {stores
                     .filter((store) => store.isActive)
                     .map((store) => (
@@ -4771,8 +4838,8 @@ export function AdminDashboardScreen({
 
               <SimpleGrid columns={2} spacing={2}>
                 {[
-                  { label: "Active", value: true },
-                  { label: "Inactive", value: false },
+                  { label: t("admin.team.active"), value: true },
+                  { label: t("admin.team.inactive"), value: false },
                 ].map((option) => {
                   const isActive = newSeller.isActive === option.value;
 
@@ -4821,7 +4888,7 @@ export function AdminDashboardScreen({
                 isDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
                 onClick={() => void handleCreateSeller()}
               >
-                Create Seller
+                {t("admin.team.createSeller")}
               </Button>
             </Box>
           </Box>
@@ -5068,7 +5135,8 @@ export function AdminDashboardScreen({
                       </Text>
                       <Text fontSize="sm" color="surface.500" fontWeight="700">
                         {getStoreAddressLabel(
-                          stores.find((entry) => entry.id === store.id) ?? { name: store.name }
+                          stores.find((entry) => entry.id === store.id) ?? { name: store.name },
+                          t("admin.overview.addressMissing")
                         )}
                       </Text>
                     </VStack>
@@ -5354,7 +5422,9 @@ export function AdminDashboardScreen({
                     _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
                     onClick={() => setTeamMode(mode)}
                   >
-                    {mode === "staff" ? `Staff · ${staff.length}` : `Stores · ${stores.length}`}
+                    {mode === "staff"
+                      ? `${t("admin.team.staffTab")} · ${staff.length}`
+                      : `${t("admin.team.storesTab")} · ${stores.length}`}
                   </Button>
                 );
               })}
