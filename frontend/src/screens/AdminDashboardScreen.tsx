@@ -746,6 +746,18 @@ export function AdminDashboardScreen({
       refreshTimerId = window.setTimeout(() => {
         refreshTimerId = null;
 
+        const affectsOverview =
+          event.type === "sales.updated" ||
+          event.type === "inventory.updated" ||
+          event.type === "shift.updated" ||
+          event.type === "staff.updated" ||
+          event.type === "stores.updated" ||
+          event.type === "products.updated";
+
+        if (affectsOverview && activeTab !== "overview") {
+          void load({ silent: true });
+        }
+
         if (activeTab === "overview" || activeTab === "sales") {
           void refreshActiveAdminTab();
           return;
@@ -794,6 +806,7 @@ export function AdminDashboardScreen({
   }, [
     activeTab,
     inventoryMode,
+    load,
     loadInventory,
     loadProducts,
     loadStaff,
