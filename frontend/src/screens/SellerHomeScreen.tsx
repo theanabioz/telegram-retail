@@ -26,7 +26,6 @@ import {
   HiOutlineArchiveBox,
   HiOutlineChartBar,
   HiOutlineChevronLeft,
-  HiOutlineClock,
   HiOutlineMagnifyingGlass,
   HiOutlinePause,
   HiOutlinePlay,
@@ -380,8 +379,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const todaySalesCount = todaySales.length;
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total_amount, 0);
-  const lastSale = sales.find((sale) => sale.status === "completed") ?? null;
-  const recentCompletedSales = sales.filter((sale) => sale.status === "completed").slice(0, 4);
   const recentShiftEntries = shiftHistory.slice(0, 4);
 
   const formatCartItemsCount = (count: number) => {
@@ -2056,16 +2053,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             value: formatEur(todayRevenue),
             icon: HiOutlineChartBar,
           },
-          {
-            label: t("sellerProfile.currentStore"),
-            value: storeName,
-            icon: HiOutlineArchiveBox,
-          },
-          {
-            label: t("sellerProfile.lastSale"),
-            value: lastSale ? formatTimeLabel(lastSale.created_at) : t("sellerProfile.noSalesShort"),
-            icon: HiOutlineClock,
-          },
         ].map((item) => (
           <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
             <HStack justify="space-between" align="start">
@@ -2079,7 +2066,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <Text
               mt={2}
               fontWeight="900"
-              fontSize={item.label === t("sellerProfile.currentStore") ? "lg" : "2xl"}
+              fontSize="2xl"
               lineHeight="1.15"
               letterSpacing="-0.03em"
               color="surface.900"
@@ -2089,79 +2076,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Box>
         ))}
       </SimpleGrid>
-
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <Text fontWeight="900" fontSize="lg">{t("sellerProfile.session")}</Text>
-          <HStack justify="space-between">
-            <Text color="surface.500">{t("settings.session.store")}</Text>
-            <Text fontWeight="800" textAlign="right">{storeName}</Text>
-          </HStack>
-          <HStack justify="space-between">
-            <Text color="surface.500">{t("settings.session.mode")}</Text>
-            <Text fontWeight="800">{mode === "live" ? t("settings.session.liveMode") : t("settings.session.demoMode")}</Text>
-          </HStack>
-          <HStack justify="space-between">
-            <Text color="surface.500">{t("settings.session.device")}</Text>
-            <Text fontWeight="800">{localIpLabel}</Text>
-          </HStack>
-        </VStack>
-      </Box>
-
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
-          <HStack justify="space-between" align="center">
-            <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentSales")}</Text>
-            <Text fontSize="sm" color="surface.500" fontWeight="700">
-              {t("common.today")}
-            </Text>
-          </HStack>
-
-          <VStack spacing={3} align="stretch">
-            {recentCompletedSales.map((sale) => (
-              <HStack
-                key={sale.id}
-                as="button"
-                type="button"
-                textAlign="left"
-                w="full"
-                bg={innerSurface}
-                borderRadius="20px"
-                px={4}
-                py={3.5}
-                border={0}
-                justify="space-between"
-                align="center"
-                onClick={() => {
-                  setActiveTab("orders");
-                  setSelectedSaleId(sale.id);
-                  setIsSellerProfileOpen(false);
-                }}
-              >
-                <VStack align="start" spacing={0.5}>
-                  <Text fontWeight="800">{t("orders.completedSale")}</Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {formatDateTimeLabel(sale.created_at)}
-                  </Text>
-                </VStack>
-
-                <VStack align="end" spacing={0.5}>
-                  <Text fontWeight="900">{formatEur(sale.total_amount)}</Text>
-                  <Text fontSize="xs" color="surface.500" fontWeight="700">
-                    {formatSellerPaymentMethod(sale.payment_method)}
-                  </Text>
-                </VStack>
-              </HStack>
-            ))}
-
-            {recentCompletedSales.length === 0 ? (
-              <Text color="surface.400" fontSize="sm" textAlign="center" py={2} fontWeight="600">
-                {t("sellerProfile.noSales")}
-              </Text>
-            ) : null}
-          </VStack>
-        </VStack>
-      </Box>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
