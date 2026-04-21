@@ -40,6 +40,7 @@ import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
+import { triggerSelection } from "../lib/haptics";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
@@ -305,6 +306,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     setActiveTab(tab);
     scrollToSectionTop();
   }, []);
+
+  const handleSellerTabReselect = useCallback((tab: SellerTab) => {
+    if (isSellerProfileOpen) {
+      setIsSellerProfileOpen(false);
+      setActiveTab(tab);
+      scrollToSectionTop();
+      return;
+    }
+
+    resetSellerSection(tab);
+  }, [isSellerProfileOpen, resetSellerSection]);
 
   useEffect(() => {
     void bootstrap();
@@ -2485,7 +2497,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 <HStack
                   as="button"
                   type="button"
-                  data-haptic="selection"
+                  data-haptic="none"
                   spacing={2.5}
                   bg="rgba(255,255,255,0.6)"
                   backdropFilter="blur(10px)"
@@ -2496,6 +2508,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   border="1px solid"
                   borderColor="rgba(255,255,255,0.8)"
                   boxShadow="0 4px 12px rgba(0,0,0,0.03)"
+                  onPointerDown={(event) => {
+                    if (event.pointerType === "mouse" && event.button !== 0) {
+                      return;
+                    }
+
+                    triggerSelection();
+                  }}
                   onClick={() => {
                     setSellerProfileWeekIndex(0);
                     setIsSellerProfileOpen(true);
@@ -2615,7 +2634,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         <BottomNav
           activeTab={activeTab}
           onChange={handleSellerTabChange}
-          onReselect={resetSellerSection}
+          onReselect={handleSellerTabReselect}
           topAccessory={renderDraftCartBar()}
         />
       </Box>
