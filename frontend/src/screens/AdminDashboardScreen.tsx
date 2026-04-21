@@ -1112,7 +1112,7 @@ export function AdminDashboardScreen({
 
   const formatInventoryProductsInStore = (count: number) => {
     if (locale === "ru") {
-      return `${count} товаров в этом магазине`;
+      return `${count} ${getRussianPlural(count, "товар", "товара", "товаров")} в этом магазине`;
     }
 
     if (locale === "pt") {
@@ -1124,7 +1124,7 @@ export function AdminDashboardScreen({
 
   const formatInventoryItemsCount = (count: number) => {
     if (locale === "ru") {
-      return `${count} позиций`;
+      return `${count} ${getRussianPlural(count, "позиция", "позиции", "позиций")}`;
     }
 
     if (locale === "pt") {
@@ -1247,14 +1247,14 @@ export function AdminDashboardScreen({
 
   const formatTeamLoadedCount = (count: number) => {
     if (locale === "ru") {
-      return `${count} загружено`;
+      return `${count} ${getRussianPlural(count, "продажа", "продажи", "продаж")}`;
     }
 
     if (locale === "pt") {
-      return `${count} carregados`;
+      return `${count} ${count === 1 ? "venda" : "vendas"}`;
     }
 
-    return `${count} loaded`;
+    return `${count} ${count === 1 ? "sale" : "sales"}`;
   };
 
   const handleSaveStoreProduct = async (storeProductId: string) => {

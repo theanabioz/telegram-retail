@@ -15,6 +15,7 @@ import {
 import { getTelegramWebApp } from "./telegramWebApp";
 
 let sdkInitialized = false;
+let sdkUnavailable = false;
 let sdkCleanup: VoidFunction | null = null;
 let viewportMountPromise: Promise<void> | null = null;
 
@@ -23,15 +24,27 @@ function canUseTelegramRuntime() {
 }
 
 function ensureSdkInitialized() {
-  if (!canUseTelegramRuntime() || sdkInitialized) {
-    return;
+  if (!canUseTelegramRuntime() || sdkInitialized || sdkUnavailable) {
+    return sdkInitialized;
   }
 
-  sdkCleanup = init();
-  sdkInitialized = true;
+  try {
+    sdkCleanup = init();
+    sdkInitialized = true;
+  } catch {
+    sdkCleanup = null;
+    sdkInitialized = false;
+    sdkUnavailable = true;
+  }
+
+  return sdkInitialized;
 }
 
 function mountMiniAppIfNeeded() {
+  if (!sdkInitialized) {
+    return;
+  }
+
   if (!mountMiniAppSync.isAvailable() || isMiniAppMounted()) {
     return;
   }
@@ -40,6 +53,10 @@ function mountMiniAppIfNeeded() {
 }
 
 function mountBackButtonIfNeeded() {
+  if (!sdkInitialized) {
+    return;
+  }
+
   if (!mountBackButton.isAvailable() || isBackButtonMounted()) {
     return;
   }
@@ -48,6 +65,10 @@ function mountBackButtonIfNeeded() {
 }
 
 async function mountViewportIfNeeded() {
+  if (!sdkInitialized) {
+    return;
+  }
+
   if (!mountViewport.isAvailable() || isViewportMounted()) {
     return;
   }
@@ -66,7 +87,9 @@ export function bootstrapTelegramSdk() {
     return () => {};
   }
 
-  ensureSdkInitialized();
+  if (!ensureSdkInitialized()) {
+    return () => {};
+  }
   mountMiniAppIfNeeded();
   mountBackButtonIfNeeded();
   void mountViewportIfNeeded();
@@ -82,7 +105,7 @@ export function notifyTelegramAppReady() {
   ensureSdkInitialized();
 
   try {
-    if (miniAppReady.isAvailable()) {
+    if (sdkInitialized && miniAppReady.isAvailable()) {
       miniAppReady();
       return;
     }
@@ -97,7 +120,7 @@ export function expandTelegramApp() {
   ensureSdkInitialized();
 
   try {
-    if (expandViewport.isAvailable()) {
+    if (sdkInitialized && expandViewport.isAvailable()) {
       expandViewport();
       return;
     }
@@ -114,7 +137,16 @@ export function canUseTelegramBackButton() {
   }
 
   ensureSdkInitialized();
-  return mountBackButton.isAvailable() || Boolean(getTelegramWebApp()?.BackButton);
+
+  try {
+    if (sdkInitialized && mountBackButton.isAvailable()) {
+      return true;
+    }
+  } catch {
+    // Fall through to native object fallback.
+  }
+
+  return Boolean(getTelegramWebApp()?.BackButton);
 }
 
 export function showTelegramBackButton() {
@@ -122,7 +154,7 @@ export function showTelegramBackButton() {
   mountBackButtonIfNeeded();
 
   try {
-    if (showBackButton.isAvailable()) {
+    if (sdkInitialized && showBackButton.isAvailable()) {
       showBackButton();
       return;
     }
@@ -138,7 +170,7 @@ export function hideTelegramBackButton() {
   mountBackButtonIfNeeded();
 
   try {
-    if (hideBackButton.isAvailable()) {
+    if (sdkInitialized && hideBackButton.isAvailable()) {
       hideBackButton();
       return;
     }
@@ -154,7 +186,7 @@ export function onTelegramBackButtonClick(callback: () => void) {
   mountBackButtonIfNeeded();
 
   try {
-    if (onBackButtonClick.isAvailable()) {
+    if (sdkInitialized && onBackButtonClick.isAvailable()) {
       return onBackButtonClick(callback);
     }
   } catch {
