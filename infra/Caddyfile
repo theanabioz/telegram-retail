@@ -6,21 +6,28 @@
   encode zstd gzip
 
   @api path /health /auth* /seller* /shifts* /admin*
-  reverse_proxy @api backend:4000
+  handle @api {
+    reverse_proxy backend:4000
+  }
 
-  root * /srv
-  try_files {path} /index.html
-  file_server
+  handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+  }
 }
 
 :80 {
   encode zstd gzip
 
   @api path /health /auth* /seller* /shifts* /admin*
-  reverse_proxy @api backend:4000
+  handle @api {
+    reverse_proxy backend:4000
+  }
 
-  root * /srv
-  try_files {path} /index.html
-  file_server
+  handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+  }
 }
-
