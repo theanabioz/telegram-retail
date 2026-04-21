@@ -36,7 +36,7 @@ import { LuClock3, LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
-import { translate, useI18n } from "../lib/i18n";
+import { getLocaleTag, translate, useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
@@ -64,14 +64,15 @@ function formatDuration(totalSeconds: number) {
 function formatShiftDateRange(startedAt: string, endedAt: string | null) {
   const start = new Date(startedAt);
   const end = endedAt ? new Date(endedAt) : null;
+  const locale = getLocaleTag();
 
-  return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} - ${
-    end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : translate("common.ongoing")
+  return `${start.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false })} - ${
+    end ? end.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false }) : translate("common.ongoing")
   }`;
 }
 
 function formatMonthLabel(value: string) {
-  return new Date(value).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return new Date(value).toLocaleDateString(getLocaleTag(), { month: "long", year: "numeric" });
 }
 
 function formatDateTimeLabel(value: string | null) {
@@ -79,7 +80,7 @@ function formatDateTimeLabel(value: string | null) {
     return translate("common.ongoing");
   }
 
-  return new Date(value).toLocaleString(undefined, {
+  return new Date(value).toLocaleString(getLocaleTag(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -90,7 +91,7 @@ function formatDateTimeLabel(value: string | null) {
 }
 
 function formatDateLabel(value: string) {
-  return new Date(value).toLocaleDateString(undefined, {
+  return new Date(value).toLocaleDateString(getLocaleTag(), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -102,7 +103,7 @@ function formatTimeLabel(value: string | null) {
     return translate("common.ongoing");
   }
 
-  return new Date(value).toLocaleTimeString([], {
+  return new Date(value).toLocaleTimeString(getLocaleTag(), {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -110,7 +111,7 @@ function formatTimeLabel(value: string | null) {
 }
 
 function formatHeaderDate(value: Date) {
-  return value.toLocaleDateString(undefined, {
+  return value.toLocaleDateString(getLocaleTag(), {
     day: "numeric",
     month: "short",
   });
@@ -1232,7 +1233,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {sale.status === "deleted" ? t("orders.deletedSale") : t("orders.completedSale")}
               </Text>
               <Text fontSize="sm" color="surface.500">
-                {new Date(sale.created_at).toLocaleDateString()}
+                {new Date(sale.created_at).toLocaleDateString(getLocaleTag())}
               </Text>
               <Text fontSize="sm" color="surface.500">
                 {formatTimeLabel(sale.created_at)} · {sale.payment_method.toUpperCase()}
@@ -1419,7 +1420,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Box>
           <VStack align="start" spacing={0}>
             <Text fontWeight="850" fontSize="sm" color="surface.900">
-              {new Date(entry.shift.started_at).toLocaleDateString(undefined, {
+              {new Date(entry.shift.started_at).toLocaleDateString(getLocaleTag(), {
                 day: "numeric",
                 month: "short",
               })}

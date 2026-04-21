@@ -16,7 +16,7 @@ import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
-import { translate, useI18n } from "../lib/i18n";
+import { getLocaleTag, translate, useI18n } from "../lib/i18n";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useAdminDashboardStore } from "../store/useAdminDashboardStore";
@@ -197,7 +197,11 @@ function getMatchingPresetSalesPeriod(filters: AdminSalesOverviewResponse["filte
 }
 
 function formatSalesTime(value: string) {
-  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  return new Date(value).toLocaleTimeString(getLocaleTag(), {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 function buildSalesCacheKey(input: {
@@ -247,7 +251,7 @@ function formatDateTime(value: string | null) {
     return translate("common.noActivityYet");
   }
 
-  return new Date(value).toLocaleString(undefined, {
+  return new Date(value).toLocaleString(getLocaleTag(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -280,11 +284,11 @@ function getStoreAddressLabel(store: { name: string; address?: string | null }, 
 }
 
 function formatShortDate(value: string) {
-  return new Date(value).toLocaleDateString();
+  return new Date(value).toLocaleDateString(getLocaleTag());
 }
 
 function formatHeaderDate(value: Date) {
-  return value.toLocaleDateString(undefined, {
+  return value.toLocaleDateString(getLocaleTag(), {
     day: "numeric",
     month: "short",
   });
@@ -5556,7 +5560,7 @@ export function AdminDashboardScreen({
                   {headerContextLabel}
                 </Text>
                 <Text fontSize="xs" color="surface.400" fontWeight="700">
-                  Today · {formatHeaderDate(new Date())}
+                  {t("common.today")} · {formatHeaderDate(new Date())}
                 </Text>
               </HStack>
             ) : null}
@@ -5593,7 +5597,7 @@ export function AdminDashboardScreen({
                     {operatorName}
                   </Text>
                   <Text fontSize="xs" color="surface.500" fontWeight="700" lineHeight="1.1">
-                    Admin
+                    {t("common.admin")}
                   </Text>
                 </VStack>
               </HStack>
