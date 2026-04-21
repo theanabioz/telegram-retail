@@ -1,0 +1,14 @@
+.git
+.gitignore
+node_modules
+backend/node_modules
+frontend/node_modules
+backend/dist
+frontend/dist
+frontend/test-results
+backend/.vercel
+frontend/.vercel
+.DS_Store
+npm-debug.log*
+**/.DS_Store
+
