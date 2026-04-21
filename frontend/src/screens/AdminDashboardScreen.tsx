@@ -334,7 +334,11 @@ function formatOverviewSalesCount(count: number, locale: "en" | "ru" | "pt") {
 }
 
 function formatAdminPaymentMethod(method: "cash" | "card") {
-  return method === "cash" ? translate("payment.cash") : translate("payment.card");
+  if (method === "cash") {
+    return translate("payment.cash");
+  }
+
+  return translate("payment.cardBadge");
 }
 
 function withOverviewChartMockLayer(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
@@ -359,14 +363,16 @@ function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "b
 
   return (
     <Box
-      px={2.5}
-      py={1}
+      px={2.25}
+      py={0.75}
       borderRadius="999px"
-      fontSize="xs"
+      fontSize="11px"
+      lineHeight="1.1"
       fontWeight="800"
       letterSpacing="0.02em"
       bg={styles[tone].bg}
       color={styles[tone].color}
+      whiteSpace="nowrap"
     >
       {label}
     </Box>
@@ -1826,7 +1832,7 @@ export function AdminDashboardScreen({
       ...activeStoreShifts.map((seller) => ({
         id: `shift-${seller.activeShift?.id ?? seller.id}`,
         title: seller.activeShift?.status === "paused" ? t("admin.team.shiftPaused") : t("admin.team.shiftActive"),
-        meta: `${seller.fullName} · ${t("admin.team.startedLower")} ${formatDateTime(seller.activeShift?.startedAt ?? null)}`,
+        meta: `${seller.fullName} · ${seller.activeShift?.startedAt ? formatShortDate(seller.activeShift.startedAt) : t("common.noActivityYet")}`,
         date: seller.activeShift?.startedAt ?? new Date().toISOString(),
         icon: LuClock3,
         iconLabel: t("admin.team.shift"),
@@ -1887,9 +1893,11 @@ export function AdminDashboardScreen({
                 <Button
                   key={mode}
                   size="sm"
-                  flexShrink={0}
-                  minW="88px"
+                  flex="1"
+                  minW={0}
                   borderRadius="999px"
+                  px={2}
+                  fontSize="sm"
                   bg={isActive ? "surface.900" : "transparent"}
                   color={isActive ? "white" : "surface.500"}
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
@@ -3987,7 +3995,7 @@ export function AdminDashboardScreen({
             {
               id: `shift-${seller.activeShift.id}`,
               title: seller.activeShift.status === "paused" ? t("admin.team.shiftPaused") : t("admin.team.shiftActive"),
-              meta: `${seller.activeShift.storeName} · ${t("admin.team.startedLower")} ${formatDateTime(seller.activeShift.startedAt)}`,
+              meta: `${seller.activeShift.storeName} · ${formatShortDate(seller.activeShift.startedAt)}`,
               date: seller.activeShift.startedAt,
               icon: LuClock3,
               iconLabel: t("admin.team.shift"),
@@ -4054,9 +4062,11 @@ export function AdminDashboardScreen({
                 <Button
                   key={mode}
                   size="sm"
-                  flexShrink={0}
-                  minW="88px"
+                  flex="1"
+                  minW={0}
                   borderRadius="999px"
+                  px={2}
+                  fontSize="sm"
                   bg={isActive ? "surface.900" : "transparent"}
                   color={isActive ? "white" : "surface.500"}
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
