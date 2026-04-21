@@ -905,7 +905,7 @@ const translations = {
     "admin.sales.today": "Hoje",
     "admin.sales.week": "Semana",
     "admin.sales.month": "Mês",
-    "admin.sales.custom": "Personalizado",
+    "admin.sales.custom": "Período",
     "admin.sales.allStores": "Todas as lojas",
     "admin.sales.allSellers": "Todos os vendedores",
     "admin.sales.allSales": "Todas as vendas",

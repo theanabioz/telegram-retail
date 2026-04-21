@@ -1131,14 +1131,15 @@ export function AdminDashboardScreen({
 
   const formatInventoryStoresEnabled = (count: number) => {
     if (locale === "ru") {
-      return `${count} магазинов активно`;
+      const storeLabel = getRussianPlural(count, "магазине", "магазинах", "магазинах");
+      return `Товар продается в ${count} ${storeLabel}`;
     }
 
     if (locale === "pt") {
-      return `${count} lojas ativas`;
+      return `Vendido em ${count} ${count === 1 ? "loja" : "lojas"}`;
     }
 
-    return `${count} stores enabled`;
+    return `Sold in ${count} ${count === 1 ? "store" : "stores"}`;
   };
 
   const formatInventoryLatestCount = (count: number) => {
