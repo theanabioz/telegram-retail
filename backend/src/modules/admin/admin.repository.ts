@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "../../lib/supabase.js";
 import { HttpError } from "../../lib/http-error.js";
+import { maybeOne, one, queryDb } from "../../lib/db.js";
 
 export type AdminSaleRow = {
   id: string;
@@ -115,20 +115,33 @@ export type AdminStoreProductRow = {
   updated_at: string;
 };
 
-export async function listAdminSales(limit: number) {
-  const { data, error } = await supabaseAdmin
-    .from("sales")
-    .select(
-      "id, seller_id, store_id, payment_method, status, subtotal_amount, discount_amount, total_amount, created_at, deleted_at, deleted_by, deletion_reason"
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit);
+type NumericRow = Record<string, unknown>;
 
-  if (error) {
-    throw new HttpError(500, `Failed to load admin sales: ${error.message}`);
+function mapNumbers<T extends NumericRow>(row: T, keys: string[]) {
+  const clone = { ...row } as Record<string, unknown>;
+  for (const key of keys) {
+    if (clone[key] !== undefined && clone[key] !== null) {
+      clone[key] = Number(clone[key]);
+    }
   }
+  return clone as T;
+}
 
-  return (data ?? []) as AdminSaleRow[];
+export async function listAdminSales(limit: number) {
+  try {
+    const result = await queryDb<AdminSaleRow>(
+      `select id, seller_id, store_id, payment_method, status, subtotal_amount, discount_amount, total_amount,
+              created_at, deleted_at, deleted_by, deletion_reason
+       from public.sales
+       order by created_at desc
+       limit $1`,
+      [limit]
+    );
+
+    return result.rows.map((row) => mapNumbers(row, ["subtotal_amount", "discount_amount", "total_amount"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load admin sales: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export async function listAdminSaleItems(saleIds: string[]) {
@@ -136,33 +149,36 @@ export async function listAdminSaleItems(saleIds: string[]) {
     return [] as AdminSaleItemRow[];
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("sale_items")
-    .select(
-      "id, sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price, discount_type, discount_value, quantity, line_total"
-    )
-    .in("sale_id", saleIds)
-    .order("id", { ascending: true });
+  try {
+    const result = await queryDb<AdminSaleItemRow>(
+      `select id, sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price,
+              discount_type, discount_value, quantity, line_total
+       from public.sale_items
+       where sale_id = any($1::uuid[])
+       order by id asc`,
+      [saleIds]
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to load admin sale items: ${error.message}`);
+    return result.rows.map((row) => mapNumbers(row, ["base_price", "final_price", "discount_value", "quantity", "line_total"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load admin sale items: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminSaleItemRow[];
 }
 
 export async function listAdminReturns(limit: number) {
-  const { data, error } = await supabaseAdmin
-    .from("returns")
-    .select("id, sale_id, seller_id, store_id, shift_id, reason, total_amount, created_at")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    const result = await queryDb<AdminReturnRow>(
+      `select id, sale_id, seller_id, store_id, shift_id, reason, total_amount, created_at
+       from public.returns
+       order by created_at desc
+       limit $1`,
+      [limit]
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to load admin returns: ${error.message}`);
+    return result.rows.map((row) => mapNumbers(row, ["total_amount"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load admin returns: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminReturnRow[];
 }
 
 export async function listAdminReturnItems(returnIds: string[]) {
@@ -170,45 +186,45 @@ export async function listAdminReturnItems(returnIds: string[]) {
     return [] as AdminReturnItemRow[];
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("return_items")
-    .select(
-      "id, return_id, sale_item_id, product_id, product_name_snapshot, sku_snapshot, returned_price, quantity, line_total"
-    )
-    .in("return_id", returnIds)
-    .order("id", { ascending: true });
+  try {
+    const result = await queryDb<AdminReturnItemRow>(
+      `select id, return_id, sale_item_id, product_id, product_name_snapshot, sku_snapshot, returned_price, quantity, line_total
+       from public.return_items
+       where return_id = any($1::uuid[])
+       order by id asc`,
+      [returnIds]
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to load admin return items: ${error.message}`);
+    return result.rows.map((row) => mapNumbers(row, ["returned_price", "quantity", "line_total"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load admin return items: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminReturnItemRow[];
 }
 
 export async function listAdminStores() {
-  const { data, error } = await supabaseAdmin
-    .from("stores")
-    .select("id, name, address, is_active, created_at, updated_at")
-    .order("name", { ascending: true });
-
-  if (error) {
-    throw new HttpError(500, `Failed to load stores: ${error.message}`);
+  try {
+    const result = await queryDb<AdminStoreRow>(
+      `select id, name, address, is_active, created_at, updated_at
+       from public.stores
+       order by name asc`
+    );
+    return result.rows;
+  } catch (error) {
+    throw new HttpError(500, `Failed to load stores: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminStoreRow[];
 }
 
 export async function listAdminUsers() {
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .select("id, telegram_id, full_name, role, is_active")
-    .order("full_name", { ascending: true });
-
-  if (error) {
-    throw new HttpError(500, `Failed to load users: ${error.message}`);
+  try {
+    const result = await queryDb<AdminUserRow>(
+      `select id, telegram_id, full_name, role, is_active
+       from public.users
+       order by full_name asc`
+    );
+    return result.rows;
+  } catch (error) {
+    throw new HttpError(500, `Failed to load users: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminUserRow[];
 }
 
 export async function createAdminUser(input: {
@@ -217,87 +233,87 @@ export async function createAdminUser(input: {
   role: "admin" | "seller";
   is_active: boolean;
 }) {
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .insert(input)
-    .select("id, telegram_id, full_name, role, is_active")
-    .single<AdminUserRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to create user: ${error.message}`);
+  try {
+    return await one<AdminUserRow>(
+      `insert into public.users (telegram_id, full_name, role, is_active)
+       values ($1, $2, $3, $4)
+       returning id, telegram_id, full_name, role, is_active`,
+      [input.telegram_id, input.full_name, input.role, input.is_active]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to create user: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function listCurrentAssignments() {
-  const { data, error } = await supabaseAdmin
-    .from("user_store_assignments")
-    .select("id, user_id, store_id, assigned_by, started_at, is_current")
-    .eq("is_current", true);
-
-  if (error) {
-    throw new HttpError(500, `Failed to load assignments: ${error.message}`);
+  try {
+    const result = await queryDb<AdminAssignmentRow>(
+      `select id, user_id, store_id, assigned_by, started_at, is_current
+       from public.user_store_assignments
+       where is_current = true`
+    );
+    return result.rows;
+  } catch (error) {
+    throw new HttpError(500, `Failed to load assignments: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminAssignmentRow[];
 }
 
 export async function listOpenShifts() {
-  const { data, error } = await supabaseAdmin
-    .from("shifts")
-    .select("id, user_id, store_id, status, started_at, paused_total_seconds")
-    .is("ended_at", null)
-    .order("started_at", { ascending: false });
+  try {
+    const result = await queryDb<AdminShiftRow>(
+      `select id, user_id, store_id, status, started_at, paused_total_seconds
+       from public.shifts
+       where ended_at is null
+       order by started_at desc`
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to load open shifts: ${error.message}`);
+    return result.rows.map((row) => mapNumbers(row, ["paused_total_seconds"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load open shifts: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminShiftRow[];
 }
 
 export async function listInventoryRows() {
-  const { data, error } = await supabaseAdmin
-    .from("inventory")
-    .select("id, store_id, product_id, quantity");
+  try {
+    const result = await queryDb<AdminInventoryRow>(
+      `select id, store_id, product_id, quantity
+       from public.inventory`
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to load inventory rows: ${error.message}`);
+    return result.rows.map((row) => mapNumbers(row, ["quantity"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load inventory rows: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminInventoryRow[];
 }
 
 export async function listProducts(options?: { archived?: boolean }) {
-  let query = supabaseAdmin
-    .from("products")
-    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
-    .order("name", { ascending: true });
+  try {
+    const result = await queryDb<AdminProductRow>(
+      `select id, name, sku, default_price, is_active, archived_at, created_at, updated_at
+       from public.products
+       where ${options?.archived ? "archived_at is not null" : "archived_at is null"}
+       order by name asc`
+    );
 
-  query = options?.archived ? query.not("archived_at", "is", null) : query.is("archived_at", null);
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new HttpError(500, `Failed to load products: ${error.message}`);
+    return result.rows.map((row) => mapNumbers(row, ["default_price"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load products: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return (data ?? []) as AdminProductRow[];
 }
 
 export async function findAdminProductById(productId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("products")
-    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
-    .eq("id", productId)
-    .maybeSingle<AdminProductRow>();
+  try {
+    const row = await maybeOne<AdminProductRow>(
+      `select id, name, sku, default_price, is_active, archived_at, created_at, updated_at
+       from public.products
+       where id = $1`,
+      [productId]
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to load product: ${error.message}`);
+    return row ? mapNumbers(row, ["default_price"]) : null;
+  } catch (error) {
+    throw new HttpError(500, `Failed to load product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function createAdminProduct(input: {
@@ -306,321 +322,285 @@ export async function createAdminProduct(input: {
   default_price: number;
   is_active: boolean;
 }) {
-  const { data, error } = await supabaseAdmin
-    .from("products")
-    .insert(input)
-    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
-    .single<AdminProductRow>();
+  try {
+    const row = await one<AdminProductRow>(
+      `insert into public.products (name, sku, default_price, is_active)
+       values ($1, $2, $3, $4)
+       returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
+      [input.name, input.sku, input.default_price, input.is_active]
+    );
 
-  if (error) {
-    throw new HttpError(500, `Failed to create product: ${error.message}`);
+    return mapNumbers(row, ["default_price"]);
+  } catch (error) {
+    throw new HttpError(500, `Failed to create product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function updateAdminProduct(
   productId: string,
   updates: Partial<Pick<AdminProductRow, "name" | "sku" | "default_price" | "is_active" | "archived_at">>
 ) {
-  const { data, error } = await supabaseAdmin
-    .from("products")
-    .update(updates)
-    .eq("id", productId)
-    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
-    .maybeSingle<AdminProductRow>();
+  try {
+    const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (entries.length === 0) {
+      return await findAdminProductById(productId);
+    }
 
-  if (error) {
-    throw new HttpError(500, `Failed to update product: ${error.message}`);
+    const columns = entries.map(([key], index) => `${key} = $${index + 2}`);
+    const values = entries.map(([, value]) => value);
+    const row = await maybeOne<AdminProductRow>(
+      `update public.products
+       set ${columns.join(", ")}
+       where id = $1
+       returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
+      [productId, ...values]
+    );
+
+    return row ? mapNumbers(row, ["default_price"]) : null;
+  } catch (error) {
+    throw new HttpError(500, `Failed to update product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function getProductReferenceCounts(productId: string) {
-  const [saleItems, returnItems, inventoryMovements] = await Promise.all([
-    supabaseAdmin
-      .from("sale_items")
-      .select("id", { count: "exact", head: true })
-      .eq("product_id", productId),
-    supabaseAdmin
-      .from("return_items")
-      .select("id", { count: "exact", head: true })
-      .eq("product_id", productId),
-    supabaseAdmin
-      .from("inventory_movements")
-      .select("id", { count: "exact", head: true })
-      .eq("product_id", productId),
-  ]);
+  try {
+    const [saleItems, returnItems, inventoryMovements] = await Promise.all([
+      maybeOne<{ count: string }>(`select count(*)::text as count from public.sale_items where product_id = $1`, [productId]),
+      maybeOne<{ count: string }>(`select count(*)::text as count from public.return_items where product_id = $1`, [productId]),
+      maybeOne<{ count: string }>(`select count(*)::text as count from public.inventory_movements where product_id = $1`, [productId]),
+    ]);
 
-  if (saleItems.error) {
-    throw new HttpError(500, `Failed to check product sales: ${saleItems.error.message}`);
+    return {
+      saleItems: Number(saleItems?.count ?? 0),
+      returnItems: Number(returnItems?.count ?? 0),
+      inventoryMovements: Number(inventoryMovements?.count ?? 0),
+    };
+  } catch (error) {
+    throw new HttpError(500, `Failed to check product references: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  if (returnItems.error) {
-    throw new HttpError(500, `Failed to check product returns: ${returnItems.error.message}`);
-  }
-
-  if (inventoryMovements.error) {
-    throw new HttpError(500, `Failed to check product inventory history: ${inventoryMovements.error.message}`);
-  }
-
-  return {
-    saleItems: saleItems.count ?? 0,
-    returnItems: returnItems.count ?? 0,
-    inventoryMovements: inventoryMovements.count ?? 0,
-  };
 }
 
 export async function deleteAdminProduct(productId: string) {
-  const { error: movementError } = await supabaseAdmin
-    .from("inventory_movements")
-    .delete()
-    .eq("product_id", productId);
-
-  if (movementError) {
-    throw new HttpError(500, `Failed to delete product inventory history: ${movementError.message}`);
-  }
-
-  const { error: inventoryError } = await supabaseAdmin
-    .from("inventory")
-    .delete()
-    .eq("product_id", productId);
-
-  if (inventoryError) {
-    throw new HttpError(500, `Failed to delete product inventory: ${inventoryError.message}`);
-  }
-
-  const { error: storeProductsError } = await supabaseAdmin
-    .from("store_products")
-    .delete()
-    .eq("product_id", productId);
-
-  if (storeProductsError) {
-    throw new HttpError(500, `Failed to delete store products: ${storeProductsError.message}`);
-  }
-
-  const { error: productError } = await supabaseAdmin
-    .from("products")
-    .delete()
-    .eq("id", productId);
-
-  if (productError) {
-    throw new HttpError(500, `Failed to delete product: ${productError.message}`);
+  try {
+    await queryDb(`delete from public.inventory_movements where product_id = $1`, [productId]);
+    await queryDb(`delete from public.inventory where product_id = $1`, [productId]);
+    await queryDb(`delete from public.store_products where product_id = $1`, [productId]);
+    await queryDb(`delete from public.products where id = $1`, [productId]);
+  } catch (error) {
+    throw new HttpError(500, `Failed to delete product: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 export async function archiveAdminProduct(productId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("products")
-    .update({ archived_at: new Date().toISOString() })
-    .eq("id", productId)
-    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
-    .maybeSingle<AdminProductRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to archive product: ${error.message}`);
+  try {
+    const row = await maybeOne<AdminProductRow>(
+      `update public.products
+       set archived_at = now()
+       where id = $1
+       returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
+      [productId]
+    );
+    return row ? mapNumbers(row, ["default_price"]) : null;
+  } catch (error) {
+    throw new HttpError(500, `Failed to archive product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function restoreAdminProduct(productId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("products")
-    .update({ archived_at: null })
-    .eq("id", productId)
-    .select("id, name, sku, default_price, is_active, archived_at, created_at, updated_at")
-    .maybeSingle<AdminProductRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to restore product: ${error.message}`);
+  try {
+    const row = await maybeOne<AdminProductRow>(
+      `update public.products
+       set archived_at = null
+       where id = $1
+       returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
+      [productId]
+    );
+    return row ? mapNumbers(row, ["default_price"]) : null;
+  } catch (error) {
+    throw new HttpError(500, `Failed to restore product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
-export async function createStoreProductsForProduct(input: {
-  productId: string;
-  price: number;
-  storeIds: string[];
-}) {
+export async function createStoreProductsForProduct(input: { productId: string; price: number; storeIds: string[] }) {
   if (input.storeIds.length === 0) {
     return;
   }
 
-  const { error } = await supabaseAdmin.from("store_products").upsert(
-    input.storeIds.map((storeId) => ({
-      store_id: storeId,
-      product_id: input.productId,
-      price: input.price,
-      is_enabled: true,
-    })),
-    { onConflict: "store_id,product_id" }
-  );
+  try {
+    const values: unknown[] = [];
+    const tuples = input.storeIds.map((storeId, index) => {
+      const offset = index * 4;
+      values.push(storeId, input.productId, input.price, true);
+      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
+    });
 
-  if (error) {
-    throw new HttpError(500, `Failed to propagate product to stores: ${error.message}`);
+    await queryDb(
+      `insert into public.store_products (store_id, product_id, price, is_enabled)
+       values ${tuples.join(", ")}
+       on conflict (store_id, product_id)
+       do update set price = excluded.price, is_enabled = excluded.is_enabled`,
+      values
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to propagate product to stores: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export async function createInventoryRowsForProduct(input: {
-  productId: string;
-  storeIds: string[];
-}) {
+export async function createInventoryRowsForProduct(input: { productId: string; storeIds: string[] }) {
   if (input.storeIds.length === 0) {
     return;
   }
 
-  const { error } = await supabaseAdmin.from("inventory").upsert(
-    input.storeIds.map((storeId) => ({
-      store_id: storeId,
-      product_id: input.productId,
-      quantity: 0,
-    })),
-    { onConflict: "store_id,product_id" }
-  );
+  try {
+    const values: unknown[] = [];
+    const tuples = input.storeIds.map((storeId, index) => {
+      const offset = index * 3;
+      values.push(storeId, input.productId, 0);
+      return `($${offset + 1}, $${offset + 2}, $${offset + 3})`;
+    });
 
-  if (error) {
-    throw new HttpError(500, `Failed to create product inventory rows: ${error.message}`);
+    await queryDb(
+      `insert into public.inventory (store_id, product_id, quantity)
+       values ${tuples.join(", ")}
+       on conflict (store_id, product_id)
+       do update set quantity = public.inventory.quantity`,
+      values
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to create product inventory rows: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 export async function listAdminStoreProducts(storeId?: string) {
-  let query = supabaseAdmin
-    .from("store_products")
-    .select("id, store_id, product_id, price, is_enabled, updated_at")
-    .order("updated_at", { ascending: false });
+  try {
+    const result = await queryDb<AdminStoreProductRow>(
+      `select id, store_id, product_id, price, is_enabled, updated_at
+       from public.store_products
+       ${storeId ? "where store_id = $1" : ""}
+       order by updated_at desc`,
+      storeId ? [storeId] : []
+    );
 
-  if (storeId) {
-    query = query.eq("store_id", storeId);
+    return result.rows.map((row) => mapNumbers(row, ["price"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load store products: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new HttpError(500, `Failed to load store products: ${error.message}`);
-  }
-
-  return (data ?? []) as AdminStoreProductRow[];
 }
 
 export async function findAdminStoreProductById(storeProductId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("store_products")
-    .select("id, store_id, product_id, price, is_enabled, updated_at")
-    .eq("id", storeProductId)
-    .maybeSingle<AdminStoreProductRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to load store product: ${error.message}`);
+  try {
+    const row = await maybeOne<AdminStoreProductRow>(
+      `select id, store_id, product_id, price, is_enabled, updated_at
+       from public.store_products
+       where id = $1`,
+      [storeProductId]
+    );
+    return row ? mapNumbers(row, ["price"]) : null;
+  } catch (error) {
+    throw new HttpError(500, `Failed to load store product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function updateAdminStoreProduct(
   storeProductId: string,
   updates: Partial<Pick<AdminStoreProductRow, "price" | "is_enabled">>
 ) {
-  const { data, error } = await supabaseAdmin
-    .from("store_products")
-    .update(updates)
-    .eq("id", storeProductId)
-    .select("id, store_id, product_id, price, is_enabled, updated_at")
-    .maybeSingle<AdminStoreProductRow>();
+  try {
+    const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (entries.length === 0) {
+      return await findAdminStoreProductById(storeProductId);
+    }
 
-  if (error) {
-    throw new HttpError(500, `Failed to update store product: ${error.message}`);
+    const columns = entries.map(([key], index) => `${key} = $${index + 2}`);
+    const values = entries.map(([, value]) => value);
+    const row = await maybeOne<AdminStoreProductRow>(
+      `update public.store_products
+       set ${columns.join(", ")}
+       where id = $1
+       returning id, store_id, product_id, price, is_enabled, updated_at`,
+      [storeProductId, ...values]
+    );
+
+    return row ? mapNumbers(row, ["price"]) : null;
+  } catch (error) {
+    throw new HttpError(500, `Failed to update store product: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function findAdminStoreById(storeId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("stores")
-    .select("id, name, address, is_active, created_at, updated_at")
-    .eq("id", storeId)
-    .maybeSingle<AdminStoreRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to load store: ${error.message}`);
+  try {
+    return await maybeOne<AdminStoreRow>(
+      `select id, name, address, is_active, created_at, updated_at
+       from public.stores
+       where id = $1`,
+      [storeId]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to load store: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
-export async function createAdminStore(input: {
-  name: string;
-  address: string | null;
-  is_active: boolean;
-}) {
-  const { data, error } = await supabaseAdmin
-    .from("stores")
-    .insert(input)
-    .select("id, name, address, is_active, created_at, updated_at")
-    .single<AdminStoreRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to create store: ${error.message}`);
+export async function createAdminStore(input: { name: string; address: string | null; is_active: boolean }) {
+  try {
+    return await one<AdminStoreRow>(
+      `insert into public.stores (name, address, is_active)
+       values ($1, $2, $3)
+       returning id, name, address, is_active, created_at, updated_at`,
+      [input.name, input.address, input.is_active]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to create store: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function updateAdminStore(
   storeId: string,
   updates: Partial<Pick<AdminStoreRow, "name" | "address" | "is_active">>
 ) {
-  const { data, error } = await supabaseAdmin
-    .from("stores")
-    .update(updates)
-    .eq("id", storeId)
-    .select("id, name, address, is_active, created_at, updated_at")
-    .maybeSingle<AdminStoreRow>();
+  try {
+    const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (entries.length === 0) {
+      return await findAdminStoreById(storeId);
+    }
 
-  if (error) {
-    throw new HttpError(500, `Failed to update store: ${error.message}`);
+    const columns = entries.map(([key], index) => `${key} = $${index + 2}`);
+    const values = entries.map(([, value]) => value);
+    return await maybeOne<AdminStoreRow>(
+      `update public.stores
+       set ${columns.join(", ")}
+       where id = $1
+       returning id, name, address, is_active, created_at, updated_at`,
+      [storeId, ...values]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to update store: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }
 
 export async function closeCurrentAssignment(userId: string) {
-  const { error } = await supabaseAdmin
-    .from("user_store_assignments")
-    .update({
-      is_current: false,
-      ended_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId)
-    .eq("is_current", true);
-
-  if (error) {
-    throw new HttpError(500, `Failed to close current assignment: ${error.message}`);
+  try {
+    await queryDb(
+      `update public.user_store_assignments
+       set is_current = false,
+           ended_at = now()
+       where user_id = $1
+         and is_current = true`,
+      [userId]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to close current assignment: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export async function createUserStoreAssignment(input: {
-  userId: string;
-  storeId: string;
-  assignedBy: string;
-}) {
-  const { data, error } = await supabaseAdmin
-    .from("user_store_assignments")
-    .insert({
-      user_id: input.userId,
-      store_id: input.storeId,
-      assigned_by: input.assignedBy,
-      is_current: true,
-    })
-    .select("id, user_id, store_id, assigned_by, started_at, is_current")
-    .single<AdminAssignmentRow>();
-
-  if (error) {
-    throw new HttpError(500, `Failed to create assignment: ${error.message}`);
+export async function createUserStoreAssignment(input: { userId: string; storeId: string; assignedBy: string }) {
+  try {
+    return await one<AdminAssignmentRow>(
+      `insert into public.user_store_assignments (user_id, store_id, assigned_by, is_current)
+       values ($1, $2, $3, true)
+       returning id, user_id, store_id, assigned_by, started_at, is_current`,
+      [input.userId, input.storeId, input.assignedBy]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to create assignment: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  return data;
 }

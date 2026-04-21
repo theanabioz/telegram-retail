@@ -12,8 +12,18 @@ const envSchema = z.object({
         .map((item) => item.trim())
         .filter(Boolean)
     ),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  DATABASE_URL: z.string().optional(),
+  PGHOST: z.string().optional(),
+  PGPORT: z.coerce.number().int().positive().optional(),
+  PGDATABASE: z.string().optional(),
+  PGUSER: z.string().optional(),
+  PGPASSWORD: z.string().optional(),
+  PGSSL: z
+    .string()
+    .optional()
+    .transform((value) => value === "true"),
   BOT_TOKEN: z.string().min(1),
   TELEGRAM_ALERT_CHAT_IDS: z
     .string()

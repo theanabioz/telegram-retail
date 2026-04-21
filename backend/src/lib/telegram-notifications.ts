@@ -1,5 +1,5 @@
 import { env } from "../config.js";
-import { supabaseAdmin } from "./supabase.js";
+import { maybeOne, queryDb } from "./db.js";
 
 type TelegramUpdate = {
   message?: {
@@ -126,18 +126,15 @@ async function resolveTelegramAlertChatIds() {
     return discoveredChatIds;
   }
 
-  const { data: users, error } = await supabaseAdmin
-    .from("users")
-    .select("telegram_id")
-    .eq("is_active", true);
-
-  if (error) {
-    throw new Error(`Failed to load fallback Telegram ids: ${error.message}`);
-  }
+  const usersResult = await queryDb<{ telegram_id: number }>(
+    `select telegram_id
+     from public.users
+     where is_active = true`
+  );
 
   const fallbackChatIds = Array.from(
     new Set(
-      (users ?? [])
+      usersResult.rows
         .map((user) => user.telegram_id)
         .filter((telegramId): telegramId is number => Number.isFinite(telegramId))
         .map((telegramId) => String(telegramId))
@@ -151,32 +148,26 @@ async function resolveTelegramAlertChatIds() {
 }
 
 async function getUserName(userId: string) {
-  const { data } = await supabaseAdmin
-    .from("users")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle<{ full_name: string }>();
-
+  const data = await maybeOne<{ full_name: string }>(
+    `select full_name from public.users where id = $1`,
+    [userId]
+  );
   return data?.full_name ?? "Unknown seller";
 }
 
 async function getStoreName(storeId: string) {
-  const { data } = await supabaseAdmin
-    .from("stores")
-    .select("name")
-    .eq("id", storeId)
-    .maybeSingle<{ name: string }>();
-
+  const data = await maybeOne<{ name: string }>(
+    `select name from public.stores where id = $1`,
+    [storeId]
+  );
   return data?.name ?? "Unknown store";
 }
 
 async function getProductName(productId: string) {
-  const { data } = await supabaseAdmin
-    .from("products")
-    .select("name")
-    .eq("id", productId)
-    .maybeSingle<{ name: string }>();
-
+  const data = await maybeOne<{ name: string }>(
+    `select name from public.products where id = $1`,
+    [productId]
+  );
   return data?.name ?? "Unknown product";
 }
 

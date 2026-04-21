@@ -42,8 +42,16 @@ services:
       - .env.server
     environment:
       NODE_ENV: production
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-telegram_retail}
+      PGUSER: ${POSTGRES_USER:-telegram_retail}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set in .env.server}
     expose:
       - "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4000/health || exit 1"]
       interval: 15s
