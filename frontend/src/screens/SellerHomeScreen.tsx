@@ -144,6 +144,40 @@ function isSameCalendarDay(value: string, compareDate: Date) {
   );
 }
 
+function getWeekStartMonday(value: string | Date) {
+  const date = new Date(value);
+  const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = normalized.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  normalized.setDate(normalized.getDate() + diff);
+  return normalized;
+}
+
+function getWeekEndSunday(weekStart: Date) {
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  return weekEnd;
+}
+
+function formatWeekRangeLabel(weekStart: Date, weekEnd: Date) {
+  const locale = getLocaleTag();
+  const sameMonth = weekStart.getMonth() === weekEnd.getMonth() && weekStart.getFullYear() === weekEnd.getFullYear();
+
+  if (sameMonth) {
+    return `${weekStart.getDate()}-${weekEnd.getDate()} ${weekEnd.toLocaleDateString(locale, {
+      month: "long",
+    })}`;
+  }
+
+  return `${weekStart.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+  })} - ${weekEnd.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+  })}`;
+}
+
 function formatSellerPaymentMethod(method: "cash" | "card") {
   return method === "cash" ? translate("payment.cash") : translate("payment.card");
 }
@@ -204,6 +238,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
   const [isSellerProfileOpen, setIsSellerProfileOpen] = useState(false);
+  const [sellerProfileWeekIndex, setSellerProfileWeekIndex] = useState(0);
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const isShiftPending = pendingShiftMutationId !== null;
@@ -379,7 +414,31 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const todaySalesCount = todaySales.length;
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total_amount, 0);
-  const recentShiftEntries = shiftHistory.slice(0, 4);
+  const sellerProfileShiftWeeks = useMemo(() => {
+    const groups = new Map<string, { key: string; start: Date; end: Date; items: ShiftHistoryItem[] }>();
+
+    for (const entry of shiftHistory) {
+      const weekStart = getWeekStartMonday(entry.shift.started_at);
+      const key = weekStart.toISOString();
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.items.push(entry);
+        continue;
+      }
+
+      groups.set(key, {
+        key,
+        start: weekStart,
+        end: getWeekEndSunday(weekStart),
+        items: [entry],
+      });
+    }
+
+    return Array.from(groups.values()).sort((a, b) => b.start.getTime() - a.start.getTime());
+  }, [shiftHistory]);
+
+  const activeSellerProfileWeek = sellerProfileShiftWeeks[sellerProfileWeekIndex] ?? null;
 
   const formatCartItemsCount = (count: number) => {
     if (locale === "ru") {
@@ -2079,10 +2138,44 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
-          <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentShifts")}</Text>
+          <HStack justify="space-between" align="center">
+            <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentShifts")}</Text>
+            {activeSellerProfileWeek ? (
+              <HStack spacing={2}>
+                <IconButton
+                  aria-label={t("orders.back")}
+                  icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} />}
+                  size="sm"
+                  borderRadius="14px"
+                  variant="ghost"
+                  color="surface.600"
+                  isDisabled={sellerProfileWeekIndex >= sellerProfileShiftWeeks.length - 1}
+                  onClick={() => setSellerProfileWeekIndex((current) => Math.min(current + 1, sellerProfileShiftWeeks.length - 1))}
+                />
+                <IconButton
+                  aria-label={t("shift.viewAll")}
+                  icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} transform="rotate(180deg)" />}
+                  size="sm"
+                  borderRadius="14px"
+                  variant="ghost"
+                  color="surface.600"
+                  isDisabled={sellerProfileWeekIndex <= 0}
+                  onClick={() => setSellerProfileWeekIndex((current) => Math.max(current - 1, 0))}
+                />
+              </HStack>
+            ) : null}
+          </HStack>
+
+          {activeSellerProfileWeek ? (
+            <Box bg={innerSurface} borderRadius="18px" px={4} py={3}>
+              <Text fontSize="sm" color="surface.700" fontWeight="800" textAlign="center">
+                {formatWeekRangeLabel(activeSellerProfileWeek.start, activeSellerProfileWeek.end)}
+              </Text>
+            </Box>
+          ) : null}
 
           <VStack spacing={3} align="stretch">
-            {recentShiftEntries.map((entry) => (
+            {activeSellerProfileWeek?.items.map((entry) => (
               <HStack
                 key={entry.shift.id}
                 as="button"
@@ -2136,7 +2229,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </HStack>
             ))}
 
-            {recentShiftEntries.length === 0 ? (
+            {!activeSellerProfileWeek || activeSellerProfileWeek.items.length === 0 ? (
               <Text color="surface.400" fontSize="sm" textAlign="center" py={2} fontWeight="600">
                 {t("sellerProfile.noShifts")}
               </Text>
@@ -2314,7 +2407,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   border="1px solid"
                   borderColor="rgba(255,255,255,0.8)"
                   boxShadow="0 4px 12px rgba(0,0,0,0.03)"
-                  onClick={() => setIsSellerProfileOpen(true)}
+                  onClick={() => {
+                    setSellerProfileWeekIndex(0);
+                    setIsSellerProfileOpen(true);
+                    void loadShiftHistory(50, 0);
+                  }}
                   _active={{ transform: "scale(0.98)" }}
                 >
                   <Avatar
