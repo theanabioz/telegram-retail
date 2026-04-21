@@ -47,6 +47,7 @@ Temporary operational note:
 - [scripts/server/smoke-check.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/smoke-check.sh)
 - [scripts/server/backup-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/backup-postgres.sh)
 - [scripts/server/restore-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/restore-postgres.sh)
+- [scripts/server/bootstrap-postgres.sh](/Users/theanabioz/Documents/telegram-retail/scripts/server/bootstrap-postgres.sh)
 
 ## What This Gives Us
 
@@ -58,6 +59,7 @@ Temporary operational note:
 - bounded Docker logs to reduce disk growth
 - reusable deploy/smoke scripts for lower-friction operations
 - an explicit restore path for future self-hosted Postgres drills
+- WAL archive support for point-in-time style recovery groundwork
 
 ## Current Runtime Notes
 
@@ -65,6 +67,21 @@ Temporary operational note:
 - `Supabase` remains the production database in phase 1
 - the self-hosted `postgres` profile exists but is not enabled yet
 - `postgres-backup` is also profile-gated and will only run once we switch the database locally
+
+## Backup Philosophy For Self-Hosted Postgres
+
+The right answer to “backup after every action” is not a full dump on every write.
+
+Instead:
+
+- nightly SQL dump backups remain useful for simple disaster recovery
+- WAL archive gives us compact change history between dumps
+- that is much closer to “full history” while being far cheaper than dumping the whole database after every mutation
+
+For the self-hosted profile we now prepare both:
+
+- `postgres-backup` for scheduled dump backups
+- WAL files archived under `/opt/telegram-retail/backups/wal`
 
 ## Suggested Next Steps
 
@@ -91,16 +108,23 @@ docker compose -f docker-compose.server.yml --env-file .env.server up -d --build
 
 When we switch the database from Supabase to the local `postgres` profile, the minimum safe loop should be:
 
-1. take a fresh backup
-2. verify the backup file exists on disk
-3. restore it into the local Postgres profile with:
+1. enable the self-hosted Postgres profile
+2. bootstrap schema and seed with:
+
+```bash
+scripts/server/bootstrap-postgres.sh
+```
+
+3. take a fresh backup
+4. verify the backup file exists on disk
+5. restore it into the local Postgres profile with:
 
 ```bash
 scripts/server/restore-postgres.sh /opt/telegram-retail/backups/manual/postgres_YYYY-MM-DD_HH-MM-SS.sql.gz --yes
 ```
 
-4. run smoke checks again
-5. only then point the backend to local Postgres as the primary database
+6. run smoke checks again
+7. only then point the backend to local Postgres as the primary database
 
 This keeps the database migration itself reversible and testable instead of relying on unverified dumps.
 
