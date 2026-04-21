@@ -26,7 +26,9 @@ import {
   HiOutlineArchiveBox,
   HiOutlineChartBar,
   HiOutlineChevronLeft,
+  HiOutlineChevronRight,
   HiOutlineMagnifyingGlass,
+  HiOutlineReceiptPercent,
   HiOutlinePause,
   HiOutlinePlay,
   HiOutlinePower,
@@ -141,6 +143,15 @@ function isSameCalendarDay(value: string, compareDate: Date) {
     date.getFullYear() === compareDate.getFullYear() &&
     date.getMonth() === compareDate.getMonth() &&
     date.getDate() === compareDate.getDate()
+  );
+}
+
+function isSameCalendarMonth(value: string, compareDate: Date) {
+  const date = new Date(value);
+
+  return (
+    date.getFullYear() === compareDate.getFullYear() &&
+    date.getMonth() === compareDate.getMonth()
   );
 }
 
@@ -265,6 +276,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const handleSellerTabChange = useCallback((tab: SellerTab) => {
+    setIsSellerProfileOpen(false);
     setActiveTab(tab);
     scrollToSectionTop();
   }, []);
@@ -411,9 +423,25 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     const today = new Date();
     return sales.filter((sale) => sale.status === "completed" && isSameCalendarDay(sale.created_at, today));
   }, [sales]);
+  const monthSales = useMemo(() => {
+    const today = new Date();
+    return sales.filter((sale) => sale.status === "completed" && isSameCalendarMonth(sale.created_at, today));
+  }, [sales]);
+  const todayCommissionAmount = useMemo(() => {
+    const today = new Date();
+    return shiftHistory.reduce((sum, entry) => (
+      isSameCalendarDay(entry.shift.started_at, today) ? sum + (entry.commission?.amount ?? 0) : sum
+    ), 0);
+  }, [shiftHistory]);
+  const monthCommissionAmount = useMemo(() => {
+    const today = new Date();
+    return shiftHistory.reduce((sum, entry) => (
+      isSameCalendarMonth(entry.shift.started_at, today) ? sum + (entry.commission?.amount ?? 0) : sum
+    ), 0);
+  }, [shiftHistory]);
 
   const todaySalesCount = todaySales.length;
-  const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total_amount, 0);
+  const monthSalesCount = monthSales.length;
   const sellerProfileShiftWeeks = useMemo(() => {
     const groups = new Map<string, { key: string; start: Date; end: Date; items: ShiftHistoryItem[] }>();
 
@@ -2130,9 +2158,19 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             icon: HiOutlineShoppingBag,
           },
           {
-            label: t("sellerProfile.todayRevenue"),
-            value: formatEur(todayRevenue),
+            label: t("sellerProfile.monthSales"),
+            value: String(monthSalesCount),
             icon: HiOutlineChartBar,
+          },
+          {
+            label: t("sellerProfile.todayCommission"),
+            value: formatEur(todayCommissionAmount),
+            icon: HiOutlineReceiptPercent,
+          },
+          {
+            label: t("sellerProfile.monthCommission"),
+            value: formatEur(monthCommissionAmount),
+            icon: HiOutlineArchiveBox,
           },
         ].map((item) => (
           <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
@@ -2166,15 +2204,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <HStack spacing={3}>
               <IconButton
                 aria-label={t("orders.back")}
-                icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} />}
+                icon={<Box as={HiOutlineChevronLeft} boxSize={5} strokeWidth={2.5} />}
                 size="sm"
                 borderRadius="16px"
-                bg={innerSurface}
-                color="surface.700"
+                bg="white"
+                border="1px solid"
+                borderColor="rgba(223,219,213,0.95)"
+                color="surface.900"
                 flexShrink={0}
                 isDisabled={!canOpenOlderSellerProfileWeek}
                 onClick={() => void goToOlderSellerProfileWeek()}
-                _hover={{ bg: "rgba(231,228,222,0.92)" }}
+                _hover={{ bg: "rgba(248,247,244,0.98)" }}
                 _active={{ transform: "scale(0.96)" }}
               />
               <Box bg={innerSurface} borderRadius="18px" px={4} py={3} flex="1">
@@ -2184,15 +2224,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </Box>
               <IconButton
                 aria-label={t("shift.viewAll")}
-                icon={<Box as={HiOutlineChevronLeft} boxSize={4.5} transform="rotate(180deg)" />}
+                icon={<Box as={HiOutlineChevronRight} boxSize={5} strokeWidth={2.5} />}
                 size="sm"
                 borderRadius="16px"
-                bg={innerSurface}
-                color="surface.700"
+                bg="white"
+                border="1px solid"
+                borderColor="rgba(223,219,213,0.95)"
+                color="surface.900"
                 flexShrink={0}
                 isDisabled={!canOpenNewerSellerProfileWeek}
                 onClick={goToNewerSellerProfileWeek}
-                _hover={{ bg: "rgba(231,228,222,0.92)" }}
+                _hover={{ bg: "rgba(248,247,244,0.98)" }}
                 _active={{ transform: "scale(0.96)" }}
               />
             </HStack>
