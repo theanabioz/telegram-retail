@@ -132,6 +132,10 @@ function getRussianItemWord(count: number) {
   return "товаров";
 }
 
+function formatSellerPaymentMethod(method: "cash" | "card") {
+  return method === "cash" ? translate("payment.cash") : translate("payment.card");
+}
+
 const panelSurface = "rgba(255,255,255,0.88)";
 const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
@@ -1140,7 +1144,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   {formatDateTimeLabel(selectedSale.created_at)}
                 </Text>
                 <Text fontSize="sm" color="surface.500">
-                  {selectedSale.payment_method.toUpperCase()} · {selectedSale.status === "deleted" ? t("status.deleted") : t("status.completed")}
+                  {formatSellerPaymentMethod(selectedSale.payment_method)} · {selectedSale.status === "deleted" ? t("status.deleted") : t("status.completed")}
                 </Text>
               </VStack>
               {!supportsTelegramBackButton ? (
@@ -1236,7 +1240,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {new Date(sale.created_at).toLocaleDateString(getLocaleTag())}
               </Text>
               <Text fontSize="sm" color="surface.500">
-                {formatTimeLabel(sale.created_at)} · {sale.payment_method.toUpperCase()}
+                {formatTimeLabel(sale.created_at)} · {formatSellerPaymentMethod(sale.payment_method)}
               </Text>
             </VStack>
 
@@ -1468,7 +1472,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 borderRadius="full"
                 bg={shiftStatus === "active" ? "green.500" : shiftStatus === "paused" ? "orange.400" : "surface.400"}
               />
-              <Text color="surface.700" fontWeight="900" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em">
+              <Text color="surface.700" fontWeight="900" fontSize="xs" textTransform="uppercase" letterSpacing="0.05em" whiteSpace="nowrap">
                 {shiftStatusLabel}
               </Text>
             </HStack>

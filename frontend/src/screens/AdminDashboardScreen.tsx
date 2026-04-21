@@ -294,6 +294,49 @@ function formatHeaderDate(value: Date) {
   });
 }
 
+function getRussianPlural(count: number, one: string, few: string, many: string) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return one;
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return few;
+  }
+
+  return many;
+}
+
+function formatOverviewStoreCount(count: number, locale: "en" | "ru" | "pt") {
+  if (locale === "ru") {
+    return `${count} ${getRussianPlural(count, "магазин", "магазина", "магазинов")}`;
+  }
+
+  if (locale === "pt") {
+    return `${count} ${count === 1 ? "loja" : "lojas"}`;
+  }
+
+  return `${count} ${count === 1 ? "store" : "stores"}`;
+}
+
+function formatOverviewSalesCount(count: number, locale: "en" | "ru" | "pt") {
+  if (locale === "ru") {
+    return `${count} ${getRussianPlural(count, "продажа", "продажи", "продаж")}`;
+  }
+
+  if (locale === "pt") {
+    return `${count} ${count === 1 ? "venda" : "vendas"}`;
+  }
+
+  return `${count} ${count === 1 ? "sale" : "sales"}`;
+}
+
+function formatAdminPaymentMethod(method: "cash" | "card") {
+  return method === "cash" ? translate("payment.cash") : translate("payment.card");
+}
+
 function withOverviewChartMockLayer(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
   if (!ADMIN_OVERVIEW_CHART_MOCK_LAYER) {
     return hourlyRevenueToday;
@@ -1619,7 +1662,7 @@ export function AdminDashboardScreen({
               <VStack align="start" spacing={0}>
                 <Text fontWeight="800">{sale.store?.name ?? t("admin.sales.unknownStore")}</Text>
                 <Text fontSize="sm" color="surface.500">
-                  {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {sale.paymentMethod.toUpperCase()}
+                  {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatAdminPaymentMethod(sale.paymentMethod)}
                 </Text>
                 <Text fontSize="xs" color="surface.500">
                   {formatDateTime(sale.createdAt)}
@@ -1638,7 +1681,7 @@ export function AdminDashboardScreen({
               {t("admin.overview.storePerformance")}
             </Text>
             <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {data?.storePerformance.length ?? 0} {t("admin.overview.stores")}
+              {formatOverviewStoreCount(data?.storePerformance.length ?? 0, locale)}
             </Text>
           </HStack>
           {(data?.storePerformance ?? []).map((store) => (
@@ -1656,7 +1699,7 @@ export function AdminDashboardScreen({
                 <VStack align="end" spacing={0.5}>
                   <Text fontWeight="900">{formatEur(store.revenue)}</Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
-                    {store.salesCount} {t("admin.overview.salesCountSuffix")}
+                    {formatOverviewSalesCount(store.salesCount, locale)}
                   </Text>
                 </VStack>
               </HStack>
@@ -1762,7 +1805,7 @@ export function AdminDashboardScreen({
       ...storeSales.map((sale) => ({
         id: `sale-${sale.id}`,
         title: sale.status === "deleted" ? t("admin.team.saleDeleted") : t("admin.team.saleCompleted"),
-        meta: `${sale.seller?.fullName ?? t("admin.team.unknownSeller")} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
+        meta: `${sale.seller?.fullName ?? t("admin.team.unknownSeller")} · ${formatEur(sale.totalAmount)} · ${formatAdminPaymentMethod(sale.paymentMethod)}`,
         date: sale.createdAt,
         icon: LuReceiptText,
         iconLabel: sale.status === "deleted" ? t("admin.team.deleted") : t("admin.team.sale"),
@@ -3393,7 +3436,7 @@ export function AdminDashboardScreen({
                   label={selectedSale.status === "deleted" ? t("admin.sales.deletedSale") : t("admin.sales.completedSale")}
                   tone={selectedSale.status === "deleted" ? "red" : "green"}
                 />
-                <Text fontWeight="900">{selectedSale.paymentMethod.toUpperCase()}</Text>
+                <Text fontWeight="900">{formatAdminPaymentMethod(selectedSale.paymentMethod)}</Text>
               </HStack>
 
               <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
@@ -3733,7 +3776,7 @@ export function AdminDashboardScreen({
                             {sale.status === "deleted" ? t("admin.sales.deletedSale") : t("admin.sales.completedSale")}
                           </Text>
                           <StatusPill
-                            label={sale.paymentMethod.toUpperCase()}
+                            label={formatAdminPaymentMethod(sale.paymentMethod)}
                             tone={sale.paymentMethod === "cash" ? "green" : "blue"}
                           />
                         </HStack>
@@ -3904,7 +3947,7 @@ export function AdminDashboardScreen({
       ...sellerSales.map((sale) => ({
         id: `sale-${sale.id}`,
         title: sale.status === "deleted" ? t("admin.team.saleDeleted") : t("admin.team.saleCompleted"),
-        meta: `${sale.store?.name ?? t("admin.team.unknownStore")} · ${formatEur(sale.totalAmount)} · ${sale.paymentMethod.toUpperCase()}`,
+        meta: `${sale.store?.name ?? t("admin.team.unknownStore")} · ${formatEur(sale.totalAmount)} · ${formatAdminPaymentMethod(sale.paymentMethod)}`,
         date: sale.createdAt,
         icon: LuReceiptText,
         iconLabel: sale.status === "deleted" ? t("admin.team.deleted") : t("admin.team.sale"),
@@ -4122,7 +4165,7 @@ export function AdminDashboardScreen({
                             <VStack align="start" spacing={0}>
                               <Text fontWeight="900">{sale.store?.name ?? t("admin.team.unknownStore")}</Text>
                               <Text fontSize="xs" color="surface.500">
-                                {formatDateTime(sale.createdAt)} · {sale.paymentMethod.toUpperCase()}
+                                {formatDateTime(sale.createdAt)} · {formatAdminPaymentMethod(sale.paymentMethod)}
                               </Text>
                             </VStack>
                             <VStack align="end" spacing={0}>
