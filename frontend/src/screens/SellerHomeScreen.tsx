@@ -1284,7 +1284,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
               {formatCartItemsCount(draft.summary.itemsCount)}
             </Text>
-            <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em">
+            <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" letterSpacing="0.01em">
               {t("checkout.viewCartDetails")}
             </Text>
           </VStack>

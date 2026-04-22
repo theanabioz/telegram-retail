@@ -6,6 +6,7 @@ import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
 import { disconnectRealtimeConnection, ensureRealtimeConnection } from "./lib/realtime";
 import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
+import { useI18n } from "./lib/i18n";
 import { bootstrapTelegramSdk, expandTelegramApp, notifyTelegramAppReady } from "./lib/telegramSdk";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
@@ -107,6 +108,7 @@ function AppBootState({
 }
 
 export function App() {
+  const { t } = useI18n();
   const [currentPanel, setCurrentPanel] = useState<DevPanel>(() => {
     const storedPanel = window.localStorage.getItem(PANEL_KEY);
     if (storedPanel === "admin" || storedPanel === "seller") {
@@ -295,8 +297,8 @@ export function App() {
   if (session.loading) {
     return (
       <AppBootState
-        title="Opening retail app"
-        description="Preparing your Telegram session and live workspace."
+        title={t("app.boot.openingTitle")}
+        description={t("app.boot.openingDescription")}
       />
     );
   }
@@ -304,9 +306,9 @@ export function App() {
   if (session.error) {
     return (
       <AppBootState
-        title="Could not open app"
+        title={t("app.boot.errorTitle")}
         description={session.error}
-        actionLabel="Try again"
+        actionLabel={t("app.boot.tryAgain")}
         onAction={() => void bootstrap(currentPanel, true)}
       />
     );
