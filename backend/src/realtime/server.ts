@@ -1,4 +1,4 @@
-import type { IncomingMessage, Server as HttpServer } from "node:http";
+import type { Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { type JwtPayload, verifyAppJwt } from "../modules/auth/jwt.js";
 
@@ -42,21 +42,6 @@ type PendingRealtimeClient = {
   authTimer: NodeJS.Timeout;
 };
 
-function resolveSessionFromRequest(request: IncomingMessage) {
-  const url = new URL(request.url ?? "/", "http://localhost");
-  const token = url.searchParams.get("token");
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    return verifyAppJwt(token);
-  } catch {
-    return null;
-  }
-}
-
 class RealtimeServer {
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   private readonly clients = new Set<RealtimeClient>();
@@ -72,14 +57,7 @@ class RealtimeServer {
         return;
       }
 
-      const session = resolveSessionFromRequest(request);
-
       this.wss.handleUpgrade(request, socket, head, (websocket) => {
-        if (session) {
-          this.registerConnection(websocket, session);
-          return;
-        }
-
         this.registerPendingConnection(websocket);
       });
     });

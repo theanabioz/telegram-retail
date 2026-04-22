@@ -29,7 +29,7 @@ function isAllowedLocalOrigin(origin: string) {
       return true;
     }
 
-    if (env.DEV_AUTH_ENABLED && hostname.endsWith(".vercel.app") && hostname.endsWith("-arsen-abdullaev.vercel.app")) {
+    if (env.DEV_AUTH_ENABLED && hostname === "telegram-retail-arsen-abdullaev.vercel.app") {
       return true;
     }
 
