@@ -99,6 +99,7 @@ function AppBootState({
   onAction,
   imageSrc,
   imageAlt,
+  offsetY,
 }: {
   title: string;
   description: string;
@@ -106,6 +107,7 @@ function AppBootState({
   onAction?: () => void;
   imageSrc?: string;
   imageAlt?: string;
+  offsetY?: string;
 }) {
   const hasIllustration = Boolean(imageSrc);
 
@@ -120,14 +122,14 @@ function AppBootState({
         py={7}
         boxShadow={hasIllustration ? "none" : "0 18px 36px rgba(18, 18, 18, 0.06)"}
         maxW="420px"
+        transform={offsetY ? `translateY(${offsetY})` : undefined}
       >
         {imageSrc ? (
           <Image
             src={imageSrc}
             alt={imageAlt ?? title}
-            w="min(100%, 360px)"
+            w="min(100%, 380px)"
             objectFit="contain"
-            borderRadius="28px"
           />
         ) : (
           <Box
@@ -378,9 +380,10 @@ export function App() {
     return (
       <AppBootState
         title={t("app.blocked.title")}
-        description={t("app.blocked.description")}
+        description="This workspace is currently unavailable for this session."
         imageSrc="/access-blocked.png"
         imageAlt={t("app.blocked.title")}
+        offsetY="-32px"
       />
     );
   }
