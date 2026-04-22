@@ -5,6 +5,7 @@ import {
   sendTelegramMessage,
   telegramRequest,
   type TelegramInlineKeyboardMarkup,
+  type TelegramReplyMarkup,
 } from "./telegram-api.js";
 import { HttpError } from "./http-error.js";
 import { findCurrentAssignment, findUserByTelegramId, type AppUser } from "../modules/users/users.repository.js";
@@ -86,6 +87,7 @@ type TelegramSentMessage = {
 type ReportPreset = "today" | "yesterday";
 
 const LIST_PAGE_SIZE = 8;
+const ADMIN_ENTRY_BUTTON = "⚙️ Админ";
 
 function escapeHtml(value: string) {
   return value
@@ -230,6 +232,33 @@ async function sendOrEditMessage(input: {
   })) as TelegramSentMessage;
 
   return message.message_id;
+}
+
+function buildAdminEntryKeyboard(): TelegramReplyMarkup {
+  return {
+    keyboard: [[{ text: ADMIN_ENTRY_BUTTON }]],
+    resize_keyboard: true,
+    is_persistent: true,
+  };
+}
+
+async function syncPersistentKeyboard(chatId: number, user: AppUser) {
+  if (user.role === "admin") {
+    await sendTelegramMessage({
+      chatId,
+      text: "Быстрый вход в админ-панель закреплен кнопкой ниже.",
+      replyMarkup: buildAdminEntryKeyboard(),
+      disableNotification: true,
+    });
+    return;
+  }
+
+  await sendTelegramMessage({
+    chatId,
+    text: "Быстрая админ-кнопка отключена для этого чата.",
+    replyMarkup: { remove_keyboard: true },
+    disableNotification: true,
+  });
 }
 
 function buildAccessDeniedText() {
@@ -1174,6 +1203,12 @@ export function startTelegramBot() {
 
   async function handleDenied(chatId: number, messageId?: number) {
     conversationState.delete(chatId);
+    await sendTelegramMessage({
+      chatId,
+      text: "Клавиатура скрыта.",
+      replyMarkup: { remove_keyboard: true },
+      disableNotification: true,
+    }).catch(() => undefined);
     const renderedMessageId = await sendOrEditMessage({
       chatId,
       messageId,
@@ -2231,8 +2266,9 @@ export function startTelegramBot() {
 
     if (text === "/start" || text === "/menu" || text === "/admin" || text === "⚙️ Админ") {
       conversationState.delete(chatId);
+      await syncPersistentKeyboard(chatId, user);
       const renderedMessageId =
-        text === "/admin" || text === "⚙️ Админ"
+        text === "/admin" || text === ADMIN_ENTRY_BUTTON
           ? user.role === "admin"
             ? await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId))
             : await showHome(chatId, user, lastUiMessageByChat.get(chatId))
