@@ -5,7 +5,6 @@ import {
   sendTelegramMessage,
   telegramRequest,
   type TelegramInlineKeyboardMarkup,
-  type TelegramReplyKeyboardMarkup,
 } from "./telegram-api.js";
 import { HttpError } from "./http-error.js";
 import { findCurrentAssignment, findUserByTelegramId, type AppUser } from "../modules/users/users.repository.js";
@@ -120,10 +119,6 @@ function parsePrice(text: string) {
   return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null;
 }
 
-function buildAppUrl() {
-  return `https://${env.APP_DOMAIN}/`;
-}
-
 function combineKeyboards(
   ...rows: Array<TelegramInlineKeyboardMarkup | null | undefined>
 ): TelegramInlineKeyboardMarkup | undefined {
@@ -131,38 +126,20 @@ function combineKeyboards(
   return inline_keyboard.length > 0 ? { inline_keyboard } : undefined;
 }
 
-function isInlineKeyboardMarkup(
-  replyMarkup?: TelegramInlineKeyboardMarkup | TelegramReplyKeyboardMarkup
-): replyMarkup is TelegramInlineKeyboardMarkup {
-  return Boolean(replyMarkup && "inline_keyboard" in replyMarkup);
-}
-
-function buildHomeKeyboard(user: AppUser): TelegramReplyKeyboardMarkup {
-  return {
-    keyboard: [
-      [{ text: user.role === "admin" ? "Панель" : "Меню" }],
-      [{ text: "Mini App", web_app: { url: buildAppUrl() } }],
-    ],
-    resize_keyboard: true,
-    one_time_keyboard: false,
-    is_persistent: false,
-  };
-}
-
 async function sendOrEditMessage(input: {
   chatId: number | string;
   messageId?: number;
   text: string;
-  replyMarkup?: TelegramInlineKeyboardMarkup | TelegramReplyKeyboardMarkup;
+  replyMarkup?: TelegramInlineKeyboardMarkup;
 }) {
-  if (input.messageId && (!input.replyMarkup || isInlineKeyboardMarkup(input.replyMarkup))) {
+  if (input.messageId) {
     try {
       await editTelegramMessage({
         chatId: input.chatId,
         messageId: input.messageId,
         text: input.text,
         parseMode: "HTML",
-        replyMarkup: isInlineKeyboardMarkup(input.replyMarkup) ? input.replyMarkup : undefined,
+        replyMarkup: input.replyMarkup,
       });
       return input.messageId;
     } catch {
@@ -221,6 +198,7 @@ async function renderSellerMenu(chatId: number, seller: AppUser, messageId?: num
       inline_keyboard: [
         [{ text: "Статус смены", callback_data: "seller:shift" }],
         [{ text: "Отчет по последней смене", callback_data: "seller:last-shift" }],
+        [{ text: "Свернуть", callback_data: "home" }],
         [{ text: "Обновить", callback_data: "home" }],
       ],
     },
@@ -243,9 +221,11 @@ async function renderCompactHome(chatId: number, user: AppUser, messageId?: numb
         `<b>Выручка сегодня:</b> ${escapeHtml(formatCurrency(dashboard.summary.totalRevenueToday))}`,
         `<b>Продажи сегодня:</b> ${dashboard.summary.completedSalesToday}`,
         "",
-        "Используй кнопку <b>Панель</b> на клавиатуре ниже, когда захочешь открыть управление.",
+        "Панель управления свернута. Открой её одной кнопкой ниже.",
       ].join("\n"),
-      replyMarkup: buildHomeKeyboard(user),
+      replyMarkup: {
+        inline_keyboard: [[{ text: "Открыть панель", callback_data: "admin:menu" }]],
+      },
     });
   }
 
@@ -263,9 +243,11 @@ async function renderCompactHome(chatId: number, user: AppUser, messageId?: numb
       `<b>Магазин:</b> ${escapeHtml(assignment?.store_name ?? "Не назначен")}`,
       `<b>Смена:</b> ${shiftState.activeShift ? "открыта" : "закрыта"}`,
       "",
-      "Используй кнопку <b>Меню</b> на клавиатуре ниже, когда захочешь открыть действия.",
+      "Меню действий свернуто. Открой его одной кнопкой ниже.",
     ].join("\n"),
-    replyMarkup: buildHomeKeyboard(user),
+    replyMarkup: {
+      inline_keyboard: [[{ text: "Открыть меню", callback_data: "seller:menu" }]],
+    },
   });
 }
 
@@ -359,6 +341,7 @@ async function renderAdminMenu(chatId: number, admin: AppUser, messageId?: numbe
         [{ text: "Продавцы", callback_data: "admin:sellers" }],
         [{ text: "Магазины", callback_data: "admin:stores" }],
         [{ text: "Товары", callback_data: "admin:products" }],
+        [{ text: "Свернуть", callback_data: "home" }],
       ],
     },
   });
@@ -1196,23 +1179,10 @@ export function startTelegramBot() {
 
     if (text === "/start" || text === "/menu") {
       conversationState.delete(chatId);
-      const renderedMessageId = await showHome(chatId, user, lastUiMessageByChat.get(chatId));
-      if (renderedMessageId) {
-        lastUiMessageByChat.set(chatId, renderedMessageId);
-      }
-      return;
-    }
-
-    if (user.role === "admin" && text === "Панель") {
-      const renderedMessageId = await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId));
-      if (renderedMessageId) {
-        lastUiMessageByChat.set(chatId, renderedMessageId);
-      }
-      return;
-    }
-
-    if (user.role === "seller" && text === "Меню") {
-      const renderedMessageId = await renderSellerMenu(chatId, user, lastUiMessageByChat.get(chatId));
+      const renderedMessageId =
+        user.role === "admin"
+          ? await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId))
+          : await renderSellerMenu(chatId, user, lastUiMessageByChat.get(chatId));
       if (renderedMessageId) {
         lastUiMessageByChat.set(chatId, renderedMessageId);
       }
@@ -1223,9 +1193,8 @@ export function startTelegramBot() {
       chatId,
       text:
         user.role === "admin"
-          ? "Используй кнопку «Панель» на клавиатуре или команду /menu."
-          : "Используй кнопку «Меню» на клавиатуре или команду /menu.",
-      replyMarkup: buildHomeKeyboard(user),
+          ? "Напиши /menu или нажми кнопки в текущей панели управления."
+          : "Напиши /menu или нажми кнопки в текущем меню действий.",
     });
   }
 
