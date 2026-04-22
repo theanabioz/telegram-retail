@@ -20,7 +20,7 @@ import {
   deleteStore,
   getAdminDashboard,
   getAdminProducts,
-  getAdminSalesPeriodSummaries,
+  getAdminSalesOverview,
   getAdminStaff,
   getAdminStores,
   restoreProduct,
@@ -28,6 +28,7 @@ import {
   updateSeller,
   updateStore,
 } from "../modules/admin/admin.service.js";
+import { getBusinessDayRange } from "./business-time.js";
 
 type TelegramUser = {
   id: number;
@@ -82,6 +83,10 @@ type TelegramSentMessage = {
   message_id: number;
 };
 
+type ReportPreset = "today" | "yesterday";
+
+const LIST_PAGE_SIZE = 8;
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -95,7 +100,7 @@ function formatCurrency(amount: number) {
 
 function formatDateTime(iso: string) {
   return new Intl.DateTimeFormat("ru-RU", {
-    timeZone: "Europe/Lisbon",
+    timeZone: env.APP_TIME_ZONE,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -118,6 +123,66 @@ function parsePrice(text: string) {
   const normalized = text.replace(",", ".").trim();
   const value = Number.parseFloat(normalized);
   return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null;
+}
+
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: env.APP_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+function clampPage(page: number, totalItems: number) {
+  const lastPage = Math.max(0, Math.ceil(totalItems / LIST_PAGE_SIZE) - 1);
+  return Math.min(Math.max(page, 0), lastPage);
+}
+
+function paginateItems<T>(items: T[], page: number) {
+  const safePage = clampPage(page, items.length);
+  const start = safePage * LIST_PAGE_SIZE;
+
+  return {
+    page: safePage,
+    totalPages: Math.max(1, Math.ceil(items.length / LIST_PAGE_SIZE)),
+    items: items.slice(start, start + LIST_PAGE_SIZE),
+  };
+}
+
+function buildPaginationRows(input: {
+  currentPage: number;
+  totalPages: number;
+  previousCallback: string;
+  nextCallback: string;
+}) {
+  if (input.totalPages <= 1) {
+    return [] as TelegramInlineKeyboardMarkup["inline_keyboard"];
+  }
+
+  return [
+    [
+      { text: "←", callback_data: input.previousCallback },
+      { text: `Стр. ${input.currentPage + 1}/${input.totalPages}`, callback_data: "noop" },
+      { text: "→", callback_data: input.nextCallback },
+    ],
+  ] satisfies TelegramInlineKeyboardMarkup["inline_keyboard"];
+}
+
+function getReportRange(preset: ReportPreset) {
+  if (preset === "today") {
+    return {
+      label: "Сегодня",
+      ...getBusinessDayRange(),
+    };
+  }
+
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  return {
+    label: "Вчера",
+    ...getBusinessDayRange(yesterday),
+  };
 }
 
 function combineKeyboards(
@@ -173,38 +238,6 @@ function buildAccessDeniedText() {
     "",
     "Этот чат не подключен к разрешенному рабочему пространству.",
   ].join("\n");
-}
-
-function buildBotMenuRemovedText(user: AppUser) {
-  if (user.role === "admin") {
-    return [
-      `<b>${escapeHtml(user.full_name)}</b>`,
-      `<b>Роль:</b> администратор`,
-      "",
-      "Панель управления в боте временно снята с публикации.",
-      "Мы заново проектируем этот сценарий, чтобы сделать его аккуратнее.",
-      "",
-      "Mini App по-прежнему доступен через кнопку открытия приложения в Telegram.",
-    ].join("\n");
-  }
-
-  return [
-    `<b>${escapeHtml(user.full_name)}</b>`,
-    `<b>Роль:</b> продавец`,
-    "",
-    "Меню действий в боте временно снято с публикации.",
-    "Мы заново проектируем этот сценарий, чтобы сделать его аккуратнее.",
-    "",
-    "Mini App по-прежнему доступен через кнопку открытия приложения в Telegram.",
-  ].join("\n");
-}
-
-async function renderBotMenuRemoved(chatId: number, user: AppUser, messageId?: number) {
-  return sendOrEditMessage({
-    chatId,
-    messageId,
-    text: buildBotMenuRemovedText(user),
-  });
 }
 
 async function renderSellerMenu(chatId: number, seller: AppUser, messageId?: number) {
@@ -379,16 +412,10 @@ async function renderAdminMenu(chatId: number, admin: AppUser, messageId?: numbe
     text,
     replyMarkup: {
       inline_keyboard: [
-        [
-          { text: "Сводка", callback_data: "admin:dashboard" },
-          { text: "Отчеты", callback_data: "admin:reports" },
-        ],
-        [
-          { text: "Продавцы", callback_data: "admin:sellers" },
-          { text: "Магазины", callback_data: "admin:stores" },
-        ],
-        [{ text: "Товары", callback_data: "admin:products" }],
-        [{ text: "Свернуть", callback_data: "home" }],
+        [{ text: "Магазины", callback_data: "admin:stores" }, { text: "Продавцы", callback_data: "admin:sellers" }],
+        [{ text: "Товары", callback_data: "admin:products" }, { text: "Отчеты", callback_data: "admin:reports" }],
+        [{ text: "Сводка", callback_data: "admin:dashboard" }],
+        [{ text: "Скрыть", callback_data: "home" }],
       ],
     },
   });
@@ -430,19 +457,12 @@ async function renderAdminSellers(chatId: number, messageId?: number) {
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Продавцы</b>\n\nСначала выбери действие, потом конкретного продавца.`,
+    text: `<b>Продавцы</b>\n\nРедкие операции лучше держать в одном скрываемом разделе. Выбери, что нужно сделать.`,
     replyMarkup: {
       inline_keyboard: [
-        [
-          { text: "Добавить", callback_data: "admin:sellers:new" },
-          { text: "Переименовать", callback_data: "admin:sellers:pick:rename" },
-        ],
-        [
-          { text: "Назначить магазин", callback_data: "admin:sellers:pick:assign" },
-          { text: "Вкл / выкл", callback_data: "admin:sellers:pick:toggle" },
-        ],
-        [{ text: "Удалить", callback_data: "admin:sellers:pick:delete" }],
-        [{ text: "Назад", callback_data: "home" }],
+        [{ text: "Добавить продавца", callback_data: "admin:sellers:new" }],
+        [{ text: "Список продавцов", callback_data: "admin:sellers:list:0" }],
+        [{ text: "Назад", callback_data: "admin:menu" }],
       ],
     },
   });
@@ -481,7 +501,12 @@ async function renderAdminSellerActionPicker(
   });
 }
 
-async function renderAdminSellerDetails(chatId: number, sellerId: string, messageId?: number) {
+async function renderAdminSellerDetails(
+  chatId: number,
+  sellerId: string,
+  messageId?: number,
+  options?: { backCallback?: string }
+) {
   const staff = await getAdminStaff();
   const seller = staff.sellers.find((item) => item.id === sellerId);
 
@@ -508,7 +533,7 @@ async function renderAdminSellerDetails(chatId: number, sellerId: string, messag
         [{ text: "Назначить магазин", callback_data: `admin:seller:assign:${seller.id}` }],
         [{ text: seller.isActive ? "Выключить" : "Включить", callback_data: `admin:seller:toggle:${seller.id}` }],
         [{ text: "Удалить", callback_data: `admin:seller:delete:${seller.id}` }],
-        [{ text: "Назад", callback_data: "admin:sellers" }],
+        [{ text: "Назад", callback_data: options?.backCallback ?? "admin:sellers" }],
       ],
     },
   });
@@ -558,19 +583,12 @@ async function renderAdminStores(chatId: number, messageId?: number) {
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Магазины</b>\n\nСначала выбери действие, потом конкретный магазин.`,
+    text: `<b>Магазины</b>\n\nУправление магазинами вынесено в отдельный раздел, чтобы меню не мешало в повседневной работе.`,
     replyMarkup: {
       inline_keyboard: [
-        [
-          { text: "Добавить", callback_data: "admin:stores:new" },
-          { text: "Переименовать", callback_data: "admin:stores:pick:rename" },
-        ],
-        [
-          { text: "Изменить адрес", callback_data: "admin:stores:pick:address" },
-          { text: "Вкл / выкл", callback_data: "admin:stores:pick:toggle" },
-        ],
-        [{ text: "Удалить", callback_data: "admin:stores:pick:delete" }],
-        [{ text: "Назад", callback_data: "home" }],
+        [{ text: "Создать магазин", callback_data: "admin:stores:new" }],
+        [{ text: "Список магазинов", callback_data: "admin:stores:list:0" }],
+        [{ text: "Назад", callback_data: "admin:menu" }],
       ],
     },
   });
@@ -609,7 +627,12 @@ async function renderAdminStoreActionPicker(
   });
 }
 
-async function renderAdminStoreDetails(chatId: number, storeId: string, messageId?: number) {
+async function renderAdminStoreDetails(
+  chatId: number,
+  storeId: string,
+  messageId?: number,
+  options?: { backCallback?: string }
+) {
   const stores = await getAdminStores();
   const store = stores.stores.find((item) => item.id === storeId);
 
@@ -636,7 +659,7 @@ async function renderAdminStoreDetails(chatId: number, storeId: string, messageI
         [{ text: "Изменить адрес", callback_data: `admin:store:address:${store.id}` }],
         [{ text: store.isActive ? "Выключить" : "Включить", callback_data: `admin:store:toggle:${store.id}` }],
         [{ text: "Удалить", callback_data: `admin:store:delete:${store.id}` }],
-        [{ text: "Назад", callback_data: "admin:stores" }],
+        [{ text: "Назад", callback_data: options?.backCallback ?? "admin:stores" }],
       ],
     },
   });
@@ -665,23 +688,12 @@ async function renderAdminProducts(chatId: number, messageId?: number) {
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Товары</b>\n\nСначала выбери действие, потом конкретный товар.`,
+    text: `<b>Товары</b>\n\nЗдесь собраны создание, редактирование, активация и архивирование товаров.`,
     replyMarkup: {
       inline_keyboard: [
-        [
-          { text: "Добавить", callback_data: "admin:products:new" },
-          { text: "Переименовать", callback_data: "admin:products:pick:rename" },
-        ],
-        [
-          { text: "Изменить SKU", callback_data: "admin:products:pick:sku" },
-          { text: "Изменить цену", callback_data: "admin:products:pick:price" },
-        ],
-        [
-          { text: "Вкл / выкл", callback_data: "admin:products:pick:toggle" },
-          { text: "Архив", callback_data: "admin:products:pick:archive" },
-        ],
-        [{ text: "Удалить", callback_data: "admin:products:pick:delete" }],
-        [{ text: "Назад", callback_data: "home" }],
+        [{ text: "Создать товар", callback_data: "admin:products:new" }],
+        [{ text: "Список товаров", callback_data: "admin:products:list:0" }],
+        [{ text: "Назад", callback_data: "admin:menu" }],
       ],
     },
   });
@@ -754,49 +766,45 @@ async function renderAdminReportsMenu(chatId: number, messageId?: number) {
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Отчеты</b>\n\nВыбери период для быстрой сводки. PDF добавим следующим шагом, когда утвердим структуру.`,
+    text: `<b>Отчеты</b>\n\nВыбери, какой отчет за рабочий день нужен.`,
     replyMarkup: {
       inline_keyboard: [
-        [
-          { text: "Сегодня", callback_data: "admin:reports:today" },
-          { text: "Неделя", callback_data: "admin:reports:week" },
-        ],
-        [{ text: "Месяц", callback_data: "admin:reports:month" }],
+        [{ text: "По магазину", callback_data: "admin:reports:workday:store" }],
+        [{ text: "По сотруднику", callback_data: "admin:reports:workday:seller" }],
+        [{ text: "Сводный PDF", callback_data: "admin:reports:workday:summary" }],
         [{ text: "Назад", callback_data: "admin:menu" }],
       ],
     },
   });
 }
 
-async function renderAdminReportPeriod(chatId: number, period: "today" | "week" | "month", messageId?: number) {
-  const summaries = await getAdminSalesPeriodSummaries();
-  const summary = summaries[period];
-  const labelMap = {
-    today: "Сегодня",
-    week: "За неделю",
-    month: "За месяц",
-  } as const;
-
+async function renderAdminWorkdayDatePicker(
+  chatId: number,
+  target: "store" | "seller" | "summary",
+  messageId?: number
+) {
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: [
-      `<b>Отчет: ${labelMap[period]}</b>`,
-      `<b>Выручка:</b> ${escapeHtml(formatCurrency(summary.revenue))}`,
-      `<b>Продажи:</b> ${summary.salesCount}`,
-      `<b>Наличные:</b> ${escapeHtml(formatCurrency(summary.cashTotal))}`,
-      `<b>Карта:</b> ${escapeHtml(formatCurrency(summary.cardTotal))}`,
-      `<b>Возвраты:</b> ${summary.returnsCount}`,
-      `<b>Сумма возвратов:</b> ${escapeHtml(formatCurrency(summary.returnsTotal))}`,
-      `<b>Возвращено единиц:</b> ${summary.returnedUnits}`,
-    ].join("\n"),
+    text: `<b>Отчеты за рабочий день</b>\n\nВыбери дату для сценария "${target === "store" ? "по магазину" : target === "seller" ? "по сотруднику" : "сводный PDF"}".`,
     replyMarkup: {
-      inline_keyboard: [[{ text: "Назад", callback_data: "admin:reports" }]],
+      inline_keyboard: [
+        [
+          { text: "Сегодня", callback_data: `admin:reports:workday:${target}:today` },
+          { text: "Вчера", callback_data: `admin:reports:workday:${target}:yesterday` },
+        ],
+        [{ text: "Назад", callback_data: "admin:reports" }],
+      ],
     },
   });
 }
 
-async function renderAdminProductDetails(chatId: number, productId: string, messageId?: number) {
+async function renderAdminProductDetails(
+  chatId: number,
+  productId: string,
+  messageId?: number,
+  options?: { backCallback?: string }
+) {
   const products = await getAdminProducts({ archived: true });
   const product = products.products.find((item) => item.id === productId);
 
@@ -828,7 +836,7 @@ async function renderAdminProductDetails(chatId: number, productId: string, mess
         [{ text: product.isActive ? "Выключить" : "Включить", callback_data: `admin:product:toggle:${product.id}` }],
         [{ text: archiveLabel, callback_data: archiveAction }],
         [{ text: "Удалить", callback_data: `admin:product:delete:${product.id}` }],
-        [{ text: "Назад", callback_data: "admin:products" }],
+        [{ text: "Назад", callback_data: options?.backCallback ?? "admin:products" }],
       ],
     },
   });
@@ -853,6 +861,299 @@ async function renderAdminProductDeleteConfirm(
   });
 }
 
+async function renderAdminStoresList(chatId: number, page: number, messageId?: number) {
+  const stores = await getAdminStores();
+  const paginated = paginateItems(stores.stores, page);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Список магазинов</b>\n\nВыбери магазин для просмотра карточки и действий.`,
+    replyMarkup: {
+      inline_keyboard: [
+        ...paginated.items.map((store) => [
+          {
+            text: `${store.name}${store.isActive ? "" : " • off"}`,
+            callback_data: `admin:store:view:${store.id}:${paginated.page}`,
+          },
+        ]),
+        ...buildPaginationRows({
+          currentPage: paginated.page,
+          totalPages: paginated.totalPages,
+          previousCallback: `admin:stores:list:${Math.max(0, paginated.page - 1)}`,
+          nextCallback: `admin:stores:list:${Math.min(paginated.totalPages - 1, paginated.page + 1)}`,
+        }),
+        [{ text: "Назад", callback_data: "admin:stores" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminSellersList(chatId: number, page: number, messageId?: number) {
+  const staff = await getAdminStaff();
+  const paginated = paginateItems(staff.sellers, page);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Список продавцов</b>\n\nВыбери сотрудника, чтобы открыть карточку.`,
+    replyMarkup: {
+      inline_keyboard: [
+        ...paginated.items.map((seller) => [
+          {
+            text: `${seller.fullName}${seller.isActive ? "" : " • off"}${
+              seller.currentAssignment ? ` • ${seller.currentAssignment.storeName}` : ""
+            }`,
+            callback_data: `admin:seller:view:${seller.id}:${paginated.page}`,
+          },
+        ]),
+        ...buildPaginationRows({
+          currentPage: paginated.page,
+          totalPages: paginated.totalPages,
+          previousCallback: `admin:sellers:list:${Math.max(0, paginated.page - 1)}`,
+          nextCallback: `admin:sellers:list:${Math.min(paginated.totalPages - 1, paginated.page + 1)}`,
+        }),
+        [{ text: "Назад", callback_data: "admin:sellers" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminProductsList(chatId: number, page: number, messageId?: number) {
+  const products = await getAdminProducts({ archived: true });
+  const paginated = paginateItems(products.products, page);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Список товаров</b>\n\nВыбери товар, чтобы открыть карточку.`,
+    replyMarkup: {
+      inline_keyboard: [
+        ...paginated.items.map((product) => [
+          {
+            text: `${product.name}${product.isActive ? "" : " • off"}${product.isArchived ? " • archived" : ""}`,
+            callback_data: `admin:product:view:${product.id}:${paginated.page}`,
+          },
+        ]),
+        ...buildPaginationRows({
+          currentPage: paginated.page,
+          totalPages: paginated.totalPages,
+          previousCallback: `admin:products:list:${Math.max(0, paginated.page - 1)}`,
+          nextCallback: `admin:products:list:${Math.min(paginated.totalPages - 1, paginated.page + 1)}`,
+        }),
+        [{ text: "Назад", callback_data: "admin:products" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminStoreReportPicker(
+  chatId: number,
+  preset: ReportPreset,
+  page: number,
+  messageId?: number
+) {
+  const stores = await getAdminStores();
+  const paginated = paginateItems(stores.stores.filter((store) => store.isActive), page);
+  const range = getReportRange(preset);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Отчет по магазину</b>\n\nДата: ${range.label}. Выбери магазин.`,
+    replyMarkup: {
+      inline_keyboard: [
+        ...paginated.items.map((store) => [
+          {
+            text: store.name,
+            callback_data: `admin:reports:store:run:${preset}:${store.id}`,
+          },
+        ]),
+        ...buildPaginationRows({
+          currentPage: paginated.page,
+          totalPages: paginated.totalPages,
+          previousCallback: `admin:reports:workday:store:${preset}:${Math.max(0, paginated.page - 1)}`,
+          nextCallback: `admin:reports:workday:store:${preset}:${Math.min(paginated.totalPages - 1, paginated.page + 1)}`,
+        }),
+        [{ text: "Назад", callback_data: "admin:reports:workday:store" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminSellerReportPicker(
+  chatId: number,
+  preset: ReportPreset,
+  page: number,
+  messageId?: number
+) {
+  const staff = await getAdminStaff();
+  const paginated = paginateItems(staff.sellers.filter((seller) => seller.isActive), page);
+  const range = getReportRange(preset);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Отчет по сотруднику</b>\n\nДата: ${range.label}. Выбери продавца.`,
+    replyMarkup: {
+      inline_keyboard: [
+        ...paginated.items.map((seller) => [
+          {
+            text: `${seller.fullName}${seller.currentAssignment ? ` • ${seller.currentAssignment.storeName}` : ""}`,
+            callback_data: `admin:reports:seller:run:${preset}:${seller.id}`,
+          },
+        ]),
+        ...buildPaginationRows({
+          currentPage: paginated.page,
+          totalPages: paginated.totalPages,
+          previousCallback: `admin:reports:workday:seller:${preset}:${Math.max(0, paginated.page - 1)}`,
+          nextCallback: `admin:reports:workday:seller:${preset}:${Math.min(paginated.totalPages - 1, paginated.page + 1)}`,
+        }),
+        [{ text: "Назад", callback_data: "admin:reports:workday:seller" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminStoreWorkdayReport(
+  chatId: number,
+  preset: ReportPreset,
+  storeId: string,
+  messageId?: number
+) {
+  const range = getReportRange(preset);
+  const [stores, overview] = await Promise.all([
+    getAdminStores(),
+    getAdminSalesOverview({
+      storeId,
+      saleStatus: "all",
+      dateFrom: range.dateFrom,
+      dateTo: range.dateTo,
+      limit: 200,
+    }),
+  ]);
+  const store = stores.stores.find((item) => item.id === storeId);
+
+  if (!store) {
+    throw new HttpError(404, "Store not found");
+  }
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: [
+      `<b>Отчет по магазину</b>`,
+      `<b>Магазин:</b> ${escapeHtml(store.name)}`,
+      `<b>Дата:</b> ${range.label} (${escapeHtml(formatDate(range.dateFrom))})`,
+      "",
+      `<b>Выручка:</b> ${escapeHtml(formatCurrency(overview.summary.revenue))}`,
+      `<b>Продажи:</b> ${overview.summary.salesCount}`,
+      `<b>Наличные:</b> ${escapeHtml(formatCurrency(overview.summary.cashTotal))}`,
+      `<b>Карта:</b> ${escapeHtml(formatCurrency(overview.summary.cardTotal))}`,
+      `<b>Возвраты:</b> ${overview.summary.returnsCount}`,
+      `<b>Сумма возвратов:</b> ${escapeHtml(formatCurrency(overview.summary.returnsTotal))}`,
+      `<b>Возвращено единиц:</b> ${overview.summary.returnedUnits}`,
+    ].join("\n"),
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "Заказать еще", callback_data: "admin:reports:workday:store" }],
+        [{ text: "Назад к отчетам", callback_data: "admin:reports" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminSellerWorkdayReport(
+  chatId: number,
+  preset: ReportPreset,
+  sellerId: string,
+  messageId?: number
+) {
+  const range = getReportRange(preset);
+  const [staff, overview] = await Promise.all([
+    getAdminStaff(),
+    getAdminSalesOverview({
+      sellerId,
+      saleStatus: "all",
+      dateFrom: range.dateFrom,
+      dateTo: range.dateTo,
+      limit: 200,
+    }),
+  ]);
+  const seller = staff.sellers.find((item) => item.id === sellerId);
+
+  if (!seller) {
+    throw new HttpError(404, "Seller not found");
+  }
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: [
+      `<b>Отчет по сотруднику</b>`,
+      `<b>Сотрудник:</b> ${escapeHtml(seller.fullName)}`,
+      `<b>Магазин:</b> ${escapeHtml(seller.currentAssignment?.storeName ?? "Не назначен")}`,
+      `<b>Дата:</b> ${range.label} (${escapeHtml(formatDate(range.dateFrom))})`,
+      "",
+      `<b>Выручка:</b> ${escapeHtml(formatCurrency(overview.summary.revenue))}`,
+      `<b>Продажи:</b> ${overview.summary.salesCount}`,
+      `<b>Наличные:</b> ${escapeHtml(formatCurrency(overview.summary.cashTotal))}`,
+      `<b>Карта:</b> ${escapeHtml(formatCurrency(overview.summary.cardTotal))}`,
+      `<b>Возвраты:</b> ${overview.summary.returnsCount}`,
+      `<b>Сумма возвратов:</b> ${escapeHtml(formatCurrency(overview.summary.returnsTotal))}`,
+      `<b>Возвращено единиц:</b> ${overview.summary.returnedUnits}`,
+    ].join("\n"),
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "Заказать еще", callback_data: "admin:reports:workday:seller" }],
+        [{ text: "Назад к отчетам", callback_data: "admin:reports" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminSummaryReport(chatId: number, preset: ReportPreset, messageId?: number) {
+  const range = getReportRange(preset);
+  const [overview, dashboard] = await Promise.all([
+    getAdminSalesOverview({
+      saleStatus: "all",
+      dateFrom: range.dateFrom,
+      dateTo: range.dateTo,
+      limit: 400,
+    }),
+    getAdminDashboard({
+      recentSalesLimit: 5,
+      lowStockLimit: 5,
+    }),
+  ]);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: [
+      `<b>Сводный отчет</b>`,
+      `<b>Дата:</b> ${range.label} (${escapeHtml(formatDate(range.dateFrom))})`,
+      "",
+      `<b>Выручка:</b> ${escapeHtml(formatCurrency(overview.summary.revenue))}`,
+      `<b>Продажи:</b> ${overview.summary.salesCount}`,
+      `<b>Наличные:</b> ${escapeHtml(formatCurrency(overview.summary.cashTotal))}`,
+      `<b>Карта:</b> ${escapeHtml(formatCurrency(overview.summary.cardTotal))}`,
+      `<b>Возвраты:</b> ${overview.summary.returnsCount}`,
+      `<b>Сумма возвратов:</b> ${escapeHtml(formatCurrency(overview.summary.returnsTotal))}`,
+      `<b>Активные смены сейчас:</b> ${dashboard.summary.activeShifts}`,
+      `<b>Низкий остаток сейчас:</b> ${dashboard.summary.lowStockCount}`,
+      "",
+      `PDF-экспорт будет следующим шагом. Пока даем администратору быструю текстовую сводку прямо в боте.`,
+    ].join("\n"),
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "Сегодня", callback_data: "admin:reports:workday:summary:today" }, { text: "Вчера", callback_data: "admin:reports:workday:summary:yesterday" }],
+        [{ text: "Назад к отчетам", callback_data: "admin:reports" }],
+      ],
+    },
+  });
+}
+
 async function showHome(chatId: number, user: AppUser, messageId?: number) {
   if (!user.is_active) {
     return sendOrEditMessage({
@@ -862,7 +1163,7 @@ async function showHome(chatId: number, user: AppUser, messageId?: number) {
     });
   }
 
-  return renderBotMenuRemoved(chatId, user, messageId);
+  return renderCompactHome(chatId, user, messageId);
 }
 
 export function startTelegramBot() {
@@ -1107,8 +1408,804 @@ export function startTelegramBot() {
       await handleDenied(chatId, messageId);
       return;
     }
+
+    if (data === "noop") {
+      return;
+    }
+
+    const state = conversationState.get(chatId);
+    const renderAndRemember = async (renderedMessageIdPromise: Promise<number | undefined>) => {
+      const renderedMessageId = await renderedMessageIdPromise;
+      if (renderedMessageId) {
+        lastUiMessageByChat.set(chatId, renderedMessageId);
+      }
+    };
+
+    if (data.startsWith("pick:store:")) {
+      if (state?.kind === "seller.create.store") {
+        const storeId = data === "pick:store:none" ? undefined : data.slice("pick:store:".length);
+        await createSeller({
+          adminUserId: state.adminUserId,
+          fullName: state.fullName,
+          telegramId: state.telegramId,
+          storeId,
+        });
+        conversationState.delete(chatId);
+        await sendTelegramMessage({ chatId, text: "Продавец создан." });
+        await renderAndRemember(renderAdminSellers(chatId, messageId));
+        return;
+      }
+
+      if (state?.kind === "seller.assign.store") {
+        if (data === "pick:store:none") {
+          throw new HttpError(409, "Для переназначения нужно выбрать конкретный магазин");
+        }
+        await assignSellerToStore({
+          adminUserId: state.adminUserId,
+          sellerUserId: state.sellerId,
+          storeId: data.slice("pick:store:".length),
+        });
+        conversationState.delete(chatId);
+        await sendTelegramMessage({ chatId, text: "Магазин для продавца обновлен." });
+        await renderAndRemember(renderAdminSellerDetails(chatId, state.sellerId, messageId));
+        return;
+      }
+    }
+
     conversationState.delete(chatId);
-    await renderBotMenuRemoved(chatId, user, messageId);
+
+    if (data === "home") {
+      await renderAndRemember(showHome(chatId, user, messageId));
+      return;
+    }
+
+    if (data === "seller:menu") {
+      await renderAndRemember(renderSellerMenu(chatId, user, messageId));
+      return;
+    }
+
+    if (data === "seller:shift") {
+      await renderAndRemember(renderSellerShift(chatId, user, messageId));
+      return;
+    }
+
+    if (data === "seller:last-shift") {
+      await renderAndRemember(renderSellerLastShift(chatId, user, messageId));
+      return;
+    }
+
+    if (user.role !== "admin") {
+      await renderAndRemember(showHome(chatId, user, messageId));
+      return;
+    }
+
+    if (data === "admin:menu") {
+      await renderAndRemember(renderAdminMenu(chatId, user, messageId));
+      return;
+    }
+
+    if (data === "admin:dashboard") {
+      await renderAndRemember(renderAdminDashboard(chatId, messageId));
+      return;
+    }
+
+    if (data === "admin:stores") {
+      await renderAndRemember(renderAdminStores(chatId, messageId));
+      return;
+    }
+
+    if (data === "admin:sellers") {
+      await renderAndRemember(renderAdminSellers(chatId, messageId));
+      return;
+    }
+
+    if (data === "admin:products") {
+      await renderAndRemember(renderAdminProducts(chatId, messageId));
+      return;
+    }
+
+    if (data === "admin:reports") {
+      await renderAndRemember(renderAdminReportsMenu(chatId, messageId));
+      return;
+    }
+
+    if (data === "admin:stores:new") {
+      conversationState.set(chatId, { kind: "store.create.name" });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Создание магазина</b>\n\nОтправь название магазина следующим сообщением.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    if (data === "admin:sellers:new") {
+      conversationState.set(chatId, { kind: "seller.create.telegram", adminUserId: user.id });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Добавление продавца</b>\n\nСначала отправь Telegram ID сотрудника.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    if (data === "admin:products:new") {
+      conversationState.set(chatId, { kind: "product.create.name" });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Создание товара</b>\n\nОтправь название товара следующим сообщением.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    let match = data.match(/^admin:stores:list:(\d+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminStoresList(chatId, Number.parseInt(match[1] ?? "0", 10), messageId));
+      return;
+    }
+
+    match = data.match(/^admin:sellers:list:(\d+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminSellersList(chatId, Number.parseInt(match[1] ?? "0", 10), messageId));
+      return;
+    }
+
+    match = data.match(/^admin:products:list:(\d+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminProductsList(chatId, Number.parseInt(match[1] ?? "0", 10), messageId));
+      return;
+    }
+
+    match = data.match(/^admin:store:view:([^:]+):(\d+)$/);
+    if (match) {
+      await renderAndRemember(
+        renderAdminStoreDetails(chatId, match[1], messageId, {
+          backCallback: `admin:stores:list:${match[2]}`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:seller:view:([^:]+):(\d+)$/);
+    if (match) {
+      await renderAndRemember(
+        renderAdminSellerDetails(chatId, match[1], messageId, {
+          backCallback: `admin:sellers:list:${match[2]}`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:product:view:([^:]+):(\d+)$/);
+    if (match) {
+      await renderAndRemember(
+        renderAdminProductDetails(chatId, match[1], messageId, {
+          backCallback: `admin:products:list:${match[2]}`,
+        })
+      );
+      return;
+    }
+
+    if (data === "admin:reports:workday:store") {
+      await renderAndRemember(renderAdminWorkdayDatePicker(chatId, "store", messageId));
+      return;
+    }
+
+    if (data === "admin:reports:workday:seller") {
+      await renderAndRemember(renderAdminWorkdayDatePicker(chatId, "seller", messageId));
+      return;
+    }
+
+    if (data === "admin:reports:workday:summary") {
+      await renderAndRemember(renderAdminWorkdayDatePicker(chatId, "summary", messageId));
+      return;
+    }
+
+    match = data.match(/^admin:reports:workday:store:(today|yesterday)(?::(\d+))?$/);
+    if (match) {
+      await renderAndRemember(
+        renderAdminStoreReportPicker(chatId, match[1] as ReportPreset, Number.parseInt(match[2] ?? "0", 10), messageId)
+      );
+      return;
+    }
+
+    match = data.match(/^admin:reports:workday:seller:(today|yesterday)(?::(\d+))?$/);
+    if (match) {
+      await renderAndRemember(
+        renderAdminSellerReportPicker(chatId, match[1] as ReportPreset, Number.parseInt(match[2] ?? "0", 10), messageId)
+      );
+      return;
+    }
+
+    match = data.match(/^admin:reports:workday:summary:(today|yesterday)$/);
+    if (match) {
+      await renderAndRemember(renderAdminSummaryReport(chatId, match[1] as ReportPreset, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:reports:store:run:(today|yesterday):([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminStoreWorkdayReport(chatId, match[1] as ReportPreset, match[2], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:reports:seller:run:(today|yesterday):([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminSellerWorkdayReport(chatId, match[1] as ReportPreset, match[2], messageId));
+      return;
+    }
+
+    if (data === "admin:sellers:pick:rename") {
+      await renderAndRemember(renderAdminSellerActionPicker(chatId, "rename", messageId));
+      return;
+    }
+
+    if (data === "admin:sellers:pick:assign") {
+      await renderAndRemember(renderAdminSellerActionPicker(chatId, "assign", messageId));
+      return;
+    }
+
+    if (data === "admin:sellers:pick:toggle") {
+      await renderAndRemember(renderAdminSellerActionPicker(chatId, "toggle", messageId));
+      return;
+    }
+
+    if (data === "admin:sellers:pick:delete") {
+      await renderAndRemember(renderAdminSellerActionPicker(chatId, "delete", messageId));
+      return;
+    }
+
+    if (data === "admin:stores:pick:rename") {
+      await renderAndRemember(renderAdminStoreActionPicker(chatId, "rename", messageId));
+      return;
+    }
+
+    if (data === "admin:stores:pick:address") {
+      await renderAndRemember(renderAdminStoreActionPicker(chatId, "address", messageId));
+      return;
+    }
+
+    if (data === "admin:stores:pick:toggle") {
+      await renderAndRemember(renderAdminStoreActionPicker(chatId, "toggle", messageId));
+      return;
+    }
+
+    if (data === "admin:stores:pick:delete") {
+      await renderAndRemember(renderAdminStoreActionPicker(chatId, "delete", messageId));
+      return;
+    }
+
+    if (data === "admin:products:pick:rename") {
+      await renderAndRemember(renderAdminProductActionPicker(chatId, "rename", messageId));
+      return;
+    }
+
+    if (data === "admin:products:pick:sku") {
+      await renderAndRemember(renderAdminProductActionPicker(chatId, "sku", messageId));
+      return;
+    }
+
+    if (data === "admin:products:pick:price") {
+      await renderAndRemember(renderAdminProductActionPicker(chatId, "price", messageId));
+      return;
+    }
+
+    if (data === "admin:products:pick:toggle") {
+      await renderAndRemember(renderAdminProductActionPicker(chatId, "toggle", messageId));
+      return;
+    }
+
+    if (data === "admin:products:pick:archive") {
+      await renderAndRemember(renderAdminProductActionPicker(chatId, "archive", messageId));
+      return;
+    }
+
+    if (data === "admin:products:pick:delete") {
+      await renderAndRemember(renderAdminProductActionPicker(chatId, "delete", messageId));
+      return;
+    }
+
+    match = data.match(/^admin:sellers:(rename|assign|toggle|delete):([^:]+)$/);
+    if (match) {
+      const action = match[1];
+      const sellerId = match[2];
+
+      if (action === "rename") {
+        conversationState.set(chatId, { kind: "seller.rename", sellerId });
+        await renderAndRemember(
+          sendOrEditMessage({
+            chatId,
+            messageId,
+            text: `<b>Переименование продавца</b>\n\nОтправь новое имя следующим сообщением.\n\nДля отмены используй /cancel.`,
+          })
+        );
+        return;
+      }
+
+      if (action === "assign") {
+        conversationState.set(chatId, { kind: "seller.assign.store", adminUserId: user.id, sellerId });
+        await renderAndRemember(renderAssignStorePicker(chatId, sellerId, messageId, "admin:sellers"));
+        return;
+      }
+
+      if (action === "toggle") {
+        const staff = await getAdminStaff();
+        const seller = staff.sellers.find((item) => item.id === sellerId);
+        if (!seller) {
+          throw new HttpError(404, "Seller not found");
+        }
+        await renderAndRemember(
+          renderAdminToggleConfirm(
+            chatId,
+            {
+              title: "Изменение статуса продавца",
+              itemName: seller.fullName,
+              enabled: seller.isActive,
+              confirmCallback: `admin:seller:toggle:confirm:${seller.id}`,
+              backCallback: `admin:seller:${seller.id}`,
+            },
+            messageId
+          )
+        );
+        return;
+      }
+
+      await renderAndRemember(
+        renderAdminSellerDeleteConfirm(chatId, sellerId, messageId, {
+          backCallback: "admin:sellers",
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:stores:(rename|address|toggle|delete):([^:]+)$/);
+    if (match) {
+      const action = match[1];
+      const storeId = match[2];
+
+      if (action === "rename") {
+        conversationState.set(chatId, { kind: "store.rename", storeId });
+        await renderAndRemember(
+          sendOrEditMessage({
+            chatId,
+            messageId,
+            text: `<b>Переименование магазина</b>\n\nОтправь новое название следующим сообщением.\n\nДля отмены используй /cancel.`,
+          })
+        );
+        return;
+      }
+
+      if (action === "address") {
+        conversationState.set(chatId, { kind: "store.address", storeId });
+        await renderAndRemember(
+          sendOrEditMessage({
+            chatId,
+            messageId,
+            text: `<b>Изменение адреса магазина</b>\n\nОтправь новый адрес или "-" чтобы очистить поле.\n\nДля отмены используй /cancel.`,
+          })
+        );
+        return;
+      }
+
+      if (action === "toggle") {
+        const stores = await getAdminStores();
+        const store = stores.stores.find((item) => item.id === storeId);
+        if (!store) {
+          throw new HttpError(404, "Store not found");
+        }
+        await renderAndRemember(
+          renderAdminToggleConfirm(
+            chatId,
+            {
+              title: "Изменение статуса магазина",
+              itemName: store.name,
+              enabled: store.isActive,
+              confirmCallback: `admin:store:toggle:confirm:${store.id}`,
+              backCallback: `admin:store:${store.id}`,
+            },
+            messageId
+          )
+        );
+        return;
+      }
+
+      await renderAndRemember(
+        renderAdminStoreDeleteConfirm(chatId, storeId, messageId, {
+          backCallback: "admin:stores",
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:products:(rename|sku|price|toggle|archive|delete):([^:]+)$/);
+    if (match) {
+      const action = match[1];
+      const productId = match[2];
+
+      if (action === "rename") {
+        conversationState.set(chatId, { kind: "product.rename", productId });
+        await renderAndRemember(
+          sendOrEditMessage({
+            chatId,
+            messageId,
+            text: `<b>Переименование товара</b>\n\nОтправь новое название следующим сообщением.\n\nДля отмены используй /cancel.`,
+          })
+        );
+        return;
+      }
+
+      if (action === "sku") {
+        conversationState.set(chatId, { kind: "product.sku", productId });
+        await renderAndRemember(
+          sendOrEditMessage({
+            chatId,
+            messageId,
+            text: `<b>Изменение SKU</b>\n\nОтправь новый SKU следующим сообщением.\n\nДля отмены используй /cancel.`,
+          })
+        );
+        return;
+      }
+
+      if (action === "price") {
+        conversationState.set(chatId, { kind: "product.price", productId });
+        await renderAndRemember(
+          sendOrEditMessage({
+            chatId,
+            messageId,
+            text: `<b>Изменение цены</b>\n\nОтправь новую цену следующим сообщением, например 12.50.\n\nДля отмены используй /cancel.`,
+          })
+        );
+        return;
+      }
+
+      if (action === "toggle") {
+        const products = await getAdminProducts({ archived: true });
+        const product = products.products.find((item) => item.id === productId);
+        if (!product) {
+          throw new HttpError(404, "Product not found");
+        }
+        await renderAndRemember(
+          renderAdminToggleConfirm(
+            chatId,
+            {
+              title: "Изменение статуса товара",
+              itemName: product.name,
+              enabled: product.isActive,
+              confirmCallback: `admin:product:toggle:confirm:${product.id}`,
+              backCallback: `admin:product:${product.id}`,
+            },
+            messageId
+          )
+        );
+        return;
+      }
+
+      if (action === "archive") {
+        const products = await getAdminProducts({ archived: true });
+        const product = products.products.find((item) => item.id === productId);
+        if (!product) {
+          throw new HttpError(404, "Product not found");
+        }
+        if (product.isArchived) {
+          await restoreProduct(productId);
+          await sendTelegramMessage({ chatId, text: "Товар восстановлен из архива." });
+        } else {
+          await archiveProduct(productId);
+          await sendTelegramMessage({ chatId, text: "Товар перенесен в архив." });
+        }
+        await renderAndRemember(renderAdminProductDetails(chatId, productId, messageId));
+        return;
+      }
+
+      await renderAndRemember(
+        renderAdminProductDeleteConfirm(chatId, productId, messageId, {
+          backCallback: "admin:products",
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:seller:view:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminSellerDetails(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:store:view:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminStoreDetails(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:product:view:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminProductDetails(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:seller:rename:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "seller.rename", sellerId: match[1] });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Переименование продавца</b>\n\nОтправь новое имя следующим сообщением.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:seller:assign:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "seller.assign.store", adminUserId: user.id, sellerId: match[1] });
+      await renderAndRemember(renderAssignStorePicker(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:seller:toggle:([^:]+)$/);
+    if (match) {
+      const sellerId = match[1];
+      const staff = await getAdminStaff();
+      const seller = staff.sellers.find((item) => item.id === sellerId);
+      if (!seller) {
+        throw new HttpError(404, "Seller not found");
+      }
+      await renderAndRemember(
+        renderAdminToggleConfirm(
+          chatId,
+          {
+            title: "Изменение статуса продавца",
+            itemName: seller.fullName,
+            enabled: seller.isActive,
+            confirmCallback: `admin:seller:toggle:confirm:${seller.id}`,
+            backCallback: `admin:seller:${seller.id}`,
+          },
+          messageId
+        )
+      );
+      return;
+    }
+
+    match = data.match(/^admin:seller:toggle:confirm:([^:]+)$/);
+    if (match) {
+      const sellerId = match[1];
+      const staff = await getAdminStaff();
+      const seller = staff.sellers.find((item) => item.id === sellerId);
+      if (!seller) {
+        throw new HttpError(404, "Seller not found");
+      }
+      await updateSeller(seller.id, { isActive: !seller.isActive });
+      await sendTelegramMessage({ chatId, text: seller.isActive ? "Продавец выключен." : "Продавец включен." });
+      await renderAndRemember(renderAdminSellerDetails(chatId, seller.id, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:seller:delete:confirm:([^:]+)$/);
+    if (match) {
+      await deleteSeller(match[1]);
+      await sendTelegramMessage({ chatId, text: "Продавец удален." });
+      await renderAndRemember(renderAdminSellersList(chatId, 0, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:seller:delete:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminSellerDeleteConfirm(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:store:rename:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "store.rename", storeId: match[1] });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Переименование магазина</b>\n\nОтправь новое название следующим сообщением.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:store:address:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "store.address", storeId: match[1] });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Изменение адреса магазина</b>\n\nОтправь новый адрес или "-" чтобы очистить поле.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:store:toggle:([^:]+)$/);
+    if (match) {
+      const storeId = match[1];
+      const stores = await getAdminStores();
+      const store = stores.stores.find((item) => item.id === storeId);
+      if (!store) {
+        throw new HttpError(404, "Store not found");
+      }
+      await renderAndRemember(
+        renderAdminToggleConfirm(
+          chatId,
+          {
+            title: "Изменение статуса магазина",
+            itemName: store.name,
+            enabled: store.isActive,
+            confirmCallback: `admin:store:toggle:confirm:${store.id}`,
+            backCallback: `admin:store:${store.id}`,
+          },
+          messageId
+        )
+      );
+      return;
+    }
+
+    match = data.match(/^admin:store:toggle:confirm:([^:]+)$/);
+    if (match) {
+      const storeId = match[1];
+      const stores = await getAdminStores();
+      const store = stores.stores.find((item) => item.id === storeId);
+      if (!store) {
+        throw new HttpError(404, "Store not found");
+      }
+      await updateStore(store.id, { isActive: !store.isActive });
+      await sendTelegramMessage({ chatId, text: store.isActive ? "Магазин выключен." : "Магазин включен." });
+      await renderAndRemember(renderAdminStoreDetails(chatId, store.id, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:store:delete:confirm:([^:]+)$/);
+    if (match) {
+      await deleteStore(match[1]);
+      await sendTelegramMessage({ chatId, text: "Магазин удален." });
+      await renderAndRemember(renderAdminStoresList(chatId, 0, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:store:delete:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminStoreDeleteConfirm(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:product:rename:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "product.rename", productId: match[1] });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Переименование товара</b>\n\nОтправь новое название следующим сообщением.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:product:sku:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "product.sku", productId: match[1] });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Изменение SKU</b>\n\nОтправь новый SKU следующим сообщением.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:product:price:([^:]+)$/);
+    if (match) {
+      conversationState.set(chatId, { kind: "product.price", productId: match[1] });
+      await renderAndRemember(
+        sendOrEditMessage({
+          chatId,
+          messageId,
+          text: `<b>Изменение цены</b>\n\nОтправь новую цену следующим сообщением, например 12.50.\n\nДля отмены используй /cancel.`,
+        })
+      );
+      return;
+    }
+
+    match = data.match(/^admin:product:toggle:([^:]+)$/);
+    if (match) {
+      const productId = match[1];
+      const products = await getAdminProducts({ archived: true });
+      const product = products.products.find((item) => item.id === productId);
+      if (!product) {
+        throw new HttpError(404, "Product not found");
+      }
+      await renderAndRemember(
+        renderAdminToggleConfirm(
+          chatId,
+          {
+            title: "Изменение статуса товара",
+            itemName: product.name,
+            enabled: product.isActive,
+            confirmCallback: `admin:product:toggle:confirm:${product.id}`,
+            backCallback: `admin:product:${product.id}`,
+          },
+          messageId
+        )
+      );
+      return;
+    }
+
+    match = data.match(/^admin:product:toggle:confirm:([^:]+)$/);
+    if (match) {
+      const productId = match[1];
+      const products = await getAdminProducts({ archived: true });
+      const product = products.products.find((item) => item.id === productId);
+      if (!product) {
+        throw new HttpError(404, "Product not found");
+      }
+      await updateProduct(product.id, { isActive: !product.isActive });
+      await sendTelegramMessage({ chatId, text: product.isActive ? "Товар выключен." : "Товар включен." });
+      await renderAndRemember(renderAdminProductDetails(chatId, product.id, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:product:(archive|restore):([^:]+)$/);
+    if (match) {
+      if (match[1] === "archive") {
+        await archiveProduct(match[2]);
+        await sendTelegramMessage({ chatId, text: "Товар перенесен в архив." });
+      } else {
+        await restoreProduct(match[2]);
+        await sendTelegramMessage({ chatId, text: "Товар восстановлен из архива." });
+      }
+      await renderAndRemember(renderAdminProductDetails(chatId, match[2], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:product:delete:confirm:([^:]+)$/);
+    if (match) {
+      await deleteProduct(match[1]);
+      await sendTelegramMessage({ chatId, text: "Товар удален." });
+      await renderAndRemember(renderAdminProductsList(chatId, 0, messageId));
+      return;
+    }
+
+    match = data.match(/^admin:product:delete:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminProductDeleteConfirm(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:seller:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminSellerDetails(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:store:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminStoreDetails(chatId, match[1], messageId));
+      return;
+    }
+
+    match = data.match(/^admin:product:([^:]+)$/);
+    if (match) {
+      await renderAndRemember(renderAdminProductDetails(chatId, match[1], messageId));
+      return;
+    }
+
+    const renderedMessageId = await showHome(chatId, user, messageId);
+    if (renderedMessageId) {
+      lastUiMessageByChat.set(chatId, renderedMessageId);
+    }
   }
 
   async function handleMessage(message: TelegramMessage) {
@@ -1132,9 +2229,14 @@ export function startTelegramBot() {
       return;
     }
 
-    if (text === "/start" || text === "/menu") {
+    if (text === "/start" || text === "/menu" || text === "/admin" || text === "⚙️ Админ") {
       conversationState.delete(chatId);
-      const renderedMessageId = await renderBotMenuRemoved(chatId, user, lastUiMessageByChat.get(chatId));
+      const renderedMessageId =
+        text === "/admin" || text === "⚙️ Админ"
+          ? user.role === "admin"
+            ? await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId))
+            : await showHome(chatId, user, lastUiMessageByChat.get(chatId))
+          : await showHome(chatId, user, lastUiMessageByChat.get(chatId));
       if (renderedMessageId) {
         lastUiMessageByChat.set(chatId, renderedMessageId);
       }
@@ -1143,7 +2245,7 @@ export function startTelegramBot() {
 
     await sendTelegramMessage({
       chatId,
-      text: "Напиши /menu, чтобы открыть текущее состояние бота.",
+      text: user.role === "admin" ? "Напиши /admin или /menu, чтобы открыть панель." : "Напиши /menu, чтобы открыть меню.",
     });
   }
 
