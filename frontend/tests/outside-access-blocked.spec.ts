@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("blocks access outside the allowed app session", async ({ page }) => {
-  await page.goto("https://albufeirashop.xyz/app-v-eciavwc_", { waitUntil: "networkidle" });
+  await page.goto("https://albufeirashop.xyz/app-v-bm44l5dv", { waitUntil: "networkidle" });
 
   await expect(page.getByRole("img", { name: /access blocked/i })).toBeVisible();
   await expect(

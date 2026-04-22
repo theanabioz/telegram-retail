@@ -32,6 +32,7 @@ const AUTH_ROLE_KEY = "telegram-retail-auth-role";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
+const BLOCKED_ILLUSTRATION_SRC = "/access-blocked.png";
 
 function isStartupCacheFresh(cachedAt?: number) {
   return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
@@ -121,7 +122,7 @@ function AppBootState({
       bg={hasIllustration ? "#f8f7f4" : undefined}
     >
       <VStack
-        spacing={4}
+        spacing={hasIllustration ? 2 : 4}
         textAlign="center"
         bg={hasIllustration ? "transparent" : "rgba(255,255,255,0.86)"}
         borderRadius="28px"
@@ -137,6 +138,8 @@ function AppBootState({
             alt={imageAlt ?? title}
             w="min(100%, 380px)"
             objectFit="contain"
+            loading="eager"
+            fetchPriority="high"
           />
         ) : (
           <Box
@@ -152,13 +155,13 @@ function AppBootState({
             CS
           </Box>
         )}
-        <VStack spacing={1}>
+        <VStack spacing={0}>
           {!imageSrc ? (
             <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
               {title}
             </Text>
           ) : null}
-          <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px">
+          <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px" mt={hasIllustration ? "-10px" : 0}>
             {description}
           </Text>
         </VStack>
@@ -175,15 +178,17 @@ function AppBootState({
 export function App() {
   const { t } = useI18n();
   const [session, setSession] = useState<AppSession>(() => {
+    const webApp = getTelegramWebApp();
+    const hasInitData = Boolean(webApp?.initData?.trim());
     const role = getStoredRole();
     const cachedOperator = readCachedOperator(role);
 
     return {
       role,
       operatorName: cachedOperator ?? "User",
-      loading: role == null || cachedOperator == null,
+      loading: hasInitData ? role == null || cachedOperator == null : false,
       error: null,
-      blocked: false,
+      blocked: !hasInitData,
     };
   });
 
@@ -321,6 +326,11 @@ export function App() {
   useEffect(() => attachGlobalHaptics(), []);
 
   useEffect(() => {
+    const illustration = new window.Image();
+    illustration.src = BLOCKED_ILLUSTRATION_SRC;
+  }, []);
+
+  useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
 
@@ -388,7 +398,7 @@ export function App() {
       <AppBootState
         title={t("app.blocked.title")}
         description="This workspace is currently unavailable for this session."
-        imageSrc="/access-blocked.png"
+        imageSrc={BLOCKED_ILLUSTRATION_SRC}
         imageAlt={t("app.blocked.title")}
         offsetY="-32px"
       />
