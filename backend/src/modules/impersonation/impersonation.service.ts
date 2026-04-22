@@ -42,6 +42,6 @@ export async function startSellerImpersonation(adminUserId: string, sellerUserId
   };
 }
 
-export async function stopSellerImpersonation(logId: string) {
-  return closeImpersonationLog(logId);
+export async function stopSellerImpersonation(adminUserId: string, logId: string) {
+  return closeImpersonationLog(logId, adminUserId);
 }

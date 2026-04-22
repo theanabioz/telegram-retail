@@ -37,10 +37,10 @@ type RealtimeClient = {
   isAlive: boolean;
 };
 
-function createUnauthorizedResponse(socket: NodeJS.ReadWriteStream & { destroy(): void }) {
-  socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
-  socket.destroy();
-}
+type PendingRealtimeClient = {
+  socket: WebSocket;
+  authTimer: NodeJS.Timeout;
+};
 
 function resolveSessionFromRequest(request: IncomingMessage) {
   const url = new URL(request.url ?? "/", "http://localhost");
@@ -58,8 +58,9 @@ function resolveSessionFromRequest(request: IncomingMessage) {
 }
 
 class RealtimeServer {
-  private readonly wss = new WebSocketServer({ noServer: true });
+  private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   private readonly clients = new Set<RealtimeClient>();
+  private readonly pendingClients = new Set<PendingRealtimeClient>();
   private readonly heartbeatTimer: NodeJS.Timeout;
 
   constructor(server: HttpServer) {
@@ -72,13 +73,14 @@ class RealtimeServer {
       }
 
       const session = resolveSessionFromRequest(request);
-      if (!session) {
-        createUnauthorizedResponse(socket);
-        return;
-      }
 
       this.wss.handleUpgrade(request, socket, head, (websocket) => {
-        this.registerConnection(websocket, session);
+        if (session) {
+          this.registerConnection(websocket, session);
+          return;
+        }
+
+        this.registerPendingConnection(websocket);
       });
     });
 
@@ -94,6 +96,41 @@ class RealtimeServer {
         client.socket.ping();
       }
     }, 30_000);
+  }
+
+  private registerPendingConnection(socket: WebSocket) {
+    const pending: PendingRealtimeClient = {
+      socket,
+      authTimer: setTimeout(() => {
+        socket.close(4001, "Authentication timeout");
+      }, 5_000),
+    };
+
+    this.pendingClients.add(pending);
+
+    const cleanup = () => {
+      clearTimeout(pending.authTimer);
+      this.pendingClients.delete(pending);
+    };
+
+    socket.once("close", cleanup);
+    socket.once("error", cleanup);
+    socket.once("message", (data) => {
+      try {
+        const payload = JSON.parse(data.toString()) as { type?: string; token?: string };
+
+        if (payload.type !== "auth" || !payload.token) {
+          socket.close(4001, "Authentication required");
+          return;
+        }
+
+        const session = verifyAppJwt(payload.token);
+        cleanup();
+        this.registerConnection(socket, session);
+      } catch {
+        socket.close(4001, "Authentication failed");
+      }
+    });
   }
 
   private registerConnection(socket: WebSocket, session: JwtPayload) {
@@ -167,6 +204,11 @@ class RealtimeServer {
 
   dispose() {
     clearInterval(this.heartbeatTimer);
+    for (const pending of this.pendingClients) {
+      clearTimeout(pending.authTimer);
+      pending.socket.terminate();
+    }
+    this.pendingClients.clear();
     for (const client of this.clients) {
       client.socket.terminate();
     }

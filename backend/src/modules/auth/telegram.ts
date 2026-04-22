@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { env } from "../../config.js";
 import { HttpError } from "../../lib/http-error.js";
 
 export type TelegramInitUser = {
@@ -45,6 +46,15 @@ export function validateTelegramInitData(initData: string, botToken: string): Te
 
   const user = JSON.parse(rawUser) as TelegramInitUser;
   const authDate = Number(params.get("auth_date"));
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (!Number.isFinite(authDate) || authDate <= 0) {
+    throw new HttpError(400, "Telegram initData auth_date is invalid");
+  }
+
+  if (nowSeconds - authDate > env.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS) {
+    throw new HttpError(401, "Telegram initData has expired");
+  }
 
   return {
     authDate,

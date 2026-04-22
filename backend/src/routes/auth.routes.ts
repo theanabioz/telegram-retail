@@ -67,7 +67,7 @@ authRouter.post(
   requireRole("admin"),
   asyncHandler(async (req, res) => {
     const body = stopImpersonationBodySchema.parse(req.body);
-    const result = await stopSellerImpersonation(body.logId);
+    const result = await stopSellerImpersonation(req.auth!.app_user_id, body.logId);
 
     res.json(result);
   })

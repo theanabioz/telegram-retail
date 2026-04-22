@@ -1,5 +1,7 @@
 import cors from "cors";
 import express from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import { env } from "./config.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { adminRouter } from "./routes/admin.routes.js";
@@ -12,15 +14,22 @@ function isAllowedLocalOrigin(origin: string) {
     const url = new URL(origin);
     const hostname = url.hostname;
 
-    if (env.FRONTEND_ORIGIN.includes(origin)) {
-      return true;
-    }
+    const allowedOrigins = new Set([
+      ...env.FRONTEND_ORIGIN,
+      "https://albufeirashop.xyz",
+      "https://www.albufeirashop.xyz",
+      "https://telegram-retail.vercel.app",
+    ]);
 
-    if (hostname === "telegram-retail.vercel.app" || hostname.endsWith(".vercel.app")) {
+    if (allowedOrigins.has(origin)) {
       return true;
     }
 
     if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return true;
+    }
+
+    if (env.DEV_AUTH_ENABLED && hostname.endsWith(".vercel.app") && hostname.endsWith("-arsen-abdullaev.vercel.app")) {
       return true;
     }
 
@@ -51,6 +60,26 @@ function isAllowedLocalOrigin(origin: string) {
 
 export function createApp() {
   const app = express();
+  const authLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: env.DEV_AUTH_ENABLED ? 120 : 20,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+  });
+  const mutationLimiter = rateLimit({
+    windowMs: 60_000,
+    limit: env.DEV_AUTH_ENABLED ? 600 : 240,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+  });
+
+  app.disable("x-powered-by");
+  app.set("trust proxy", 1);
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+    })
+  );
 
   app.use(
     cors({
@@ -60,12 +89,12 @@ export function createApp() {
           return;
         }
 
-        callback(new Error(`CORS blocked for origin ${origin}`));
+        callback(null, false);
       },
       credentials: true,
     })
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "16kb" }));
 
   app.get("/health", (_req, res) => {
     res.json({
@@ -73,6 +102,9 @@ export function createApp() {
       service: "telegram-retail-backend",
     });
   });
+
+  app.use("/auth", authLimiter);
+  app.use(["/admin", "/seller", "/shifts"], mutationLimiter);
 
   app.use("/admin", adminRouter);
   app.use("/auth", authRouter);

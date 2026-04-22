@@ -24,7 +24,11 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((value) => value === "true"),
+  PG_POOL_MAX: z.coerce.number().int().positive().default(20),
+  PG_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  PG_CONNECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
   BOT_TOKEN: z.string().min(1),
+  TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: z.coerce.number().int().positive().default(300),
   TELEGRAM_ALERT_CHAT_IDS: z
     .string()
     .optional()

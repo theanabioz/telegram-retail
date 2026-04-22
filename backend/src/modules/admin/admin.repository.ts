@@ -127,6 +127,10 @@ function mapNumbers<T extends NumericRow>(row: T, keys: string[]) {
   return clone as T;
 }
 
+function isPostgresError(error: unknown, code: string) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === code;
+}
+
 function mapTimestamps<T extends NumericRow>(row: T, keys: string[]) {
   const clone = { ...row } as Record<string, unknown>;
   for (const key of keys) {
@@ -257,6 +261,10 @@ export async function createAdminUser(input: {
       [input.telegram_id, input.full_name, input.role, input.is_active]
     );
   } catch (error) {
+    if (isPostgresError(error, "23505")) {
+      throw new HttpError(409, "User with this Telegram ID already exists");
+    }
+
     throw new HttpError(500, `Failed to create user: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

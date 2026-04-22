@@ -14,6 +14,9 @@ const pool = connectionString || hasDiscreteConfig
       user: env.PGUSER,
       password: env.PGPASSWORD,
       ssl: env.PGSSL ? { rejectUnauthorized: false } : undefined,
+      max: env.PG_POOL_MAX,
+      idleTimeoutMillis: env.PG_IDLE_TIMEOUT_MS,
+      connectionTimeoutMillis: env.PG_CONNECTION_TIMEOUT_MS,
     })
   : null;
 
@@ -60,4 +63,3 @@ export async function withTransaction<T>(callback: (client: PoolClient) => Promi
     client.release();
   }
 }
-

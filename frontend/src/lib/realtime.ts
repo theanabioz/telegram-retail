@@ -29,11 +29,10 @@ let reconnectAttempts = 0;
 let activeToken: string | null = null;
 let stoppedManually = false;
 
-function buildRealtimeUrl(token: string) {
+function buildRealtimeUrl() {
   const url = new URL(config.realtimeUrl ?? config.apiBaseUrl);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws";
-  url.searchParams.set("token", token);
   return url.toString();
 }
 
@@ -73,11 +72,12 @@ export function ensureRealtimeConnection(token: string) {
   activeToken = token;
   socket?.close();
 
-  const nextSocket = new WebSocket(buildRealtimeUrl(token));
+  const nextSocket = new WebSocket(buildRealtimeUrl());
   socket = nextSocket;
 
   nextSocket.addEventListener("open", () => {
     reconnectAttempts = 0;
+    nextSocket.send(JSON.stringify({ type: "auth", token }));
   });
 
   nextSocket.addEventListener("message", (event) => {

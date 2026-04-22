@@ -14,15 +14,16 @@ export async function createImpersonationLog(adminUserId: string, sellerUserId: 
   }
 }
 
-export async function closeImpersonationLog(logId: string) {
+export async function closeImpersonationLog(logId: string, adminUserId: string) {
   try {
     const row = await maybeOne<{ id: string; ended_at: string }>(
       `update public.impersonation_logs
        set ended_at = now()
        where id = $1
+         and admin_user_id = $2
          and ended_at is null
        returning id, ended_at`,
-      [logId]
+      [logId, adminUserId]
     );
 
     if (!row) {
@@ -37,4 +38,3 @@ export async function closeImpersonationLog(logId: string) {
     throw new HttpError(500, `Failed to close impersonation log: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
-
