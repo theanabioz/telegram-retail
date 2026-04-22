@@ -94,23 +94,10 @@ export function AdminTaskScreen({
             </VStack>
           </Box>
 
-          {inputPanel ? (
-            <Box
-              px={4}
-              pt={2}
-              pb={2}
-              borderTop="1px solid rgba(226,224,218,0.72)"
-              bg="rgba(247,245,240,0.95)"
-              backdropFilter="blur(10px)"
-            >
-              {inputPanel}
-            </Box>
-          ) : null}
-
           <Box
             px={4}
             pt={3}
-            pb="calc(12px + env(safe-area-inset-bottom, 0px))"
+            pb={inputPanel ? 3 : "calc(12px + env(safe-area-inset-bottom, 0px))"}
             borderTop="1px solid rgba(226,224,218,0.72)"
             bg="rgba(255,255,255,0.94)"
             backdropFilter="blur(12px)"
@@ -118,6 +105,19 @@ export function AdminTaskScreen({
           >
             {primaryAction}
           </Box>
+
+          {inputPanel ? (
+            <Box
+              px={3}
+              pt={0}
+              pb="calc(8px + env(safe-area-inset-bottom, 0px))"
+              bg="linear-gradient(180deg, rgba(231,234,239,0.98) 0%, rgba(212,217,224,0.98) 100%)"
+              borderTop="1px solid rgba(188,194,202,0.9)"
+              backdropFilter="blur(16px)"
+            >
+              {inputPanel}
+            </Box>
+          ) : null}
         </Box>
       </Box>
     </Box>
