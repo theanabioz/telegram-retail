@@ -14,6 +14,7 @@ import {
 import { LuActivity, LuCheck, LuChevronDown, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
+import { AdminTaskScreen } from "../components/AdminTaskScreen";
 import { ConfirmActionModal, type ConfirmActionModalState } from "../components/ConfirmActionModal";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
@@ -559,6 +560,8 @@ export function AdminDashboardScreen({
                 ? t("admin.team.storeManagement")
                 : t("admin.team.storesAndStaff")
             : t("admin.context.workspaceSettings");
+  const hasFullscreenAdminTask =
+    showNewStoreModal || showNewSellerModal || showNewProductModal || showInventoryStoreSelector;
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
     if (tab === "overview") {
@@ -681,6 +684,30 @@ export function AdminDashboardScreen({
       window.removeEventListener("appfullscreenchange", syncFullscreenState);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined" || !hasFullscreenAdminTask) {
+      return;
+    }
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscroll = body.style.overscrollBehavior;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousHtmlOverscroll = documentElement.style.overscrollBehavior;
+
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    documentElement.style.overflow = "hidden";
+    documentElement.style.overscrollBehavior = "none";
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscroll;
+      documentElement.style.overflow = previousHtmlOverflow;
+      documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+    };
+  }, [hasFullscreenAdminTask]);
 
   const refreshActiveAdminTab = useCallback(async () => {
     if (typeof document !== "undefined" && document.visibilityState !== "visible") {
@@ -4819,66 +4846,43 @@ export function AdminDashboardScreen({
   const renderTeamCreationModals = () => (
     <>
       {showNewStoreModal ? (
-        <Box position="fixed" inset={0} zIndex={1400}>
-          <Box
-            position="absolute"
-            inset={0}
-            bg="rgba(14, 12, 10, 0.4)"
-            overscrollBehavior="none"
-            style={{ touchAction: "none" }}
-            onClick={() => setShowNewStoreModal(false)}
-          />
-          <Box
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("admin.team.newStore")}
-            position="absolute"
-            left={0}
-            right={0}
-            bottom={0}
-            w="100%"
-            maxH="88vh"
-            bg="white"
-            borderTopRadius="32px"
-            boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
-            overflow="hidden"
-            display="flex"
-            flexDirection="column"
-            overscrollBehavior="contain"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowNewStoreModal(false)} cursor="pointer">
-              <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+        <AdminTaskScreen
+          title={t("admin.team.newStore")}
+          description={t("admin.team.newStoreDescription")}
+          topLabel={t("admin.team.storesTab")}
+          onClose={() => setShowNewStoreModal(false)}
+          inputPanel={
+            <Box
+              bg="rgba(246,244,239,0.96)"
+              borderRadius="24px"
+              px={2}
+              pt={2}
+              pb={3}
+              minH="250px"
+              border="1px solid"
+              borderColor="rgba(223,219,210,0.78)"
+            >
+              {renderTeamVirtualKeyboard()}
             </Box>
-
-            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflowY="auto" flex="1" minH={0}>
-              <HStack justify="space-between" align="center">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                    {t("admin.team.newStore")}
-                  </Text>
-                  <Text color="surface.500" fontSize="xs" fontWeight="700">
-                    {t("admin.team.newStoreDescription")}
-                  </Text>
-                </VStack>
-                <Button
-                  aria-label={t("admin.inventory.back")}
-                  minW="42px"
-                  h="42px"
-                  px={0}
-                  borderRadius="999px"
-                  bg="surface.50"
-                  color="surface.700"
-                  fontSize="24px"
-                  lineHeight="1"
-                  fontWeight="700"
-                  _hover={{ bg: "rgba(232,231,226,0.95)" }}
-                  onClick={() => setShowNewStoreModal(false)}
-                >
-                  ×
-                </Button>
-              </HStack>
-
+          }
+          primaryAction={
+            <Button
+              w="full"
+              h="54px"
+              borderRadius="20px"
+              bg="surface.900"
+              color="white"
+              _hover={{ bg: "surface.700" }}
+              isLoading={creatingStore}
+              isDisabled={!newStoreName.trim()}
+              onClick={() => void handleCreateStore()}
+            >
+              {t("admin.team.createStore")}
+            </Button>
+          }
+        >
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
               {renderTeamVirtualField({
                 field: "storeName",
                 label: t("admin.team.storeName"),
@@ -4892,103 +4896,63 @@ export function AdminDashboardScreen({
                 value: newStoreAddress,
                 placeholder: t("admin.team.addressPlaceholder"),
               })}
-
-              <Box
-                bg="rgba(246,244,239,0.96)"
-                borderRadius="22px"
-                mx={-2}
-                px={2}
-                pt={2}
-                pb={3}
-                h="250px"
-                flexShrink={0}
-                border="1px solid"
-                borderColor="rgba(223,219,210,0.78)"
-              >
-                {renderTeamVirtualKeyboard()}
-              </Box>
             </VStack>
-
-            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
-              <Button
-                w="full"
-                h="52px"
-                borderRadius="18px"
-                bg="surface.900"
-                color="white"
-                _hover={{ bg: "surface.700" }}
-                isLoading={creatingStore}
-                isDisabled={!newStoreName.trim()}
-                onClick={() => void handleCreateStore()}
-              >
-                {t("admin.team.createStore")}
-              </Button>
-            </Box>
           </Box>
-        </Box>
+
+          <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+            <VStack align="stretch" spacing={1}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                {t("admin.team.storeProfile")}
+              </Text>
+              <Text fontWeight="900" fontSize="lg">
+                {newStoreName.trim() || t("admin.team.storeNamePlaceholder")}
+              </Text>
+              <Text color="surface.500" fontWeight="700" fontSize="sm">
+                {newStoreAddress.trim() || t("admin.team.addressPlaceholder")}
+              </Text>
+            </VStack>
+          </Box>
+        </AdminTaskScreen>
       ) : null}
 
       {showNewSellerModal ? (
-        <Box position="fixed" inset={0} zIndex={1400}>
-          <Box
-            position="absolute"
-            inset={0}
-            bg="rgba(14, 12, 10, 0.4)"
-            overscrollBehavior="none"
-            style={{ touchAction: "none" }}
-            onClick={() => setShowNewSellerModal(false)}
-          />
-          <Box
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("admin.team.newSeller")}
-            position="absolute"
-            left={0}
-            right={0}
-            bottom={0}
-            w="100%"
-            maxH="88vh"
-            bg="white"
-            borderTopRadius="32px"
-            boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
-            overflow="hidden"
-            display="flex"
-            flexDirection="column"
-            overscrollBehavior="contain"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowNewSellerModal(false)} cursor="pointer">
-              <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+        <AdminTaskScreen
+          title={t("admin.team.newSeller")}
+          description={t("admin.team.newSellerDescription")}
+          topLabel={t("admin.team.staffTab")}
+          onClose={() => setShowNewSellerModal(false)}
+          inputPanel={
+            <Box
+              bg="rgba(246,244,239,0.96)"
+              borderRadius="24px"
+              px={2}
+              pt={2}
+              pb={3}
+              minH="250px"
+              border="1px solid"
+              borderColor="rgba(223,219,210,0.78)"
+            >
+              {renderTeamVirtualKeyboard()}
             </Box>
-
-            <VStack align="stretch" spacing={2.5} px={4} pt={1} pb={2} overflowY="auto" flex="1" minH={0}>
-              <HStack justify="space-between" align="center">
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                    {t("admin.team.newSeller")}
-                  </Text>
-                  <Text color="surface.500" fontSize="xs" fontWeight="700">
-                    {t("admin.team.newSellerDescription")}
-                  </Text>
-                </VStack>
-                <Button
-                  aria-label={t("admin.inventory.back")}
-                  minW="42px"
-                  h="42px"
-                  px={0}
-                  borderRadius="999px"
-                  bg="surface.50"
-                  color="surface.700"
-                  fontSize="24px"
-                  lineHeight="1"
-                  fontWeight="700"
-                  _hover={{ bg: "rgba(232,231,226,0.95)" }}
-                  onClick={() => setShowNewSellerModal(false)}
-                >
-                  ×
-                </Button>
-              </HStack>
-
+          }
+          primaryAction={
+            <Button
+              w="full"
+              h="54px"
+              borderRadius="20px"
+              bg="surface.900"
+              color="white"
+              _hover={{ bg: "surface.700" }}
+              isLoading={creatingSeller}
+              isDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
+              onClick={() => void handleCreateSeller()}
+            >
+              {t("admin.team.createSeller")}
+            </Button>
+          }
+        >
+          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+            <VStack align="stretch" spacing={4}>
               {renderTeamVirtualField({
                 field: "sellerName",
                 label: t("admin.team.fullName"),
@@ -5052,106 +5016,69 @@ export function AdminDashboardScreen({
                   );
                 })}
               </SimpleGrid>
-
-              <Box
-                bg="rgba(246,244,239,0.96)"
-                borderRadius="22px"
-                mx={-2}
-                px={2}
-                pt={2}
-                pb={3}
-                h="250px"
-                flexShrink={0}
-                border="1px solid"
-                borderColor="rgba(223,219,210,0.78)"
-              >
-                {renderTeamVirtualKeyboard()}
-              </Box>
             </VStack>
-
-            <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
-              <Button
-                w="full"
-                h="52px"
-                borderRadius="18px"
-                bg="surface.900"
-                color="white"
-                _hover={{ bg: "surface.700" }}
-                isLoading={creatingSeller}
-                isDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
-                onClick={() => void handleCreateSeller()}
-              >
-                {t("admin.team.createSeller")}
-              </Button>
-            </Box>
           </Box>
-        </Box>
+
+          <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+            <VStack align="stretch" spacing={1}>
+              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                {t("admin.team.sellerDetails")}
+              </Text>
+              <Text fontWeight="900" fontSize="lg">
+                {newSeller.fullName.trim() || t("admin.team.fullNamePlaceholder")}
+              </Text>
+              <Text color="surface.500" fontWeight="700" fontSize="sm">
+                {newSeller.telegramId.trim() ? `Telegram ID · ${newSeller.telegramId}` : "Telegram ID"}
+              </Text>
+              <Text color="surface.500" fontWeight="700" fontSize="sm">
+                {stores.find((store) => store.id === newSeller.storeId)?.name ?? t("admin.team.noStoreYet")}
+              </Text>
+            </VStack>
+          </Box>
+        </AdminTaskScreen>
       ) : null}
     </>
   );
 
   const renderProductCreationModal = () =>
     showNewProductModal ? (
-      <Box position="fixed" inset={0} zIndex={1400}>
-        <Box
-          position="absolute"
-          inset={0}
-          bg="rgba(14, 12, 10, 0.4)"
-          overscrollBehavior="none"
-          style={{ touchAction: "none" }}
-          onClick={() => setShowNewProductModal(false)}
-        />
-        <Box
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("admin.inventory.newProduct")}
-          position="absolute"
-          left={0}
-          right={0}
-          bottom={0}
-          w="100%"
-          maxH="82vh"
-          bg="white"
-          borderTopRadius="32px"
-          boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
-          overflow="hidden"
-          display="flex"
-          flexDirection="column"
-          overscrollBehavior="contain"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowNewProductModal(false)} cursor="pointer">
-            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
+      <AdminTaskScreen
+        title={t("admin.inventory.newProduct")}
+        description={t("admin.inventory.newProductDescription")}
+        topLabel={t("admin.inventory.productCatalogLabel")}
+        onClose={() => setShowNewProductModal(false)}
+        inputPanel={
+          <Box
+            bg="rgba(246,244,239,0.96)"
+            borderRadius="24px"
+            px={2}
+            pt={2}
+            pb={3}
+            minH="250px"
+            border="1px solid"
+            borderColor="rgba(223,219,210,0.78)"
+          >
+            {renderProductVirtualKeyboard()}
           </Box>
-
-          <VStack align="stretch" spacing={3} px={4} pt={1} pb={3}>
-            <HStack justify="space-between" align="center">
-              <VStack align="start" spacing={0}>
-                <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                  {t("admin.inventory.newProduct")}
-                </Text>
-                <Text color="surface.500" fontSize="xs" fontWeight="700">
-                  {t("admin.inventory.newProductDescription")}
-                </Text>
-              </VStack>
-              <Button
-                aria-label={t("admin.inventory.back")}
-                minW="42px"
-                h="42px"
-                px={0}
-                borderRadius="999px"
-                bg="surface.50"
-                color="surface.700"
-                fontSize="24px"
-                lineHeight="1"
-                fontWeight="700"
-                _hover={{ bg: "rgba(232,231,226,0.95)" }}
-                onClick={() => setShowNewProductModal(false)}
-              >
-                ×
-              </Button>
-            </HStack>
-
+        }
+        primaryAction={
+          <Button
+            w="full"
+            h="54px"
+            borderRadius="20px"
+            bg="surface.900"
+            color="white"
+            _hover={{ bg: "surface.700" }}
+            isLoading={creatingProduct}
+            isDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
+            onClick={() => void handleCreateProduct()}
+          >
+            {t("admin.inventory.createProduct")}
+          </Button>
+        }
+      >
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+          <VStack align="stretch" spacing={4}>
             {renderProductVirtualField({
               field: "productName",
               label: t("admin.inventory.productName"),
@@ -5186,174 +5113,120 @@ export function AdminDashboardScreen({
                 {t("admin.inventory.inactive")}
               </Button>
             </SimpleGrid>
-
-            <Box
-              bg="rgba(246,244,239,0.96)"
-              borderRadius="22px"
-              mx={-2}
-              px={2}
-              pt={2}
-              pb={3}
-              h="250px"
-              flexShrink={0}
-              border="1px solid"
-              borderColor="rgba(223,219,210,0.78)"
-            >
-              {renderProductVirtualKeyboard()}
-            </Box>
           </VStack>
-
-          <Box px={4} pt={2} pb="calc(10px + env(safe-area-inset-bottom, 0px))" bg="white" boxShadow="0 -8px 22px rgba(18,18,18,0.04)">
-            <Button
-              w="full"
-              h="52px"
-              borderRadius="18px"
-              bg="surface.900"
-              color="white"
-              _hover={{ bg: "surface.700" }}
-              isLoading={creatingProduct}
-              isDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
-              onClick={() => void handleCreateProduct()}
-            >
-              {t("admin.inventory.createProduct")}
-            </Button>
-          </Box>
         </Box>
-      </Box>
+
+        <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+          <VStack align="stretch" spacing={1}>
+            <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+              {t("admin.inventory.productDetails")}
+            </Text>
+            <Text fontWeight="900" fontSize="lg">
+              {newProduct.name.trim() || t("admin.inventory.productName")}
+            </Text>
+            <Text color="surface.500" fontWeight="700" fontSize="sm">
+              {newProduct.defaultPrice.trim() ? `${newProduct.defaultPrice} €` : t("admin.inventory.defaultPrice")}
+            </Text>
+            <Text color="surface.500" fontWeight="700" fontSize="sm">
+              {newProductIsActive ? t("admin.inventory.active") : t("admin.inventory.inactive")}
+            </Text>
+          </VStack>
+        </Box>
+      </AdminTaskScreen>
     ) : null;
 
   const renderInventoryStoreSelector = () =>
     showInventoryStoreSelector ? (
-      <Box position="fixed" inset={0} zIndex={1400}>
-        <Box
-          position="absolute"
-          inset={0}
-          bg="rgba(14, 12, 10, 0.4)"
-          overscrollBehavior="none"
-          style={{ touchAction: "none" }}
-          onClick={() => setShowInventoryStoreSelector(false)}
-        />
-        <Box
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("admin.inventory.selectStoreTitle")}
-          position="absolute"
-          left={0}
-          right={0}
-          bottom={0}
-          w="100%"
-          maxH="78vh"
-          bg="white"
-          borderTopRadius="32px"
-          boxShadow="0 -20px 60px rgba(0,0,0,0.15)"
-          overflow="hidden"
-          display="flex"
-          flexDirection="column"
-          overscrollBehavior="contain"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Box w="full" py={2} display="flex" justifyContent="center" onClick={() => setShowInventoryStoreSelector(false)} cursor="pointer">
-            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
-          </Box>
+      <AdminTaskScreen
+        title={t("admin.inventory.selectStoreTitle")}
+        description={t("admin.inventory.selectStoreDescription")}
+        topLabel={t("nav.inventory")}
+        onClose={() => setShowInventoryStoreSelector(false)}
+        primaryAction={
+          <Button
+            w="full"
+            h="54px"
+            borderRadius="20px"
+            bg="surface.100"
+            color="surface.700"
+            fontWeight="900"
+            onClick={() => setShowInventoryStoreSelector(false)}
+          >
+            {t("common.cancel")}
+          </Button>
+        }
+      >
+        <VStack align="stretch" spacing={3}>
+          {inventoryStores.map((store) => {
+            const isActive = selectedInventoryStoreId === store.id;
 
-          <VStack align="stretch" spacing={3} px={4} pt={1} pb={4}>
-            <HStack justify="space-between" align="center">
-              <VStack align="start" spacing={0}>
-                <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
-                  {t("admin.inventory.selectStoreTitle")}
-                </Text>
-                <Text color="surface.500" fontSize="xs" fontWeight="700">
-                  {t("admin.inventory.selectStoreDescription")}
-                </Text>
-              </VStack>
+            return (
               <Button
-                aria-label={t("admin.inventory.closeStoreSelector")}
-                minW="42px"
-                h="42px"
-                px={0}
-                borderRadius="999px"
-                bg="surface.50"
-                color="surface.700"
-                fontSize="24px"
-                lineHeight="1"
-                fontWeight="700"
-                _hover={{ bg: "rgba(232,231,226,0.95)" }}
-                onClick={() => setShowInventoryStoreSelector(false)}
+                key={store.id}
+                justifyContent="space-between"
+                h="72px"
+                px={4}
+                borderRadius="22px"
+                bg={isActive ? "rgba(74,132,244,0.12)" : panelSurface}
+                color="surface.900"
+                border="1px solid"
+                borderColor={isActive ? "rgba(74,132,244,0.24)" : "rgba(226,224,218,0.9)"}
+                boxShadow={isActive ? "0 12px 28px rgba(74,132,244,0.12)" : panelShadow}
+                _hover={{ bg: isActive ? "rgba(74,132,244,0.14)" : "rgba(255,255,255,0.96)" }}
+                onClick={() => {
+                  const cachedSnapshot = inventoryCache[store.id];
+                  if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
+                    setInventoryView(cachedSnapshot);
+                    setInventorySoftRefreshing(false);
+                    setSelectedInventoryItemId(null);
+                    setSelectedInventoryStoreId(store.id);
+                    setShowInventoryStoreSelector(false);
+                    return;
+                  }
+
+                  setInventorySoftRefreshing(true);
+                  setSelectedInventoryItemId(null);
+                  setShowInventoryStoreSelector(false);
+                  void loadInventory(store.id, { silent: true }).then(() => {
+                    setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
+                    setSelectedInventoryStoreId(store.id);
+                  }).finally(() => {
+                    setInventorySoftRefreshing(false);
+                  });
+                }}
               >
-                ×
-              </Button>
-            </HStack>
-
-            <VStack align="stretch" spacing={2}>
-              {inventoryStores.map((store) => {
-                const isActive = selectedInventoryStoreId === store.id;
-
-                return (
-                  <Button
-                    key={store.id}
-                    justifyContent="space-between"
-                    h="64px"
-                    px={4}
-                    borderRadius="20px"
-                    bg={isActive ? "rgba(74,132,244,0.12)" : panelMutedSurface}
-                    color="surface.900"
-                    border="1px solid"
-                    borderColor={isActive ? "rgba(74,132,244,0.24)" : "transparent"}
-                    _hover={{ bg: isActive ? "rgba(74,132,244,0.14)" : "rgba(232,231,226,0.96)" }}
-                    onClick={() => {
-                      const cachedSnapshot = inventoryCache[store.id];
-                      if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
-                        setInventoryView(cachedSnapshot);
-                        setInventorySoftRefreshing(false);
-                        setSelectedInventoryItemId(null);
-                        setSelectedInventoryStoreId(store.id);
-                        setShowInventoryStoreSelector(false);
-                        return;
-                      }
-
-                      setInventorySoftRefreshing(true);
-                      setSelectedInventoryItemId(null);
-                      setShowInventoryStoreSelector(false);
-                      void loadInventory(store.id, { silent: true }).then(() => {
-                        setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
-                        setSelectedInventoryStoreId(store.id);
-                      }).finally(() => {
-                        setInventorySoftRefreshing(false);
-                      });
-                    }}
+                <VStack align="start" spacing={0} minW={0}>
+                  <Text fontWeight="900" noOfLines={1}>
+                    {store.name}
+                  </Text>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700">
+                    {getStoreAddressLabel(
+                      stores.find((entry) => entry.id === store.id) ?? { name: store.name },
+                      t("admin.overview.addressMissing")
+                    )}
+                  </Text>
+                </VStack>
+                {isActive ? (
+                  <Box
+                    w="32px"
+                    h="32px"
+                    borderRadius="999px"
+                    bg="brand.500"
+                    color="white"
+                    display="grid"
+                    placeItems="center"
+                    flexShrink={0}
                   >
-                    <VStack align="start" spacing={0} minW={0}>
-                      <Text fontWeight="900" noOfLines={1}>
-                        {store.name}
-                      </Text>
-                      <Text fontSize="sm" color="surface.500" fontWeight="700">
-                        {getStoreAddressLabel(
-                          stores.find((entry) => entry.id === store.id) ?? { name: store.name },
-                          t("admin.overview.addressMissing")
-                        )}
-                      </Text>
-                    </VStack>
-                    {isActive ? (
-                      <Box
-                        w="32px"
-                        h="32px"
-                        borderRadius="999px"
-                        bg="brand.500"
-                        color="white"
-                        display="grid"
-                        placeItems="center"
-                        flexShrink={0}
-                      >
-                        <LuCheck size={18} />
-                      </Box>
-                    ) : null}
-                  </Button>
-                );
-              })}
-            </VStack>
-          </VStack>
-        </Box>
-      </Box>
+                    <LuCheck size={18} />
+                  </Box>
+                ) : (
+                  <LuChevronDown size={18} />
+                )}
+              </Button>
+            );
+          })}
+        </VStack>
+      </AdminTaskScreen>
     ) : null;
 
   const getProductKeyboardValue = (field: ProductVirtualKeyboardField) =>
@@ -5785,9 +5658,11 @@ export function AdminDashboardScreen({
         onClose={() => setConfirmAction(null)}
       />
 
-      <Box position="fixed" left={0} right={0} bottom={0} zIndex={30}>
-        <AdminNav activeTab={activeTab} onChange={handleAdminTabChange} onReselect={resetAdminSection} />
-      </Box>
+      {!hasFullscreenAdminTask ? (
+        <Box position="fixed" left={0} right={0} bottom={0} zIndex={30}>
+          <AdminNav activeTab={activeTab} onChange={handleAdminTabChange} onReselect={resetAdminSection} />
+        </Box>
+      ) : null}
     </Box>
   );
 }
