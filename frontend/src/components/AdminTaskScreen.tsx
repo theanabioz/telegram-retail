@@ -88,36 +88,49 @@ export function AdminTaskScreen({
             </HStack>
           </Box>
 
-          <Box flex="1" minH={0} overflowY="auto" px={4} py={4}>
+          <Box
+            flex="1"
+            minH={0}
+            overflowY="auto"
+            px={4}
+            py={4}
+            display="flex"
+            flexDirection="column"
+            justifyContent={inputPanel ? "flex-end" : "flex-start"}
+          >
             <VStack align="stretch" spacing={4}>
               {children}
             </VStack>
           </Box>
 
-          <Box
-            px={4}
-            pt={3}
-            pb={inputPanel ? 3 : "calc(12px + env(safe-area-inset-bottom, 0px))"}
-            borderTop="1px solid rgba(226,224,218,0.72)"
-            bg="rgba(255,255,255,0.94)"
-            backdropFilter="blur(12px)"
-            boxShadow="0 -10px 28px rgba(18,18,18,0.05)"
-          >
-            {primaryAction}
-          </Box>
-
           {inputPanel ? (
             <Box
               px={3}
-              pt={0}
+              pt={3}
               pb="calc(8px + env(safe-area-inset-bottom, 0px))"
-              bg="linear-gradient(180deg, rgba(231,234,239,0.98) 0%, rgba(212,217,224,0.98) 100%)"
-              borderTop="1px solid rgba(188,194,202,0.9)"
-              backdropFilter="blur(16px)"
+              bg="linear-gradient(180deg, rgba(224,228,235,0.96) 0%, rgba(208,213,221,0.98) 100%)"
+              borderTop="1px solid rgba(193,198,207,0.92)"
+              backdropFilter="blur(20px)"
+              boxShadow="0 -18px 34px rgba(21,28,38,0.12)"
             >
-              {inputPanel}
+              <VStack align="stretch" spacing={3}>
+                {primaryAction}
+                {inputPanel}
+              </VStack>
             </Box>
-          ) : null}
+          ) : (
+            <Box
+              px={4}
+              pt={3}
+              pb="calc(12px + env(safe-area-inset-bottom, 0px))"
+              borderTop="1px solid rgba(226,224,218,0.72)"
+              bg="rgba(255,255,255,0.94)"
+              backdropFilter="blur(12px)"
+              boxShadow="0 -10px 28px rgba(18,18,18,0.05)"
+            >
+              {primaryAction}
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>

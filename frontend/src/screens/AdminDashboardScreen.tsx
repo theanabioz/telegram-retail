@@ -108,30 +108,30 @@ type VirtualKeyboardKeyTone = "default" | "muted" | "accent";
 function getVirtualKeyboardButtonStyles(tone: VirtualKeyboardKeyTone = "default") {
   if (tone === "accent") {
     return {
-      bg: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(243,246,251,0.96) 100%)",
+      bg: "linear-gradient(180deg, rgba(244,247,251,0.98) 0%, rgba(224,230,239,0.98) 100%)",
       color: "surface.900",
-      borderColor: "rgba(185,192,201,0.98)",
+      borderColor: "rgba(179,186,196,0.72)",
       boxShadow:
-        "0 1px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(187,193,201,0.32) inset, 0 1.5px 3px rgba(15,23,42,0.16)",
+        "0 1px 0 rgba(255,255,255,0.9) inset, 0 6px 12px rgba(15,23,42,0.12)",
     } as const;
   }
 
   if (tone === "muted") {
     return {
-      bg: "linear-gradient(180deg, rgba(207,213,221,0.98) 0%, rgba(191,198,207,0.98) 100%)",
+      bg: "linear-gradient(180deg, rgba(220,225,232,0.98) 0%, rgba(203,210,220,0.98) 100%)",
       color: "surface.800",
-      borderColor: "rgba(168,176,186,0.96)",
+      borderColor: "rgba(175,182,192,0.68)",
       boxShadow:
-        "0 1px 0 rgba(255,255,255,0.55) inset, 0 -1px 0 rgba(145,152,161,0.26) inset, 0 1.5px 3px rgba(15,23,42,0.12)",
+        "0 1px 0 rgba(255,255,255,0.55) inset, 0 6px 12px rgba(15,23,42,0.1)",
     } as const;
   }
 
   return {
-    bg: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,249,251,0.96) 100%)",
+    bg: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(242,245,249,0.98) 100%)",
     color: "surface.900",
-    borderColor: "rgba(193,199,207,0.98)",
+    borderColor: "rgba(187,193,201,0.56)",
     boxShadow:
-      "0 1px 0 rgba(255,255,255,0.98) inset, 0 -1px 0 rgba(187,193,201,0.28) inset, 0 1.5px 3px rgba(15,23,42,0.14)",
+      "0 1px 0 rgba(255,255,255,0.96) inset, 0 7px 14px rgba(15,23,42,0.12)",
   } as const;
 }
 
@@ -4770,117 +4770,139 @@ export function AdminDashboardScreen({
 
     if (isNumeric) {
       return (
-        <SimpleGrid columns={3} spacing={2.5} h="full" alignContent="stretch">
-          {numericKeys.map((key) => (
-            <Button
-              key={key}
-              h="54px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles(key === "delete" || key === "clear" ? "muted" : "default")}
-              fontSize={key === "delete" || key === "clear" ? "sm" : "xl"}
-              fontWeight="800"
-              border="1px solid"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressTeamKeyboardKey(key)}
-            >
-              {key === "delete" ? t("admin.inventory.deleteShort") : key === "clear" ? t("admin.inventory.clear") : key}
-            </Button>
-          ))}
-        </SimpleGrid>
-      );
-    }
-
-    return (
-      <VStack align="stretch" spacing={2} w="full" h="full">
-        {alphaRows.map((row, index) => (
-          <HStack
-            key={index}
-            spacing={2}
-            justify="center"
-            w="full"
-            px={index === 1 ? 0 : index === 2 ? 5 : index === 3 ? 9 : 1}
-          >
-            {row.map((key) => (
+        <Box
+          bg="rgba(246,248,251,0.9)"
+          borderRadius="30px"
+          px={3}
+          pt={3}
+          pb={2.5}
+          border="1px solid"
+          borderColor="rgba(188,194,202,0.58)"
+          boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
+        >
+          <SimpleGrid columns={3} spacing={2.5} h="full" alignContent="stretch">
+            {numericKeys.map((key) => (
               <Button
                 key={key}
-                h="46px"
-                flex="1"
-                minW={0}
-                px={0}
-                borderRadius="14px"
-                {...getVirtualKeyboardButtonStyles("default")}
-                fontSize="md"
-                fontWeight="900"
+                h="50px"
+                borderRadius="16px"
+                {...getVirtualKeyboardButtonStyles(key === "delete" || key === "clear" ? "muted" : "default")}
+                fontSize={key === "delete" || key === "clear" ? "sm" : "xl"}
+                fontWeight="800"
                 border="1px solid"
                 _hover={{ transform: "translateY(0.5px)" }}
                 _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
                 onClick={() => pressTeamKeyboardKey(key)}
               >
-                {key.toUpperCase()}
+                {key === "delete" ? t("admin.inventory.deleteShort") : key === "clear" ? t("admin.inventory.clear") : key}
               </Button>
             ))}
+          </SimpleGrid>
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        bg="rgba(246,248,251,0.9)"
+        borderRadius="30px"
+        px={3}
+        pt={3}
+        pb={2.5}
+        border="1px solid"
+        borderColor="rgba(188,194,202,0.58)"
+        boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
+      >
+        <VStack align="stretch" spacing={2} w="full" h="full">
+          {alphaRows.map((row, index) => (
+            <HStack
+              key={index}
+              spacing={1.5}
+              justify="center"
+              w="full"
+              px={index === 1 ? 0 : index === 2 ? 5 : index === 3 ? 10 : 1}
+            >
+              {row.map((key) => (
+                <Button
+                  key={key}
+                  h="44px"
+                  flex="1"
+                  minW={0}
+                  px={0}
+                  borderRadius="16px"
+                  {...getVirtualKeyboardButtonStyles("default")}
+                  fontSize="md"
+                  fontWeight="900"
+                  border="1px solid"
+                  _hover={{ transform: "translateY(0.5px)" }}
+                  _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+                  onClick={() => pressTeamKeyboardKey(key)}
+                >
+                  {key.toUpperCase()}
+                </Button>
+              ))}
+            </HStack>
+          ))}
+          <HStack spacing={1.5}>
+            <Button
+              flex="1.15"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles(teamKeyboardCapsLock ? "accent" : "muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressTeamKeyboardKey("caps")}
+            >
+              {t("admin.inventory.caps")}
+            </Button>
+            <Button
+              flex="1.1"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressTeamKeyboardKey("clear")}
+            >
+              {t("admin.inventory.clear")}
+            </Button>
+            <Button
+              flex="2.3"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("default")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressTeamKeyboardKey("space")}
+            >
+              {t("admin.inventory.space")}
+            </Button>
+            <Button
+              flex="1.15"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressTeamKeyboardKey("delete")}
+            >
+              {t("admin.inventory.deleteShort")}
+            </Button>
           </HStack>
-        ))}
-        <HStack spacing={2}>
-          <Button
-            flex="1.1"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles(teamKeyboardCapsLock ? "accent" : "muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressTeamKeyboardKey("caps")}
-          >
-            {t("admin.inventory.caps")}
-          </Button>
-          <Button
-            flex="1"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressTeamKeyboardKey("clear")}
-          >
-            {t("admin.inventory.clear")}
-          </Button>
-          <Button
-            flex="2.2"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("default")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressTeamKeyboardKey("space")}
-          >
-            {t("admin.inventory.space")}
-          </Button>
-          <Button
-            flex="1.15"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressTeamKeyboardKey("delete")}
-          >
-            {t("admin.inventory.deleteShort")}
-          </Button>
-        </HStack>
-      </VStack>
+        </VStack>
+      </Box>
     );
   };
 
@@ -4892,20 +4914,7 @@ export function AdminDashboardScreen({
           description={t("admin.team.newStoreDescription")}
           topLabel={t("admin.team.storesTab")}
           onClose={() => setShowNewStoreModal(false)}
-          inputPanel={
-            <Box
-              bg="rgba(246,244,239,0.96)"
-              borderRadius="24px"
-              px={2}
-              pt={2}
-              pb={3}
-              minH="250px"
-              border="1px solid"
-              borderColor="rgba(223,219,210,0.78)"
-            >
-              {renderTeamVirtualKeyboard()}
-            </Box>
-          }
+          inputPanel={renderTeamVirtualKeyboard()}
           primaryAction={
             <Button
               w="full"
@@ -4940,19 +4949,6 @@ export function AdminDashboardScreen({
             </VStack>
           </Box>
 
-          <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-            <VStack align="stretch" spacing={1}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                {t("admin.team.storeProfile")}
-              </Text>
-              <Text fontWeight="900" fontSize="lg">
-                {newStoreName.trim() || t("admin.team.storeNamePlaceholder")}
-              </Text>
-              <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {newStoreAddress.trim() || t("admin.team.addressPlaceholder")}
-              </Text>
-            </VStack>
-          </Box>
         </AdminTaskScreen>
       ) : null}
 
@@ -4962,20 +4958,7 @@ export function AdminDashboardScreen({
           description={t("admin.team.newSellerDescription")}
           topLabel={t("admin.team.staffTab")}
           onClose={() => setShowNewSellerModal(false)}
-          inputPanel={
-            <Box
-              bg="rgba(246,244,239,0.96)"
-              borderRadius="24px"
-              px={2}
-              pt={2}
-              pb={3}
-              minH="250px"
-              border="1px solid"
-              borderColor="rgba(223,219,210,0.78)"
-            >
-              {renderTeamVirtualKeyboard()}
-            </Box>
-          }
+          inputPanel={renderTeamVirtualKeyboard()}
           primaryAction={
             <Button
               w="full"
@@ -5060,22 +5043,6 @@ export function AdminDashboardScreen({
             </VStack>
           </Box>
 
-          <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-            <VStack align="stretch" spacing={1}>
-              <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                {t("admin.team.sellerDetails")}
-              </Text>
-              <Text fontWeight="900" fontSize="lg">
-                {newSeller.fullName.trim() || t("admin.team.fullNamePlaceholder")}
-              </Text>
-              <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {newSeller.telegramId.trim() ? `Telegram ID · ${newSeller.telegramId}` : "Telegram ID"}
-              </Text>
-              <Text color="surface.500" fontWeight="700" fontSize="sm">
-                {stores.find((store) => store.id === newSeller.storeId)?.name ?? t("admin.team.noStoreYet")}
-              </Text>
-            </VStack>
-          </Box>
         </AdminTaskScreen>
       ) : null}
     </>
@@ -5088,20 +5055,7 @@ export function AdminDashboardScreen({
         description={t("admin.inventory.newProductDescription")}
         topLabel={t("admin.inventory.productCatalogLabel")}
         onClose={() => setShowNewProductModal(false)}
-        inputPanel={
-          <Box
-            bg="rgba(246,244,239,0.96)"
-            borderRadius="24px"
-            px={2}
-            pt={2}
-            pb={3}
-            minH="250px"
-            border="1px solid"
-            borderColor="rgba(223,219,210,0.78)"
-          >
-            {renderProductVirtualKeyboard()}
-          </Box>
-        }
+        inputPanel={renderProductVirtualKeyboard()}
         primaryAction={
           <Button
             w="full"
@@ -5157,22 +5111,6 @@ export function AdminDashboardScreen({
           </VStack>
         </Box>
 
-        <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-          <VStack align="stretch" spacing={1}>
-            <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-              {t("admin.inventory.productDetails")}
-            </Text>
-            <Text fontWeight="900" fontSize="lg">
-              {newProduct.name.trim() || t("admin.inventory.productName")}
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {newProduct.defaultPrice.trim() ? `${newProduct.defaultPrice} €` : t("admin.inventory.defaultPrice")}
-            </Text>
-            <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {newProductIsActive ? t("admin.inventory.active") : t("admin.inventory.inactive")}
-            </Text>
-          </VStack>
-        </Box>
       </AdminTaskScreen>
     ) : null;
 
@@ -5384,131 +5322,153 @@ export function AdminDashboardScreen({
 
     if (isNumeric) {
       return (
-        <SimpleGrid columns={3} spacing={2.5} h="full" alignContent="stretch">
-          {numericKeys.map((key) => (
-            <Button
-              key={key}
-              h="54px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles(key === "clear" ? "muted" : "default")}
-              fontSize={key === "clear" ? "sm" : "xl"}
-              fontWeight="800"
-              border="1px solid"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressProductKeyboardKey(key)}
-            >
-              {key === "clear" ? t("admin.inventory.clear") : key}
-            </Button>
-          ))}
-          <Button
-            gridColumn="1 / -1"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressProductKeyboardKey("delete")}
-          >
-            {t("admin.inventory.deleteShort")}
-          </Button>
-        </SimpleGrid>
-      );
-    }
-
-    return (
-      <VStack align="stretch" spacing={2} w="full" h="full">
-        {alphaRows.map((row, index) => (
-          <HStack
-            key={index}
-            spacing={2}
-            justify="center"
-            w="full"
-            px={index === 1 ? 0 : index === 2 ? 5 : index === 3 ? 9 : 1}
-          >
-            {row.map((key) => (
+        <Box
+          bg="rgba(246,248,251,0.9)"
+          borderRadius="30px"
+          px={3}
+          pt={3}
+          pb={2.5}
+          border="1px solid"
+          borderColor="rgba(188,194,202,0.58)"
+          boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
+        >
+          <SimpleGrid columns={3} spacing={2.5} h="full" alignContent="stretch">
+            {numericKeys.map((key) => (
               <Button
                 key={key}
-                h="46px"
-                flex="1"
-                minW={0}
-                px={0}
-                borderRadius="14px"
-                {...getVirtualKeyboardButtonStyles("default")}
-                fontSize="md"
-                fontWeight="900"
+                h="50px"
+                borderRadius="16px"
+                {...getVirtualKeyboardButtonStyles(key === "clear" ? "muted" : "default")}
+                fontSize={key === "clear" ? "sm" : "xl"}
+                fontWeight="800"
                 border="1px solid"
                 _hover={{ transform: "translateY(0.5px)" }}
                 _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
                 onClick={() => pressProductKeyboardKey(key)}
               >
-                {key.toUpperCase()}
+                {key === "clear" ? t("admin.inventory.clear") : key}
               </Button>
             ))}
+            <Button
+              gridColumn="1 / -1"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressProductKeyboardKey("delete")}
+            >
+              {t("admin.inventory.deleteShort")}
+            </Button>
+          </SimpleGrid>
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        bg="rgba(246,248,251,0.9)"
+        borderRadius="30px"
+        px={3}
+        pt={3}
+        pb={2.5}
+        border="1px solid"
+        borderColor="rgba(188,194,202,0.58)"
+        boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
+      >
+        <VStack align="stretch" spacing={2} w="full" h="full">
+          {alphaRows.map((row, index) => (
+            <HStack
+              key={index}
+              spacing={1.5}
+              justify="center"
+              w="full"
+              px={index === 1 ? 0 : index === 2 ? 5 : index === 3 ? 10 : 1}
+            >
+              {row.map((key) => (
+                <Button
+                  key={key}
+                  h="44px"
+                  flex="1"
+                  minW={0}
+                  px={0}
+                  borderRadius="16px"
+                  {...getVirtualKeyboardButtonStyles("default")}
+                  fontSize="md"
+                  fontWeight="900"
+                  border="1px solid"
+                  _hover={{ transform: "translateY(0.5px)" }}
+                  _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+                  onClick={() => pressProductKeyboardKey(key)}
+                >
+                  {key.toUpperCase()}
+                </Button>
+              ))}
+            </HStack>
+          ))}
+          <HStack spacing={1.5}>
+            <Button
+              flex="1.15"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles(productKeyboardCapsLock ? "accent" : "muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressProductKeyboardKey("caps")}
+            >
+              {t("admin.inventory.caps")}
+            </Button>
+            <Button
+              flex="1.1"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressProductKeyboardKey("clear")}
+            >
+              {t("admin.inventory.clear")}
+            </Button>
+            <Button
+              flex="2.3"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("default")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressProductKeyboardKey("space")}
+            >
+              {t("admin.inventory.space")}
+            </Button>
+            <Button
+              flex="1.15"
+              h="46px"
+              borderRadius="18px"
+              {...getVirtualKeyboardButtonStyles("muted")}
+              fontWeight="800"
+              border="1px solid"
+              fontSize="sm"
+              _hover={{ transform: "translateY(0.5px)" }}
+              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+              onClick={() => pressProductKeyboardKey("delete")}
+            >
+              {t("admin.inventory.deleteShort")}
+            </Button>
           </HStack>
-        ))}
-        <HStack spacing={2}>
-          <Button
-            flex="1.1"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles(productKeyboardCapsLock ? "accent" : "muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressProductKeyboardKey("caps")}
-          >
-            {t("admin.inventory.caps")}
-          </Button>
-          <Button
-            flex="1"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressProductKeyboardKey("clear")}
-          >
-            {t("admin.inventory.clear")}
-          </Button>
-          <Button
-            flex="2.2"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("default")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressProductKeyboardKey("space")}
-          >
-            {t("admin.inventory.space")}
-          </Button>
-          <Button
-            flex="1.15"
-            h="48px"
-            borderRadius="16px"
-            {...getVirtualKeyboardButtonStyles("muted")}
-            fontWeight="800"
-            border="1px solid"
-            fontSize="sm"
-            _hover={{ transform: "translateY(0.5px)" }}
-            _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-            onClick={() => pressProductKeyboardKey("delete")}
-          >
-            {t("admin.inventory.deleteShort")}
-          </Button>
-        </HStack>
-      </VStack>
+        </VStack>
+      </Box>
     );
   };
 
