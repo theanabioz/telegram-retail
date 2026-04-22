@@ -34,6 +34,15 @@ const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 const BLOCKED_ILLUSTRATION_SRC = "/access-blocked.png";
 
+function AppSilentBootState() {
+  return (
+    <Box
+      minH="var(--app-viewport-height, 100vh)"
+      bg="#f8f7f4"
+    />
+  );
+}
+
 function isStartupCacheFresh(cachedAt?: number) {
   return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
 }
@@ -161,7 +170,7 @@ function AppBootState({
               {title}
             </Text>
           ) : null}
-          <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px" mt={hasIllustration ? "-10px" : 0}>
+          <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px" mt={hasIllustration ? "-22px" : 0}>
             {description}
           </Text>
         </VStack>
@@ -390,14 +399,14 @@ export function App() {
   };
 
   if (session.loading) {
-    return <AppBootState title={t("app.boot.openingTitle")} description={t("app.boot.openingDescription")} />;
+    return <AppSilentBootState />;
   }
 
   if (session.blocked) {
     return (
       <AppBootState
         title={t("app.blocked.title")}
-        description="This workspace is currently unavailable for this session."
+        description="This workplace is currently unavailable for this session."
         imageSrc={BLOCKED_ILLUSTRATION_SRC}
         imageAlt={t("app.blocked.title")}
         offsetY="-32px"

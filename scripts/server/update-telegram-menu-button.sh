@@ -26,19 +26,7 @@ if [[ -z "${BOT_TOKEN:-}" || -z "${APP_DOMAIN:-}" ]]; then
   exit 0
 fi
 
-asset_hash="$(
-  docker exec telegram-retail-frontend sh -lc \
-    "sed -n 's/.*src=\"\\/assets\\/index-\\([^\"]*\\)\\.js\".*/\\1/p' /srv/index.html | head -n 1" \
-    2>/dev/null || true
-)"
-
-if [[ -z "${asset_hash}" ]]; then
-  asset_hash="$(date +%Y%m%d%H%M%S)"
-fi
-
-asset_hash="$(printf '%s' "${asset_hash}" | tr '[:upper:]' '[:lower:]')"
-
-app_url="https://${APP_DOMAIN}/app-v-${asset_hash}"
+app_url="https://${APP_DOMAIN}/"
 
 curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" \
   -d "menu_button={\"type\":\"web_app\",\"text\":\"Open\",\"web_app\":{\"url\":\"${app_url}\"}}" \
