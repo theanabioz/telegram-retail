@@ -175,6 +175,38 @@ function buildAccessDeniedText() {
   ].join("\n");
 }
 
+function buildBotMenuRemovedText(user: AppUser) {
+  if (user.role === "admin") {
+    return [
+      `<b>${escapeHtml(user.full_name)}</b>`,
+      `<b>Роль:</b> администратор`,
+      "",
+      "Панель управления в боте временно снята с публикации.",
+      "Мы заново проектируем этот сценарий, чтобы сделать его аккуратнее.",
+      "",
+      "Mini App по-прежнему доступен через кнопку открытия приложения в Telegram.",
+    ].join("\n");
+  }
+
+  return [
+    `<b>${escapeHtml(user.full_name)}</b>`,
+    `<b>Роль:</b> продавец`,
+    "",
+    "Меню действий в боте временно снято с публикации.",
+    "Мы заново проектируем этот сценарий, чтобы сделать его аккуратнее.",
+    "",
+    "Mini App по-прежнему доступен через кнопку открытия приложения в Telegram.",
+  ].join("\n");
+}
+
+async function renderBotMenuRemoved(chatId: number, user: AppUser, messageId?: number) {
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: buildBotMenuRemovedText(user),
+  });
+}
+
 async function renderSellerMenu(chatId: number, seller: AppUser, messageId?: number) {
   const [shiftState, assignment, shiftHistory] = await Promise.all([
     getShiftState(seller.id),
@@ -830,7 +862,7 @@ async function showHome(chatId: number, user: AppUser, messageId?: number) {
     });
   }
 
-  return renderCompactHome(chatId, user, messageId);
+  return renderBotMenuRemoved(chatId, user, messageId);
 }
 
 export function startTelegramBot() {
@@ -1075,642 +1107,8 @@ export function startTelegramBot() {
       await handleDenied(chatId, messageId);
       return;
     }
-
-    if (data === "home") {
-      conversationState.delete(chatId);
-      await showHome(chatId, user, messageId);
-      return;
-    }
-
-    if (user.role === "seller") {
-      if (data === "seller:menu") {
-        await renderSellerMenu(chatId, user, messageId);
-        return;
-      }
-      if (data === "seller:shift") {
-        await renderSellerShift(chatId, user, messageId);
-        return;
-      }
-      if (data === "seller:last-shift") {
-        await renderSellerLastShift(chatId, user, messageId);
-        return;
-      }
-      await showHome(chatId, user, messageId);
-      return;
-    }
-
-    if (data === "admin:menu") {
-      conversationState.delete(chatId);
-      await renderAdminMenu(chatId, user, messageId);
-      return;
-    }
-    if (data === "admin:dashboard") {
-      conversationState.delete(chatId);
-      await renderAdminDashboard(chatId, messageId);
-      return;
-    }
-    if (data === "admin:reports") {
-      conversationState.delete(chatId);
-      await renderAdminReportsMenu(chatId, messageId);
-      return;
-    }
-    if (data === "admin:reports:today") {
-      conversationState.delete(chatId);
-      await renderAdminReportPeriod(chatId, "today", messageId);
-      return;
-    }
-    if (data === "admin:reports:week") {
-      conversationState.delete(chatId);
-      await renderAdminReportPeriod(chatId, "week", messageId);
-      return;
-    }
-    if (data === "admin:reports:month") {
-      conversationState.delete(chatId);
-      await renderAdminReportPeriod(chatId, "month", messageId);
-      return;
-    }
-    if (data === "admin:sellers") {
-      conversationState.delete(chatId);
-      await renderAdminSellers(chatId, messageId);
-      return;
-    }
-    if (data === "admin:sellers:new") {
-      conversationState.set(chatId, { kind: "seller.create.telegram", adminUserId: user.id });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Новый продавец</b>\n\nОтправь Telegram ID нового продавца.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:sellers" }]] },
-      });
-      return;
-    }
-    if (data === "admin:sellers:pick:rename") {
-      conversationState.delete(chatId);
-      await renderAdminSellerActionPicker(chatId, "rename", messageId);
-      return;
-    }
-    if (data === "admin:sellers:pick:assign") {
-      conversationState.delete(chatId);
-      await renderAdminSellerActionPicker(chatId, "assign", messageId);
-      return;
-    }
-    if (data === "admin:sellers:pick:toggle") {
-      conversationState.delete(chatId);
-      await renderAdminSellerActionPicker(chatId, "toggle", messageId);
-      return;
-    }
-    if (data === "admin:sellers:pick:delete") {
-      conversationState.delete(chatId);
-      await renderAdminSellerActionPicker(chatId, "delete", messageId);
-      return;
-    }
-    if (data.startsWith("admin:sellers:rename:")) {
-      const sellerId = data.slice("admin:sellers:rename:".length);
-      conversationState.set(chatId, { kind: "seller.rename", sellerId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Переименование продавца</b>\n\nОтправь новое имя.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:sellers" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:sellers:assign:")) {
-      const sellerId = data.slice("admin:sellers:assign:".length);
-      conversationState.set(chatId, { kind: "seller.assign.store", adminUserId: user.id, sellerId });
-      await renderAssignStorePicker(chatId, sellerId, messageId, "admin:sellers");
-      return;
-    }
-    if (data.startsWith("admin:sellers:toggle:confirm:")) {
-      const sellerId = data.slice("admin:sellers:toggle:confirm:".length);
-      const staff = await getAdminStaff();
-      const seller = staff.sellers.find((item) => item.id === sellerId);
-      if (!seller) {
-        throw new HttpError(404, "Seller not found");
-      }
-      await updateSeller(sellerId, { isActive: !seller.isActive });
-      await sendTelegramMessage({ chatId, text: seller.isActive ? "Продавец выключен." : "Продавец включен." });
-      await renderAdminSellers(chatId);
-      return;
-    }
-    if (data.startsWith("admin:sellers:toggle:")) {
-      const sellerId = data.slice("admin:sellers:toggle:".length);
-      const staff = await getAdminStaff();
-      const seller = staff.sellers.find((item) => item.id === sellerId);
-      if (!seller) {
-        throw new HttpError(404, "Seller not found");
-      }
-      await renderAdminToggleConfirm(
-        chatId,
-        {
-          title: "Статус продавца",
-          itemName: seller.fullName,
-          enabled: seller.isActive,
-          confirmCallback: `admin:sellers:toggle:confirm:${sellerId}`,
-          backCallback: "admin:sellers",
-        },
-        messageId
-      );
-      return;
-    }
-    if (data.startsWith("admin:sellers:delete:confirm:")) {
-      const sellerId = data.slice("admin:sellers:delete:confirm:".length);
-      await deleteSeller(sellerId);
-      await sendTelegramMessage({ chatId, text: "Продавец удален." });
-      await renderAdminSellers(chatId);
-      return;
-    }
-    if (data.startsWith("admin:sellers:delete:")) {
-      const sellerId = data.slice("admin:sellers:delete:".length);
-      await renderAdminSellerDeleteConfirm(chatId, sellerId, messageId, {
-        confirmCallback: `admin:sellers:delete:confirm:${sellerId}`,
-        backCallback: "admin:sellers",
-      });
-      return;
-    }
-    if (data === "admin:seller:new") {
-      conversationState.set(chatId, { kind: "seller.create.telegram", adminUserId: user.id });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Новый продавец</b>\n\nОтправь Telegram ID нового продавца.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:sellers" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:seller:delete:confirm:")) {
-      const sellerId = data.slice("admin:seller:delete:confirm:".length);
-      await deleteSeller(sellerId);
-      await sendTelegramMessage({ chatId, text: "Продавец удален." });
-      await renderAdminSellers(chatId);
-      return;
-    }
-    if (data.startsWith("admin:seller:delete:")) {
-      await renderAdminSellerDeleteConfirm(chatId, data.slice("admin:seller:delete:".length), messageId);
-      return;
-    }
-    if (data.startsWith("admin:seller:rename:")) {
-      const sellerId = data.slice("admin:seller:rename:".length);
-      conversationState.set(chatId, { kind: "seller.rename", sellerId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Переименование продавца</b>\n\nОтправь новое имя.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: `admin:seller:${sellerId}` }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:seller:assign:")) {
-      const sellerId = data.slice("admin:seller:assign:".length);
-      conversationState.set(chatId, { kind: "seller.assign.store", adminUserId: user.id, sellerId });
-      await renderAssignStorePicker(chatId, sellerId, messageId);
-      return;
-    }
-    if (data.startsWith("admin:seller:toggle:")) {
-      const sellerId = data.slice("admin:seller:toggle:".length);
-      const staff = await getAdminStaff();
-      const seller = staff.sellers.find((item) => item.id === sellerId);
-      if (!seller) {
-        throw new HttpError(404, "Seller not found");
-      }
-      await updateSeller(sellerId, { isActive: !seller.isActive });
-      await renderAdminSellerDetails(chatId, sellerId, messageId);
-      return;
-    }
-    if (data.startsWith("admin:seller:")) {
-      await renderAdminSellerDetails(chatId, data.slice("admin:seller:".length), messageId);
-      return;
-    }
-
-    if (data === "admin:stores") {
-      conversationState.delete(chatId);
-      await renderAdminStores(chatId, messageId);
-      return;
-    }
-    if (data === "admin:stores:new") {
-      conversationState.set(chatId, { kind: "store.create.name" });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Новый магазин</b>\n\nОтправь название магазина.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
-      });
-      return;
-    }
-    if (data === "admin:stores:pick:rename") {
-      conversationState.delete(chatId);
-      await renderAdminStoreActionPicker(chatId, "rename", messageId);
-      return;
-    }
-    if (data === "admin:stores:pick:address") {
-      conversationState.delete(chatId);
-      await renderAdminStoreActionPicker(chatId, "address", messageId);
-      return;
-    }
-    if (data === "admin:stores:pick:toggle") {
-      conversationState.delete(chatId);
-      await renderAdminStoreActionPicker(chatId, "toggle", messageId);
-      return;
-    }
-    if (data === "admin:stores:pick:delete") {
-      conversationState.delete(chatId);
-      await renderAdminStoreActionPicker(chatId, "delete", messageId);
-      return;
-    }
-    if (data.startsWith("admin:stores:rename:")) {
-      const storeId = data.slice("admin:stores:rename:".length);
-      conversationState.set(chatId, { kind: "store.rename", storeId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Переименование магазина</b>\n\nОтправь новое название.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:stores:address:")) {
-      const storeId = data.slice("admin:stores:address:".length);
-      conversationState.set(chatId, { kind: "store.address", storeId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Адрес магазина</b>\n\nОтправь новый адрес или '-' чтобы очистить.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:stores:toggle:confirm:")) {
-      const storeId = data.slice("admin:stores:toggle:confirm:".length);
-      const stores = await getAdminStores();
-      const store = stores.stores.find((item) => item.id === storeId);
-      if (!store) {
-        throw new HttpError(404, "Store not found");
-      }
-      await updateStore(storeId, { isActive: !store.isActive });
-      await sendTelegramMessage({ chatId, text: store.isActive ? "Магазин выключен." : "Магазин включен." });
-      await renderAdminStores(chatId);
-      return;
-    }
-    if (data.startsWith("admin:stores:toggle:")) {
-      const storeId = data.slice("admin:stores:toggle:".length);
-      const stores = await getAdminStores();
-      const store = stores.stores.find((item) => item.id === storeId);
-      if (!store) {
-        throw new HttpError(404, "Store not found");
-      }
-      await renderAdminToggleConfirm(
-        chatId,
-        {
-          title: "Статус магазина",
-          itemName: store.name,
-          enabled: store.isActive,
-          confirmCallback: `admin:stores:toggle:confirm:${storeId}`,
-          backCallback: "admin:stores",
-        },
-        messageId
-      );
-      return;
-    }
-    if (data.startsWith("admin:stores:delete:confirm:")) {
-      const storeId = data.slice("admin:stores:delete:confirm:".length);
-      await deleteStore(storeId);
-      await sendTelegramMessage({ chatId, text: "Магазин удален." });
-      await renderAdminStores(chatId);
-      return;
-    }
-    if (data.startsWith("admin:stores:delete:")) {
-      const storeId = data.slice("admin:stores:delete:".length);
-      await renderAdminStoreDeleteConfirm(chatId, storeId, messageId, {
-        confirmCallback: `admin:stores:delete:confirm:${storeId}`,
-        backCallback: "admin:stores",
-      });
-      return;
-    }
-    if (data === "admin:store:new") {
-      conversationState.set(chatId, { kind: "store.create.name" });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Новый магазин</b>\n\nОтправь название магазина.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:store:delete:confirm:")) {
-      const storeId = data.slice("admin:store:delete:confirm:".length);
-      await deleteStore(storeId);
-      await sendTelegramMessage({ chatId, text: "Магазин удален." });
-      await renderAdminStores(chatId);
-      return;
-    }
-    if (data.startsWith("admin:store:delete:")) {
-      await renderAdminStoreDeleteConfirm(chatId, data.slice("admin:store:delete:".length), messageId);
-      return;
-    }
-    if (data.startsWith("admin:store:rename:")) {
-      const storeId = data.slice("admin:store:rename:".length);
-      conversationState.set(chatId, { kind: "store.rename", storeId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Переименование магазина</b>\n\nОтправь новое название.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: `admin:store:${storeId}` }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:store:address:")) {
-      const storeId = data.slice("admin:store:address:".length);
-      conversationState.set(chatId, { kind: "store.address", storeId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Адрес магазина</b>\n\nОтправь новый адрес или '-' чтобы очистить.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: `admin:store:${storeId}` }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:store:toggle:")) {
-      const storeId = data.slice("admin:store:toggle:".length);
-      const stores = await getAdminStores();
-      const store = stores.stores.find((item) => item.id === storeId);
-      if (!store) {
-        throw new HttpError(404, "Store not found");
-      }
-      await updateStore(storeId, { isActive: !store.isActive });
-      await renderAdminStoreDetails(chatId, storeId, messageId);
-      return;
-    }
-    if (data.startsWith("admin:store:")) {
-      await renderAdminStoreDetails(chatId, data.slice("admin:store:".length), messageId);
-      return;
-    }
-
-    if (data === "admin:products") {
-      conversationState.delete(chatId);
-      await renderAdminProducts(chatId, messageId);
-      return;
-    }
-    if (data === "admin:products:new") {
-      conversationState.set(chatId, { kind: "product.create.name" });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Новый товар</b>\n\nОтправь название товара.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
-      });
-      return;
-    }
-    if (data === "admin:products:pick:rename") {
-      conversationState.delete(chatId);
-      await renderAdminProductActionPicker(chatId, "rename", messageId);
-      return;
-    }
-    if (data === "admin:products:pick:sku") {
-      conversationState.delete(chatId);
-      await renderAdminProductActionPicker(chatId, "sku", messageId);
-      return;
-    }
-    if (data === "admin:products:pick:price") {
-      conversationState.delete(chatId);
-      await renderAdminProductActionPicker(chatId, "price", messageId);
-      return;
-    }
-    if (data === "admin:products:pick:toggle") {
-      conversationState.delete(chatId);
-      await renderAdminProductActionPicker(chatId, "toggle", messageId);
-      return;
-    }
-    if (data === "admin:products:pick:archive") {
-      conversationState.delete(chatId);
-      await renderAdminProductActionPicker(chatId, "archive", messageId);
-      return;
-    }
-    if (data === "admin:products:pick:delete") {
-      conversationState.delete(chatId);
-      await renderAdminProductActionPicker(chatId, "delete", messageId);
-      return;
-    }
-    if (data.startsWith("admin:products:rename:")) {
-      const productId = data.slice("admin:products:rename:".length);
-      conversationState.set(chatId, { kind: "product.rename", productId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Переименование товара</b>\n\nОтправь новое название.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:products:sku:")) {
-      const productId = data.slice("admin:products:sku:".length);
-      conversationState.set(chatId, { kind: "product.sku", productId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Изменение SKU</b>\n\nОтправь новый SKU.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:products:price:")) {
-      const productId = data.slice("admin:products:price:".length);
-      conversationState.set(chatId, { kind: "product.price", productId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Изменение цены</b>\n\nОтправь новую цену, например 29.90.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:products:toggle:confirm:")) {
-      const productId = data.slice("admin:products:toggle:confirm:".length);
-      const products = await getAdminProducts({ archived: true });
-      const product = products.products.find((item) => item.id === productId);
-      if (!product) {
-        throw new HttpError(404, "Product not found");
-      }
-      await updateProduct(productId, { isActive: !product.isActive });
-      await sendTelegramMessage({ chatId, text: product.isActive ? "Товар выключен." : "Товар включен." });
-      await renderAdminProducts(chatId);
-      return;
-    }
-    if (data.startsWith("admin:products:toggle:")) {
-      const productId = data.slice("admin:products:toggle:".length);
-      const products = await getAdminProducts({ archived: true });
-      const product = products.products.find((item) => item.id === productId);
-      if (!product) {
-        throw new HttpError(404, "Product not found");
-      }
-      await renderAdminToggleConfirm(
-        chatId,
-        {
-          title: "Статус товара",
-          itemName: product.name,
-          enabled: product.isActive,
-          confirmCallback: `admin:products:toggle:confirm:${productId}`,
-          backCallback: "admin:products",
-        },
-        messageId
-      );
-      return;
-    }
-    if (data.startsWith("admin:products:archive:")) {
-      const productId = data.slice("admin:products:archive:".length);
-      const products = await getAdminProducts({ archived: true });
-      const product = products.products.find((item) => item.id === productId);
-      if (!product) {
-        throw new HttpError(404, "Product not found");
-      }
-      if (product.isArchived) {
-        await restoreProduct(productId);
-        await sendTelegramMessage({ chatId, text: "Товар восстановлен из архива." });
-      } else {
-        await archiveProduct(productId);
-        await sendTelegramMessage({ chatId, text: "Товар отправлен в архив." });
-      }
-      await renderAdminProducts(chatId);
-      return;
-    }
-    if (data.startsWith("admin:products:delete:confirm:")) {
-      const productId = data.slice("admin:products:delete:confirm:".length);
-      await deleteProduct(productId);
-      await sendTelegramMessage({ chatId, text: "Товар удален." });
-      await renderAdminProducts(chatId);
-      return;
-    }
-    if (data.startsWith("admin:products:delete:")) {
-      const productId = data.slice("admin:products:delete:".length);
-      await renderAdminProductDeleteConfirm(chatId, productId, messageId, {
-        confirmCallback: `admin:products:delete:confirm:${productId}`,
-        backCallback: "admin:products",
-      });
-      return;
-    }
-    if (data === "admin:product:new") {
-      conversationState.set(chatId, { kind: "product.create.name" });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Новый товар</b>\n\nОтправь название товара.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:product:delete:confirm:")) {
-      const productId = data.slice("admin:product:delete:confirm:".length);
-      await deleteProduct(productId);
-      await sendTelegramMessage({ chatId, text: "Товар удален." });
-      await renderAdminProducts(chatId);
-      return;
-    }
-    if (data.startsWith("admin:product:delete:")) {
-      await renderAdminProductDeleteConfirm(chatId, data.slice("admin:product:delete:".length), messageId);
-      return;
-    }
-    if (data.startsWith("admin:product:rename:")) {
-      const productId = data.slice("admin:product:rename:".length);
-      conversationState.set(chatId, { kind: "product.rename", productId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Переименование товара</b>\n\nОтправь новое название.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: `admin:product:${productId}` }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:product:sku:")) {
-      const productId = data.slice("admin:product:sku:".length);
-      conversationState.set(chatId, { kind: "product.sku", productId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Изменение SKU</b>\n\nОтправь новый SKU.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: `admin:product:${productId}` }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:product:price:")) {
-      const productId = data.slice("admin:product:price:".length);
-      conversationState.set(chatId, { kind: "product.price", productId });
-      await sendOrEditMessage({
-        chatId,
-        messageId,
-        text: `<b>Изменение цены</b>\n\nОтправь новую цену, например 29.90.\nДля отмены напиши /cancel.`,
-        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: `admin:product:${productId}` }]] },
-      });
-      return;
-    }
-    if (data.startsWith("admin:product:toggle:")) {
-      const productId = data.slice("admin:product:toggle:".length);
-      const products = await getAdminProducts({ archived: true });
-      const product = products.products.find((item) => item.id === productId);
-      if (!product) {
-        throw new HttpError(404, "Product not found");
-      }
-      await updateProduct(productId, { isActive: !product.isActive });
-      await renderAdminProductDetails(chatId, productId, messageId);
-      return;
-    }
-    if (data.startsWith("admin:product:archive:")) {
-      const productId = data.slice("admin:product:archive:".length);
-      const products = await getAdminProducts({ archived: true });
-      const product = products.products.find((item) => item.id === productId);
-      if (!product) {
-        throw new HttpError(404, "Product not found");
-      }
-      if (product.isArchived) {
-        await restoreProduct(productId);
-      } else {
-        await archiveProduct(productId);
-      }
-      await renderAdminProductDetails(chatId, productId, messageId);
-      return;
-    }
-    if (data.startsWith("admin:product:restore:")) {
-      const productId = data.slice("admin:product:restore:".length);
-      await restoreProduct(productId);
-      await renderAdminProductDetails(chatId, productId, messageId);
-      return;
-    }
-    if (data.startsWith("admin:product:")) {
-      await renderAdminProductDetails(chatId, data.slice("admin:product:".length), messageId);
-      return;
-    }
-
-    if (data.startsWith("pick:store:")) {
-      const selectedStoreId = data.slice("pick:store:".length);
-      const state = conversationState.get(chatId);
-
-      if (state?.kind === "seller.create.store") {
-        const result = await createSeller({
-          adminUserId: state.adminUserId,
-          fullName: state.fullName,
-          telegramId: state.telegramId,
-          storeId: selectedStoreId === "none" ? undefined : selectedStoreId,
-        });
-        conversationState.delete(chatId);
-        await sendTelegramMessage({ chatId, text: `Продавец ${result.seller.fullName} создан.` });
-        await renderAdminSellerDetails(chatId, result.seller.id);
-        return;
-      }
-
-      if (state?.kind === "seller.assign.store") {
-        if (selectedStoreId !== "none") {
-          await assignSellerToStore({
-            adminUserId: state.adminUserId,
-            sellerUserId: state.sellerId,
-            storeId: selectedStoreId,
-          });
-          conversationState.delete(chatId);
-          await sendTelegramMessage({ chatId, text: "Магазин для продавца обновлен." });
-          await renderAdminSellerDetails(chatId, state.sellerId);
-          return;
-        }
-      }
-    }
-
-    await showHome(chatId, user, messageId);
+    conversationState.delete(chatId);
+    await renderBotMenuRemoved(chatId, user, messageId);
   }
 
   async function handleMessage(message: TelegramMessage) {
@@ -1736,10 +1134,7 @@ export function startTelegramBot() {
 
     if (text === "/start" || text === "/menu") {
       conversationState.delete(chatId);
-      const renderedMessageId =
-        user.role === "admin"
-          ? await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId))
-          : await renderSellerMenu(chatId, user, lastUiMessageByChat.get(chatId));
+      const renderedMessageId = await renderBotMenuRemoved(chatId, user, lastUiMessageByChat.get(chatId));
       if (renderedMessageId) {
         lastUiMessageByChat.set(chatId, renderedMessageId);
       }
@@ -1748,10 +1143,7 @@ export function startTelegramBot() {
 
     await sendTelegramMessage({
       chatId,
-      text:
-        user.role === "admin"
-          ? "Напиши /menu или нажми кнопки в текущей панели управления."
-          : "Напиши /menu или нажми кнопки в текущем меню действий.",
+      text: "Напиши /menu, чтобы открыть текущее состояние бота.",
     });
   }
 
