@@ -436,6 +436,27 @@ export async function listSaleItems(saleId: string) {
   }
 }
 
+export async function listSaleItemsBySaleIds(saleIds: string[]) {
+  if (saleIds.length === 0) {
+    return [] as SaleItemRecord[];
+  }
+
+  try {
+    const result = await queryDb<SaleItemRecord>(
+      `select id, sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price,
+              discount_type, discount_value, quantity, line_total
+       from public.sale_items
+       where sale_id = any($1::uuid[])
+       order by sale_id asc, id asc`,
+      [saleIds]
+    );
+
+    return result.rows.map((row) => toNumber(row, ["base_price", "final_price", "discount_value", "quantity", "line_total"]));
+  } catch (error) {
+    throw new HttpError(500, `Failed to load sale items: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function listReturnedQuantitiesBySaleItemIds(saleItemIds: string[]) {
   if (saleItemIds.length === 0) {
     return [] as ReturnedSaleItemAggregate[];

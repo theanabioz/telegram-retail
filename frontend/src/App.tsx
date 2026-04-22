@@ -30,10 +30,11 @@ const TOKEN_KEY = "telegram-retail-token";
 const PANEL_KEY = "telegram-retail-dev-panel";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
+const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function writeStartupCache(cacheKey: string, token: string, startup: unknown) {
   try {
-    window.localStorage.setItem(cacheKey, JSON.stringify({ token, startup }));
+    window.localStorage.setItem(cacheKey, JSON.stringify({ token, startup, cachedAt: Date.now() }));
   } catch {
     // Startup cache only improves perceived loading.
   }
@@ -53,6 +54,7 @@ function readCachedOperator(panel: DevPanel, token: string | null) {
 
     const cached = JSON.parse(raw) as {
       token: string;
+      cachedAt?: number;
       startup?: {
         me?: {
           user?: {
@@ -62,7 +64,7 @@ function readCachedOperator(panel: DevPanel, token: string | null) {
       };
     };
 
-    if (cached.token !== token) {
+    if (cached.token !== token || !cached.cachedAt || Date.now() - cached.cachedAt > STARTUP_CACHE_TTL_MS) {
       return null;
     }
 

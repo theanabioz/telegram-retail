@@ -24,6 +24,7 @@ import {
   listReturnedQuantitiesBySaleItemIds,
   listSalesByStore,
   listSaleItems,
+  listSaleItemsBySaleIds,
   listDraftSaleItems,
   softDeleteSale,
   updateDraftItem,
@@ -498,13 +499,18 @@ export async function createSaleReturn(
 export async function listRecentSales(userId: string, limit: number) {
   const { assignment } = await getSellerContext(userId);
   const sales = await listSalesByStore(assignment.store_id, limit);
+  const saleItems = await listSaleItemsBySaleIds(sales.map((sale) => sale.id));
+  const itemsBySaleId = saleItems.reduce<Map<string, typeof saleItems>>((map, item) => {
+    const items = map.get(item.sale_id) ?? [];
+    items.push(item);
+    map.set(item.sale_id, items);
+    return map;
+  }, new Map());
 
-  const salesWithItems = await Promise.all(
-    sales.map(async (sale) => ({
-      ...sale,
-      items: await listSaleItems(sale.id),
-    }))
-  );
+  const salesWithItems = sales.map((sale) => ({
+    ...sale,
+    items: itemsBySaleId.get(sale.id) ?? [],
+  }));
 
   return {
     storeId: assignment.store_id,

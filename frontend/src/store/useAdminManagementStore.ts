@@ -19,6 +19,7 @@ import type {
 
 const TOKEN_KEY = "telegram-retail-token";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
+const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 
 type AdminStoreItem = AdminStoresResponse["stores"][number];
 type AdminInventoryStore = AdminInventoryResponse["stores"][number];
@@ -39,8 +40,10 @@ function readCachedAdminStartup() {
       return null;
     }
 
-    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
-    return cached.token === token ? cached.startup : null;
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse; cachedAt?: number };
+    return cached.token === token && cached.cachedAt && Date.now() - cached.cachedAt <= STARTUP_CACHE_TTL_MS
+      ? cached.startup
+      : null;
   } catch {
     return null;
   }
@@ -48,7 +51,7 @@ function readCachedAdminStartup() {
 
 function writeAdminStartupCache(token: string, startup: AdminStartupResponse) {
   try {
-    window.localStorage.setItem(ADMIN_STARTUP_CACHE_KEY, JSON.stringify({ token, startup }));
+    window.localStorage.setItem(ADMIN_STARTUP_CACHE_KEY, JSON.stringify({ token, startup, cachedAt: Date.now() }));
   } catch {
     // Cache only improves perceived loading.
   }

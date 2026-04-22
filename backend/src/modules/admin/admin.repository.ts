@@ -142,15 +142,62 @@ function mapTimestamps<T extends NumericRow>(row: T, keys: string[]) {
   return clone as T;
 }
 
-export async function listAdminSales(limit: number) {
+type AdminSalesFilterInput = {
+  storeId?: string;
+  sellerId?: string;
+  status?: "completed" | "deleted";
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+function buildAdminFilterClauses(input: AdminSalesFilterInput, startIndex = 1) {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  let index = startIndex;
+
+  if (input.storeId) {
+    clauses.push(`store_id = $${index++}`);
+    params.push(input.storeId);
+  }
+
+  if (input.sellerId) {
+    clauses.push(`seller_id = $${index++}`);
+    params.push(input.sellerId);
+  }
+
+  if (input.status) {
+    clauses.push(`status = $${index++}`);
+    params.push(input.status);
+  }
+
+  if (input.dateFrom) {
+    clauses.push(`created_at >= $${index++}`);
+    params.push(input.dateFrom);
+  }
+
+  if (input.dateTo) {
+    clauses.push(`created_at <= $${index++}`);
+    params.push(input.dateTo);
+  }
+
+  return {
+    whereSql: clauses.length > 0 ? `where ${clauses.join(" and ")}` : "",
+    params,
+    nextIndex: index,
+  };
+}
+
+export async function listAdminSales(limit: number, filters: AdminSalesFilterInput = {}) {
   try {
+    const { whereSql, params, nextIndex } = buildAdminFilterClauses(filters);
     const result = await queryDb<AdminSaleRow>(
       `select id, seller_id, store_id, payment_method, status, subtotal_amount, discount_amount, total_amount,
               created_at, deleted_at, deleted_by, deletion_reason
        from public.sales
+       ${whereSql}
        order by created_at desc
-       limit $1`,
-      [limit]
+       limit $${nextIndex}`,
+      [...params, limit]
     );
 
     return result.rows.map((row) =>
@@ -185,14 +232,16 @@ export async function listAdminSaleItems(saleIds: string[]) {
   }
 }
 
-export async function listAdminReturns(limit: number) {
+export async function listAdminReturns(limit: number, filters: Omit<AdminSalesFilterInput, "status"> = {}) {
   try {
+    const { whereSql, params, nextIndex } = buildAdminFilterClauses(filters);
     const result = await queryDb<AdminReturnRow>(
       `select id, sale_id, seller_id, store_id, shift_id, reason, total_amount, created_at
        from public.returns
+       ${whereSql}
        order by created_at desc
-       limit $1`,
-      [limit]
+       limit $${nextIndex}`,
+      [...params, limit]
     );
 
     return result.rows.map((row) => mapTimestamps(mapNumbers(row, ["total_amount"]), ["created_at"]));

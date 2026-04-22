@@ -921,38 +921,30 @@ export async function getAdminSalesOverview(input: {
   limit: number;
 }) {
   const fetchLimit = Math.max(input.limit * 3, 4000);
+  const salesFilters = {
+    storeId: input.storeId,
+    sellerId: input.sellerId,
+    status: input.saleStatus === "all" ? undefined : input.saleStatus,
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+  };
+  const returnsFilters = {
+    storeId: input.storeId,
+    sellerId: input.sellerId,
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+  };
   const [sales, returns, stores, users] = await Promise.all([
-    listAdminSales(fetchLimit),
-    listAdminReturns(fetchLimit),
+    listAdminSales(fetchLimit, salesFilters),
+    listAdminReturns(fetchLimit, returnsFilters),
     listAdminStores(),
     listAdminUsers(),
   ]);
 
   const storeMap = new Map(stores.map((store) => [store.id, store]));
   const userMap = new Map(users.map((user) => [user.id, user]));
-
-  const inRange = (iso: string) => {
-    if (input.dateFrom && iso < input.dateFrom) {
-      return false;
-    }
-
-    if (input.dateTo && iso > input.dateTo) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const allFilteredSales = sales
-    .filter((sale) => (input.storeId ? sale.store_id === input.storeId : true))
-    .filter((sale) => (input.sellerId ? sale.seller_id === input.sellerId : true))
-    .filter((sale) => (input.saleStatus === "all" ? true : sale.status === input.saleStatus))
-    .filter((sale) => inRange(sale.created_at));
-
-  const allFilteredReturns = returns
-    .filter((entry) => (input.storeId ? entry.store_id === input.storeId : true))
-    .filter((entry) => (input.sellerId ? entry.seller_id === input.sellerId : true))
-    .filter((entry) => inRange(entry.created_at));
+  const allFilteredSales = sales;
+  const allFilteredReturns = returns;
 
   const filteredSales = allFilteredSales.slice(0, input.limit);
   const filteredReturns = allFilteredReturns.slice(0, input.limit);

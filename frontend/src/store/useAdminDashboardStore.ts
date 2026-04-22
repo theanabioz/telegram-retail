@@ -4,6 +4,7 @@ import type { AdminDashboardResponse, AdminStartupResponse } from "../types/admi
 
 const TOKEN_KEY = "telegram-retail-token";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
+const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function getStoredToken() {
   return window.localStorage.getItem(TOKEN_KEY);
@@ -17,8 +18,10 @@ function readCachedDashboard() {
       return null;
     }
 
-    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
-    return cached.token === token ? cached.startup.dashboard : null;
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse; cachedAt?: number };
+    return cached.token === token && cached.cachedAt && Date.now() - cached.cachedAt <= STARTUP_CACHE_TTL_MS
+      ? cached.startup.dashboard
+      : null;
   } catch {
     return null;
   }
@@ -33,7 +36,7 @@ function writeCachedDashboard(data: AdminDashboardResponse) {
       return;
     }
 
-    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse };
+    const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse; cachedAt?: number };
 
     if (cached.token !== token) {
       return;
@@ -43,6 +46,7 @@ function writeCachedDashboard(data: AdminDashboardResponse) {
       ADMIN_STARTUP_CACHE_KEY,
       JSON.stringify({
         token,
+        cachedAt: Date.now(),
         startup: {
           ...cached.startup,
           dashboard: data,

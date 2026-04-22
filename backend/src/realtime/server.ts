@@ -1,7 +1,10 @@
-import type { Server as HttpServer } from "node:http";
+import type { IncomingMessage, Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { type JwtPayload, verifyAppJwt } from "../modules/auth/jwt.js";
 import { refreshSessionPayload } from "../modules/auth/auth.service.js";
+
+const MAX_WS_CONNECTIONS_PER_IP = 20;
+const MAX_WS_CONNECTIONS_PER_USER = 5;
 
 export type RealtimeEventType =
   | "connected"
@@ -36,12 +39,20 @@ type RealtimeClient = {
   socket: WebSocket;
   session: JwtPayload;
   isAlive: boolean;
+  ip: string;
 };
 
 type PendingRealtimeClient = {
   socket: WebSocket;
   authTimer: NodeJS.Timeout;
+  ip: string;
 };
+
+function getClientIp(request: IncomingMessage) {
+  const forwardedFor = request.headers["x-forwarded-for"];
+  const firstForwardedIp = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(",")[0];
+  return firstForwardedIp?.trim() || request.socket.remoteAddress || "unknown";
+}
 
 class RealtimeServer {
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
@@ -58,8 +69,14 @@ class RealtimeServer {
         return;
       }
 
+      const ip = getClientIp(request);
+      if (this.countConnectionsByIp(ip) >= MAX_WS_CONNECTIONS_PER_IP) {
+        socket.destroy();
+        return;
+      }
+
       this.wss.handleUpgrade(request, socket, head, (websocket) => {
-        this.registerPendingConnection(websocket);
+        this.registerPendingConnection(websocket, ip);
       });
     });
 
@@ -77,9 +94,40 @@ class RealtimeServer {
     }, 30_000);
   }
 
-  private registerPendingConnection(socket: WebSocket) {
+  private countConnectionsByIp(ip: string) {
+    let count = 0;
+
+    for (const pending of this.pendingClients) {
+      if (pending.ip === ip) {
+        count += 1;
+      }
+    }
+
+    for (const client of this.clients) {
+      if (client.ip === ip) {
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+
+  private countConnectionsByUser(userId: string) {
+    let count = 0;
+
+    for (const client of this.clients) {
+      if (client.session.app_user_id === userId) {
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+
+  private registerPendingConnection(socket: WebSocket, ip: string) {
     const pending: PendingRealtimeClient = {
       socket,
+      ip,
       authTimer: setTimeout(() => {
         socket.close(4001, "Authentication timeout");
       }, 5_000),
@@ -104,19 +152,25 @@ class RealtimeServer {
         }
 
         const session = await refreshSessionPayload(verifyAppJwt(payload.token));
+        if (this.countConnectionsByUser(session.app_user_id) >= MAX_WS_CONNECTIONS_PER_USER) {
+          socket.close(4008, "Too many connections");
+          return;
+        }
+
         cleanup();
-        this.registerConnection(socket, session);
+        this.registerConnection(socket, session, ip);
       } catch {
         socket.close(4001, "Authentication failed");
       }
     });
   }
 
-  private registerConnection(socket: WebSocket, session: JwtPayload) {
+  private registerConnection(socket: WebSocket, session: JwtPayload, ip: string) {
     const client: RealtimeClient = {
       socket,
       session,
       isAlive: true,
+      ip,
     };
 
     this.clients.add(client);

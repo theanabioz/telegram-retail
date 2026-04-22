@@ -72,12 +72,14 @@ type SellerHomeState = {
 
 const TOKEN_KEY = "telegram-retail-token";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
+const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 let draftMutationVersion = 0;
 let shiftMutationVersion = 0;
 let shiftBootstrapRetryTimer: number | null = null;
 
 type SellerStartupCache = {
   token: string;
+  cachedAt?: number;
   startup: SellerStartupResponse;
 };
 
@@ -234,7 +236,9 @@ function readSellerStartupCache(token: string) {
     }
 
     const cached = JSON.parse(raw) as SellerStartupCache;
-    return cached.token === token ? cached.startup : null;
+    return cached.token === token && cached.cachedAt && Date.now() - cached.cachedAt <= STARTUP_CACHE_TTL_MS
+      ? cached.startup
+      : null;
   } catch {
     return null;
   }
@@ -242,7 +246,7 @@ function readSellerStartupCache(token: string) {
 
 function writeSellerStartupCache(token: string, startup: SellerStartupResponse) {
   try {
-    window.localStorage.setItem(SELLER_STARTUP_CACHE_KEY, JSON.stringify({ token, startup }));
+    window.localStorage.setItem(SELLER_STARTUP_CACHE_KEY, JSON.stringify({ token, startup, cachedAt: Date.now() }));
   } catch {
     // Cache is a UX optimization only; storage failures should never block the POS.
   }
