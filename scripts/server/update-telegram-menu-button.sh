@@ -32,4 +32,9 @@ curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" \
   -d "menu_button={\"type\":\"web_app\",\"text\":\"Open\",\"web_app\":{\"url\":\"${app_url}\"}}" \
   >/dev/null
 
+curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
+  -d 'commands=[{"command":"menu","description":"Open the control panel"}]' \
+  >/dev/null
+
 echo "Telegram menu button URL set to ${app_url}"
+echo "Telegram bot commands set: /menu"
