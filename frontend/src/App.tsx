@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Box, Button, Text, VStack } from "@chakra-ui/react";
-import { apiGet, apiPost } from "./lib/api";
-import { config } from "./lib/config";
+import { ApiError, apiGet, apiPost } from "./lib/api";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
 import { disconnectRealtimeConnection, ensureRealtimeConnection } from "./lib/realtime";
-import { triggerImpact, triggerNotification, triggerSelection } from "./lib/haptics";
+import { triggerImpact, triggerNotification } from "./lib/haptics";
 import { useI18n } from "./lib/i18n";
 import { bootstrapTelegramSdk, expandTelegramApp, notifyTelegramAppReady } from "./lib/telegramSdk";
+import { getTelegramWebApp } from "./lib/telegramWebApp";
 import { attachTelegramViewportSafety } from "./lib/telegramViewport";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
@@ -17,17 +17,18 @@ import { useAdminManagementStore } from "./store/useAdminManagementStore";
 import type { AuthSessionResponse } from "./types/seller";
 import type { AdminStartupResponse } from "./types/admin";
 
-type DevPanel = "admin" | "seller";
+type AppRole = "admin" | "seller";
 
 type AppSession = {
-  role: "admin" | "seller";
+  role: AppRole | null;
   operatorName: string;
   loading: boolean;
   error: string | null;
+  blocked: boolean;
 };
 
 const TOKEN_KEY = "telegram-retail-token";
-const PANEL_KEY = "telegram-retail-dev-panel";
+const AUTH_ROLE_KEY = "telegram-retail-auth-role";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -36,28 +37,41 @@ function isStartupCacheFresh(cachedAt?: number) {
   return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
 }
 
-function writeStartupCache(cacheKey: string, token: string, startup: unknown) {
+function getStoredRole(): AppRole | null {
+  const role = window.localStorage.getItem(AUTH_ROLE_KEY);
+  return role === "admin" || role === "seller" ? role : null;
+}
+
+function setStoredRole(role: AppRole) {
+  window.localStorage.setItem(AUTH_ROLE_KEY, role);
+}
+
+function clearStoredSession() {
+  window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(AUTH_ROLE_KEY);
+}
+
+function writeStartupCache(cacheKey: string, startup: unknown) {
   try {
-    window.localStorage.setItem(cacheKey, JSON.stringify({ token, startup, cachedAt: Date.now() }));
+    window.localStorage.setItem(cacheKey, JSON.stringify({ startup, cachedAt: Date.now() }));
   } catch {
     // Startup cache only improves perceived loading.
   }
 }
 
-function readCachedOperator(panel: DevPanel, token: string | null) {
-  if (!token) {
+function readCachedOperator(role: AppRole | null) {
+  if (!role) {
     return null;
   }
 
   try {
-    const cacheKey = panel === "admin" ? ADMIN_STARTUP_CACHE_KEY : SELLER_STARTUP_CACHE_KEY;
+    const cacheKey = role === "admin" ? ADMIN_STARTUP_CACHE_KEY : SELLER_STARTUP_CACHE_KEY;
     const raw = window.localStorage.getItem(cacheKey);
     if (!raw) {
       return null;
     }
 
     const cached = JSON.parse(raw) as {
-      token: string;
       cachedAt?: number;
       startup?: {
         me?: {
@@ -91,8 +105,25 @@ function AppBootState({
 }) {
   return (
     <Box minH="var(--app-viewport-height, 100vh)" px={5} pt="var(--app-screen-pt)" display="grid" placeItems="center">
-      <VStack spacing={4} textAlign="center" bg="rgba(255,255,255,0.86)" borderRadius="28px" px={6} py={7} boxShadow="0 18px 36px rgba(18, 18, 18, 0.06)">
-        <Box w="42px" h="42px" borderRadius="16px" bg="brand.500" color="white" display="grid" placeItems="center" fontWeight="900">
+      <VStack
+        spacing={4}
+        textAlign="center"
+        bg="rgba(255,255,255,0.86)"
+        borderRadius="28px"
+        px={6}
+        py={7}
+        boxShadow="0 18px 36px rgba(18, 18, 18, 0.06)"
+      >
+        <Box
+          w="42px"
+          h="42px"
+          borderRadius="16px"
+          bg="brand.500"
+          color="white"
+          display="grid"
+          placeItems="center"
+          fontWeight="900"
+        >
           CS
         </Box>
         <VStack spacing={1}>
@@ -115,97 +146,132 @@ function AppBootState({
 
 export function App() {
   const { t } = useI18n();
-  const [currentPanel, setCurrentPanel] = useState<DevPanel>(() => {
-    const storedPanel = window.localStorage.getItem(PANEL_KEY);
-    if (storedPanel === "admin" || storedPanel === "seller") {
-      return storedPanel;
-    }
-
-    return config.devPanel === "admin" ? "admin" : "seller";
-  });
   const [session, setSession] = useState<AppSession>(() => {
-    const token = window.localStorage.getItem(TOKEN_KEY);
-    const storedPanel = window.localStorage.getItem(PANEL_KEY);
-    const initialPanel = storedPanel === "admin" || storedPanel === "seller" ? storedPanel : currentPanel;
-    const cachedOperator = readCachedOperator(initialPanel, token);
+    const role = getStoredRole();
+    const cachedOperator = readCachedOperator(role);
 
     return {
-      role: initialPanel,
+      role,
       operatorName: cachedOperator ?? "User",
-      loading: !cachedOperator,
+      loading: role == null || cachedOperator == null,
       error: null,
+      blocked: false,
     };
   });
 
-  const bootstrap = useCallback(async (desiredPanel: DevPanel, forceRelogin = false) => {
-    const cachedOperator = readCachedOperator(desiredPanel, window.localStorage.getItem(TOKEN_KEY));
+  const bootstrap = useCallback(async (forceRelogin = false) => {
+    const webApp = getTelegramWebApp();
+    const initData = webApp?.initData?.trim() ?? "";
+    const cachedRole = getStoredRole();
+    const cachedOperator = readCachedOperator(cachedRole);
+
+    if (!webApp || !initData) {
+      clearStoredSession();
+      setSession({
+        role: null,
+        operatorName: "",
+        loading: false,
+        error: null,
+        blocked: true,
+      });
+      return;
+    }
 
     setSession((current) => ({
       ...current,
-      role: desiredPanel,
+      role: current.role ?? cachedRole,
       operatorName: cachedOperator ?? current.operatorName,
-      loading: forceRelogin || !cachedOperator,
+      loading: forceRelogin || (!cachedRole && !cachedOperator),
       error: null,
+      blocked: false,
     }));
 
-    try {
-      let token = window.localStorage.getItem(TOKEN_KEY);
-      const storedPanel = window.localStorage.getItem(PANEL_KEY);
+    let token = forceRelogin ? null : window.localStorage.getItem(TOKEN_KEY);
 
-      if (forceRelogin || !token || storedPanel !== desiredPanel) {
-        const authSession = await apiPost<AuthSessionResponse>("/auth/dev-login", {
-          telegramId:
-            desiredPanel === "admin"
-              ? config.devAdminTelegramId
-              : config.devSellerTelegramId,
-        });
+    if (token) {
+      try {
+        const me = await apiGet<{
+          auth: {
+            app_role: AppRole;
+            full_name: string;
+          };
+        }>("/auth/me", token);
 
-        token = authSession.token;
-        window.localStorage.setItem(TOKEN_KEY, token);
-        window.localStorage.setItem(PANEL_KEY, desiredPanel);
+        setStoredRole(me.auth.app_role);
 
-        if (desiredPanel === "admin") {
+        if (me.auth.app_role === "admin") {
           const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
-          writeStartupCache(ADMIN_STARTUP_CACHE_KEY, token, startup);
+          writeStartupCache(ADMIN_STARTUP_CACHE_KEY, startup);
           useAdminDashboardStore.getState().hydrate(startup.dashboard);
           useAdminManagementStore.getState().hydrateStartup(startup);
         }
 
         setSession({
-          role: authSession.user.app_role,
-          operatorName: authSession.user.full_name,
+          role: me.auth.app_role,
+          operatorName: me.auth.full_name,
           loading: false,
           error: null,
+          blocked: false,
         });
         return;
+      } catch (error) {
+        if (!(error instanceof ApiError) || (error.status !== 401 && error.status !== 403)) {
+          setSession((current) => ({
+            ...current,
+            loading: false,
+            error: error instanceof Error ? error.message : "Failed to restore session",
+          }));
+          return;
+        }
+
+        clearStoredSession();
+        token = null;
       }
+    }
 
-      const me = await apiGet<{
-        auth: {
-          app_role: "admin" | "seller";
-          full_name: string;
-        };
-      }>("/auth/me", token);
+    try {
+      const authSession = await apiPost<AuthSessionResponse>("/auth/telegram", {
+        initData,
+      });
 
-      if (desiredPanel === "admin") {
+      token = authSession.token;
+      window.localStorage.setItem(TOKEN_KEY, token);
+      setStoredRole(authSession.user.app_role);
+
+      if (authSession.user.app_role === "admin") {
         const startup = await apiGet<AdminStartupResponse>("/admin/startup", token);
-        writeStartupCache(ADMIN_STARTUP_CACHE_KEY, token, startup);
+        writeStartupCache(ADMIN_STARTUP_CACHE_KEY, startup);
         useAdminDashboardStore.getState().hydrate(startup.dashboard);
         useAdminManagementStore.getState().hydrateStartup(startup);
       }
 
       setSession({
-        role: me.auth.app_role,
-        operatorName: me.auth.full_name,
+        role: authSession.user.app_role,
+        operatorName: authSession.user.full_name,
         loading: false,
         error: null,
+        blocked: false,
       });
     } catch (error) {
+      clearStoredSession();
+
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        setSession({
+          role: null,
+          operatorName: "",
+          loading: false,
+          error: null,
+          blocked: true,
+        });
+        return;
+      }
+
       setSession({
-        role: desiredPanel === "admin" ? "admin" : "seller",
-        operatorName: "User",
+        role: null,
+        operatorName: "",
         loading: false,
-        error: error instanceof Error ? error.message : "Failed to bootstrap app",
+        error: error instanceof Error ? error.message : "Failed to authenticate session",
+        blocked: false,
       });
     }
   }, []);
@@ -227,8 +293,8 @@ export function App() {
   useEffect(() => attachGlobalHaptics(), []);
 
   useEffect(() => {
-    void bootstrap(currentPanel);
-  }, [bootstrap, currentPanel]);
+    void bootstrap();
+  }, [bootstrap]);
 
   useEffect(() => {
     const token = window.localStorage.getItem(TOKEN_KEY);
@@ -243,22 +309,7 @@ export function App() {
     return () => {
       disconnectRealtimeConnection();
     };
-  }, [currentPanel, session.loading, session.operatorName, session.role]);
-
-  const switchPanel = async (nextPanel: DevPanel) => {
-    if (nextPanel === currentPanel) {
-      triggerSelection();
-      return;
-    }
-
-    setCurrentPanel(nextPanel);
-    try {
-      await bootstrap(nextPanel, true);
-      triggerImpact("medium");
-    } catch {
-      triggerNotification("error");
-    }
-  };
+  }, [session.loading, session.operatorName, session.role]);
 
   const impersonateSeller = async (sellerId: string) => {
     const token = window.localStorage.getItem(TOKEN_KEY);
@@ -281,14 +332,14 @@ export function App() {
       const authSession = await apiPost<AuthSessionResponse>(`/auth/impersonate/${sellerId}`, undefined, token);
 
       window.localStorage.setItem(TOKEN_KEY, authSession.token);
-      window.localStorage.setItem(PANEL_KEY, "seller");
-      setCurrentPanel("seller");
+      setStoredRole(authSession.user.app_role);
       triggerImpact("medium");
       setSession({
         role: authSession.user.app_role,
         operatorName: authSession.user.full_name,
         loading: false,
         error: null,
+        blocked: false,
       });
     } catch (error) {
       triggerNotification("error");
@@ -301,12 +352,11 @@ export function App() {
   };
 
   if (session.loading) {
-    return (
-      <AppBootState
-        title={t("app.boot.openingTitle")}
-        description={t("app.boot.openingDescription")}
-      />
-    );
+    return <AppBootState title={t("app.boot.openingTitle")} description={t("app.boot.openingDescription")} />;
+  }
+
+  if (session.blocked) {
+    return <AppBootState title={t("app.blocked.title")} description={t("app.blocked.description")} />;
   }
 
   if (session.error) {
@@ -315,9 +365,13 @@ export function App() {
         title={t("app.boot.errorTitle")}
         description={session.error}
         actionLabel={t("app.boot.tryAgain")}
-        onAction={() => void bootstrap(currentPanel, true)}
+        onAction={() => void bootstrap(true)}
       />
     );
+  }
+
+  if (!session.role) {
+    return <AppBootState title={t("app.boot.openingTitle")} description={t("app.boot.openingDescription")} />;
   }
 
   return (
@@ -325,15 +379,12 @@ export function App() {
       {session.role === "admin" ? (
         <AdminDashboardScreen
           operatorName={session.operatorName}
-          currentPanel={currentPanel}
-          onSwitchPanel={switchPanel}
+          currentPanel={session.role}
+          onSwitchPanel={async () => {}}
           onViewAsSeller={impersonateSeller}
         />
       ) : (
-        <SellerHomeScreen
-          currentPanel={currentPanel}
-          onSwitchPanel={switchPanel}
-        />
+        <SellerHomeScreen currentPanel={session.role} onSwitchPanel={async () => {}} />
       )}
     </AppErrorBoundary>
   );

@@ -1,10 +1,7 @@
 import { create } from "zustand";
-import { sellerHomeMock } from "../data/mockSellerHome";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
-import { config } from "../lib/config";
 import { triggerImpact, triggerNotification, triggerSelection } from "../lib/haptics";
 import type {
-  AuthSessionResponse,
   CheckoutResponse,
   DraftResponse,
   InventoryHistoryResponse,
@@ -17,8 +14,15 @@ import type {
   ShiftStateResponse,
 } from "../types/seller";
 
+type SellerHomeProduct = {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+};
+
 type SellerHomeState = {
-  mode: "demo" | "live";
+  mode: "live";
   loading: boolean;
   actionLoading: boolean;
   error: string | null;
@@ -29,7 +33,7 @@ type SellerHomeState = {
   shiftStatus: "active" | "paused" | "closed" | "inactive";
   shiftSummary: ShiftSummary | null;
   localIpLabel: string;
-  products: typeof sellerHomeMock.products;
+  products: SellerHomeProduct[];
   draft: DraftResponse | null;
   sales: SellerSalesResponse["sales"];
   inventoryHistory: InventoryHistoryResponse["items"];
@@ -331,17 +335,8 @@ async function fetchShiftDetailsById(token: string, shiftId: string) {
 }
 
 function buildSellerStartupState(startup: SellerStartupResponse, token: string) {
-  const isLive = Boolean(
-    startup.shiftState.activeShift &&
-      startup.shiftState.activeShift.status === "active" &&
-      startup.catalog &&
-      startup.draft &&
-      startup.sales &&
-      startup.inventoryHistory
-  );
-
   return {
-    mode: isLive ? ("live" as const) : ("demo" as const),
+    mode: "live" as const,
     loading: false,
     error: null,
     token,
@@ -350,7 +345,7 @@ function buildSellerStartupState(startup: SellerStartupResponse, token: string) 
     storeName:
       startup.catalog?.store.store_name ??
       startup.me.assignment?.store_name ??
-      sellerHomeMock.storeName,
+      "",
     shiftActive: Boolean(startup.shiftState.activeShift && startup.shiftState.activeShift.status === "active"),
     shiftStatus: startup.shiftState.activeShift?.status ?? ("inactive" as const),
     shiftSummary: startup.shiftState.summary,
@@ -358,26 +353,26 @@ function buildSellerStartupState(startup: SellerStartupResponse, token: string) 
     shiftHistoryPagination: startup.shiftHistory.pagination,
     shiftDetails: null,
     shiftDetailsLoading: false,
-    products: isLive && startup.catalog ? mapCatalogProducts(startup.catalog) : sellerHomeMock.products,
-    draft: isLive ? startup.draft : null,
-    sales: isLive && startup.sales ? startup.sales.sales : [],
-    inventoryHistory: isLive && startup.inventoryHistory ? startup.inventoryHistory.items : [],
+    products: startup.catalog ? mapCatalogProducts(startup.catalog) : [],
+    draft: startup.draft,
+    sales: startup.sales ? startup.sales.sales : [],
+    inventoryHistory: startup.inventoryHistory ? startup.inventoryHistory.items : [],
   };
 }
 
 export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
-  mode: "demo",
+  mode: "live",
   loading: true,
   actionLoading: false,
   error: null,
   storeId: null,
-  storeName: sellerHomeMock.storeName,
-  operatorName: sellerHomeMock.operatorName,
+  storeName: "",
+  operatorName: "",
   shiftActive: false,
   shiftStatus: "inactive",
   shiftSummary: null,
-  localIpLabel: sellerHomeMock.localIpLabel,
-  products: sellerHomeMock.products,
+  localIpLabel: "",
+  products: [],
   draft: null,
   sales: [],
   inventoryHistory: [],
@@ -402,18 +397,11 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       let token = resolveCurrentToken(get().token);
 
       if (!token) {
-        set({ loading: true });
-        const session = await apiPost<AuthSessionResponse>("/auth/dev-login", {
-          telegramId: config.devTelegramId,
-        });
-        token = session.token;
-        setStoredToken(token);
         set({
-          token,
-          operatorName: session.user.full_name,
-          storeId: session.assignment?.store_id ?? null,
-          storeName: session.assignment?.store_name ?? sellerHomeMock.storeName,
+          loading: false,
+          error: "Missing auth session",
         });
+        return;
       }
 
       if (token !== get().token) {
@@ -496,10 +484,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       }
 
       set({
-        mode: "demo",
+        mode: "live",
         loading: false,
         error: error instanceof Error ? error.message : "Failed to bootstrap seller home",
-        products: sellerHomeMock.products,
+        products: [],
         draft: null,
         sales: [],
         inventoryHistory: [],
@@ -717,7 +705,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     set({
       actionLoading: false,
       error: null,
-      mode: "demo",
+      mode: "live",
       shiftActive: false,
       shiftStatus: "inactive",
       shiftSummary: null,

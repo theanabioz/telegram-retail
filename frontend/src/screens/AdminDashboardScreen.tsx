@@ -5688,42 +5688,6 @@ export function AdminDashboardScreen({
                 </HStack>
               </VStack>
             </Box>
-            <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <Text fontWeight="900" fontSize="lg">
-                  {t("settings.developerSwitch.title")}
-                </Text>
-                <Text color="surface.500" fontSize="sm">
-                  {t("settings.developerSwitch.adminDescription")}
-                </Text>
-                <HStack spacing={3}>
-                  <Button
-                    flex="1"
-                    borderRadius="16px"
-                    bg={currentPanel === "seller" ? "brand.500" : "rgba(241,240,236,0.95)"}
-                    color={currentPanel === "seller" ? "white" : "surface.800"}
-                    _hover={{
-                      bg: currentPanel === "seller" ? "brand.600" : "rgba(225,223,218,0.95)",
-                    }}
-                    onClick={() => void onSwitchPanel("seller")}
-                  >
-                    {t("common.seller")}
-                  </Button>
-                  <Button
-                    flex="1"
-                    borderRadius="16px"
-                    bg={currentPanel === "admin" ? "brand.500" : "rgba(241,240,236,0.95)"}
-                    color={currentPanel === "admin" ? "white" : "surface.800"}
-                    _hover={{
-                      bg: currentPanel === "admin" ? "brand.600" : "rgba(225,223,218,0.95)",
-                    }}
-                    onClick={() => void onSwitchPanel("admin")}
-                  >
-                    {t("common.admin")}
-                  </Button>
-                </HStack>
-              </VStack>
-            </Box>
           </VStack>
         );
       case "overview":

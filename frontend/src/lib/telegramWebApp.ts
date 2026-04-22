@@ -1,6 +1,7 @@
 export type TelegramWebAppNative = {
   platform?: string;
   version?: string;
+  initData?: string;
   viewportHeight?: number;
   isFullscreen?: boolean;
   isOrientationLocked?: boolean;
