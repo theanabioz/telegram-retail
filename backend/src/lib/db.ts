@@ -63,3 +63,11 @@ export async function withTransaction<T>(callback: (client: PoolClient) => Promi
     client.release();
   }
 }
+
+export async function closeDbPool() {
+  if (!pool) {
+    return;
+  }
+
+  await pool.end();
+}

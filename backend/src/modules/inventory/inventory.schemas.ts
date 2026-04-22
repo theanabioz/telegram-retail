@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const inventoryOperationBodySchema = z.object({
   productId: z.string().uuid(),
-  quantity: z.number().positive(),
+  quantity: z.number().positive().max(1_000_000),
   reason: z.string().trim().min(1).max(500),
 });
 

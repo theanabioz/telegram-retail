@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyAppJwt } from "../modules/auth/jwt.js";
 import { HttpError } from "../lib/http-error.js";
+import { refreshSessionPayload } from "../modules/auth/auth.service.js";
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
@@ -12,8 +13,14 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const token = header.slice("Bearer ".length);
 
   try {
-    req.auth = verifyAppJwt(token);
-    next();
+    const payload = verifyAppJwt(token);
+
+    refreshSessionPayload(payload)
+      .then((session) => {
+        req.auth = session;
+        next();
+      })
+      .catch(next);
   } catch {
     next(new HttpError(401, "Invalid or expired token"));
   }

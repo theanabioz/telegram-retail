@@ -1,19 +1,38 @@
 import { z } from "zod";
 
-export const addDraftItemBodySchema = z.object({
-  productId: z.string().uuid(),
-  quantity: z.number().positive(),
-  finalPrice: z.number().nonnegative().optional(),
-  discountType: z.enum(["amount", "percent"]).optional(),
-  discountValue: z.number().nonnegative().optional(),
-});
+const quantitySchema = z.number().positive().max(999);
+const moneySchema = z.number().nonnegative().max(100_000);
+const discountTypeSchema = z.enum(["amount", "percent"]);
+const discountValueSchema = z.number().nonnegative().max(100_000);
 
-export const updateDraftItemBodySchema = z.object({
-  quantity: z.number().positive().optional(),
-  finalPrice: z.number().nonnegative().optional(),
-  discountType: z.enum(["amount", "percent"]).nullable().optional(),
-  discountValue: z.number().nonnegative().nullable().optional(),
-});
+function validateDiscountValue(value: { discountType?: "amount" | "percent" | null; discountValue?: number | null }, ctx: z.RefinementCtx) {
+  if (value.discountType === "percent" && value.discountValue != null && value.discountValue > 100) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["discountValue"],
+      message: "Percent discount cannot exceed 100",
+    });
+  }
+}
+
+export const addDraftItemBodySchema = z
+  .object({
+    productId: z.string().uuid(),
+    quantity: quantitySchema,
+    finalPrice: moneySchema.optional(),
+    discountType: discountTypeSchema.optional(),
+    discountValue: discountValueSchema.optional(),
+  })
+  .superRefine(validateDiscountValue);
+
+export const updateDraftItemBodySchema = z
+  .object({
+    quantity: quantitySchema.optional(),
+    finalPrice: moneySchema.optional(),
+    discountType: discountTypeSchema.nullable().optional(),
+    discountValue: discountValueSchema.nullable().optional(),
+  })
+  .superRefine(validateDiscountValue);
 
 export const draftItemParamsSchema = z.object({
   itemId: z.string().uuid(),
@@ -38,7 +57,7 @@ export const createReturnBodySchema = z.object({
     .array(
       z.object({
         saleItemId: z.string().uuid(),
-        quantity: z.number().positive(),
+        quantity: quantitySchema,
       })
     )
     .min(1),

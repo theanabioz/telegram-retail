@@ -92,3 +92,28 @@ export async function getCurrentSessionUser(userId: string) {
     assignment,
   };
 }
+
+export async function refreshSessionPayload(payload: JwtPayload): Promise<JwtPayload> {
+  const user = await findUserById(payload.app_user_id);
+
+  if (!user || !user.is_active) {
+    throw new HttpError(401, "Authenticated user no longer exists");
+  }
+
+  if (user.role !== payload.app_role) {
+    throw new HttpError(403, "User role changed, please sign in again");
+  }
+
+  const assignment = user.role === "seller" ? await findCurrentAssignment(user.id) : null;
+
+  if (user.role === "seller" && !assignment) {
+    throw new HttpError(403, "Seller has no active store assignment");
+  }
+
+  return {
+    ...payload,
+    telegram_id: user.telegram_id,
+    full_name: user.full_name,
+    store_id: assignment?.store_id ?? null,
+  };
+}

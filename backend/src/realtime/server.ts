@@ -1,6 +1,7 @@
 import type { Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { type JwtPayload, verifyAppJwt } from "../modules/auth/jwt.js";
+import { refreshSessionPayload } from "../modules/auth/auth.service.js";
 
 export type RealtimeEventType =
   | "connected"
@@ -93,7 +94,7 @@ class RealtimeServer {
 
     socket.once("close", cleanup);
     socket.once("error", cleanup);
-    socket.once("message", (data) => {
+    socket.once("message", async (data) => {
       try {
         const payload = JSON.parse(data.toString()) as { type?: string; token?: string };
 
@@ -102,7 +103,7 @@ class RealtimeServer {
           return;
         }
 
-        const session = verifyAppJwt(payload.token);
+        const session = await refreshSessionPayload(verifyAppJwt(payload.token));
         cleanup();
         this.registerConnection(socket, session);
       } catch {

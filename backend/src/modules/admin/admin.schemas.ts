@@ -95,7 +95,7 @@ export const adminInventoryAdjustmentBodySchema = z.object({
   storeId: z.string().uuid(),
   productId: z.string().uuid(),
   movementType: z.enum(["manual_adjustment", "restock", "writeoff"]),
-  quantity: z.number().nonnegative(),
+  quantity: z.number().nonnegative().max(1_000_000),
   reason: z.string().trim().min(1).max(500),
 });
 
