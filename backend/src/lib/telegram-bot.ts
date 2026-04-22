@@ -77,6 +77,10 @@ type BotConversationState =
   | { kind: "product.sku"; productId: string }
   | { kind: "product.price"; productId: string };
 
+type TelegramSentMessage = {
+  message_id: number;
+};
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -115,16 +119,6 @@ function parsePrice(text: string) {
   return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null;
 }
 
-function buildAppUrl() {
-  return `https://${env.APP_DOMAIN}/`;
-}
-
-function buildOpenAppKeyboard(label = "Открыть Mini App"): TelegramInlineKeyboardMarkup {
-  return {
-    inline_keyboard: [[{ text: label, url: buildAppUrl() }]],
-  };
-}
-
 function combineKeyboards(
   ...rows: Array<TelegramInlineKeyboardMarkup | null | undefined>
 ): TelegramInlineKeyboardMarkup | undefined {
@@ -147,18 +141,20 @@ async function sendOrEditMessage(input: {
         parseMode: "HTML",
         replyMarkup: input.replyMarkup,
       });
-      return;
+      return input.messageId;
     } catch {
       // Fall through to sending a fresh message if editing is no longer possible.
     }
   }
 
-  await sendTelegramMessage({
+  const message = (await sendTelegramMessage({
     chatId: input.chatId,
     text: input.text,
     parseMode: "HTML",
     replyMarkup: input.replyMarkup,
-  });
+  })) as TelegramSentMessage;
+
+  return message.message_id;
 }
 
 function buildAccessDeniedText() {
@@ -194,20 +190,63 @@ async function renderSellerMenu(chatId: number, seller: AppUser, messageId?: num
     "В этом чате доступны только твои данные по смене.",
   ].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
-    replyMarkup: combineKeyboards(
-      buildOpenAppKeyboard(),
-      {
-        inline_keyboard: [
-          [{ text: "Статус смены", callback_data: "seller:shift" }],
-          [{ text: "Отчет по последней смене", callback_data: "seller:last-shift" }],
-          [{ text: "Обновить", callback_data: "home" }],
-        ],
-      }
-    ),
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "Статус смены", callback_data: "seller:shift" }],
+        [{ text: "Отчет по последней смене", callback_data: "seller:last-shift" }],
+        [{ text: "Обновить", callback_data: "home" }],
+      ],
+    },
+  });
+}
+
+async function renderCompactHome(chatId: number, user: AppUser, messageId?: number) {
+  if (user.role === "admin") {
+    const dashboard = await getAdminDashboard({
+      recentSalesLimit: 1,
+      lowStockLimit: 1,
+    });
+
+    return sendOrEditMessage({
+      chatId,
+      messageId,
+      text: [
+        `<b>${escapeHtml(user.full_name)}</b>`,
+        `<b>Роль:</b> администратор`,
+        `<b>Выручка сегодня:</b> ${escapeHtml(formatCurrency(dashboard.summary.totalRevenueToday))}`,
+        `<b>Продажи сегодня:</b> ${dashboard.summary.completedSalesToday}`,
+        "",
+        "Панель управления скрыта, чтобы чат оставался чистым.",
+      ].join("\n"),
+      replyMarkup: {
+        inline_keyboard: [[{ text: "Открыть панель", callback_data: "admin:menu" }]],
+      },
+    });
+  }
+
+  const [shiftState, assignment] = await Promise.all([
+    getShiftState(user.id),
+    findCurrentAssignment(user.id),
+  ]);
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: [
+      `<b>${escapeHtml(user.full_name)}</b>`,
+      `<b>Роль:</b> продавец`,
+      `<b>Магазин:</b> ${escapeHtml(assignment?.store_name ?? "Не назначен")}`,
+      `<b>Смена:</b> ${shiftState.activeShift ? "открыта" : "закрыта"}`,
+      "",
+      "Детальное меню скрыто, чтобы не занимать чат.",
+    ].join("\n"),
+    replyMarkup: {
+      inline_keyboard: [[{ text: "Открыть меню", callback_data: "seller:menu" }]],
+    },
   });
 }
 
@@ -227,7 +266,7 @@ async function renderSellerShift(chatId: number, seller: AppUser, messageId?: nu
       ].join("\n")
     : [`<b>Текущая смена</b>`, "", "Сейчас активной смены нет."].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
@@ -264,7 +303,7 @@ async function renderSellerLastShift(chatId: number, seller: AppUser, messageId?
     `<b>Карта:</b> ${details.salesSummary.cardSalesCount} шт.`,
   ].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
@@ -291,21 +330,18 @@ async function renderAdminMenu(chatId: number, admin: AppUser, messageId?: numbe
     "Выбери раздел управления.",
   ].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
-    replyMarkup: combineKeyboards(
-      buildOpenAppKeyboard(),
-      {
-        inline_keyboard: [
-          [{ text: "Сводка", callback_data: "admin:dashboard" }],
-          [{ text: "Продавцы", callback_data: "admin:sellers" }],
-          [{ text: "Магазины", callback_data: "admin:stores" }],
-          [{ text: "Товары", callback_data: "admin:products" }],
-        ],
-      }
-    ),
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "Сводка", callback_data: "admin:dashboard" }],
+        [{ text: "Продавцы", callback_data: "admin:sellers" }],
+        [{ text: "Магазины", callback_data: "admin:stores" }],
+        [{ text: "Товары", callback_data: "admin:products" }],
+      ],
+    },
   });
 }
 
@@ -331,7 +367,7 @@ async function renderAdminDashboard(chatId: number, messageId?: number) {
     `<b>Ближайший риск:</b> ${escapeHtml(lowStockLine)}`,
   ].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
@@ -350,7 +386,7 @@ async function renderAdminSellers(chatId: number, messageId?: number) {
     },
   ]);
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Продавцы</b>\n\nУправление сотрудниками и их магазинами.`,
@@ -381,7 +417,7 @@ async function renderAdminSellerDetails(chatId: number, sellerId: string, messag
     `<b>Выручка:</b> ${escapeHtml(formatCurrency(seller.revenue))}`,
   ].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
@@ -398,7 +434,7 @@ async function renderAdminSellerDetails(chatId: number, sellerId: string, messag
 }
 
 async function renderAdminSellerDeleteConfirm(chatId: number, sellerId: string, messageId?: number) {
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Удалить продавца?</b>\n\nЭто действие необратимо, если у продавца нет операционной истории.`,
@@ -421,7 +457,7 @@ async function renderAssignStorePicker(
     .filter((store) => store.isActive)
     .map((store) => [{ text: store.name, callback_data: `pick:store:${store.id}` }]);
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Выбери магазин для продавца</b>`,
@@ -440,7 +476,7 @@ async function renderAdminStores(chatId: number, messageId?: number) {
     },
   ]);
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Магазины</b>\n\nСоздание, редактирование и контроль статуса.`,
@@ -471,7 +507,7 @@ async function renderAdminStoreDetails(chatId: number, storeId: string, messageI
     `<b>Выручка сегодня:</b> ${escapeHtml(formatCurrency(store.revenueToday))}`,
   ].join("\n");
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
@@ -488,7 +524,7 @@ async function renderAdminStoreDetails(chatId: number, storeId: string, messageI
 }
 
 async function renderAdminStoreDeleteConfirm(chatId: number, storeId: string, messageId?: number) {
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Удалить магазин?</b>\n\nУдаление возможно только если у магазина нет операционной истории.`,
@@ -510,7 +546,7 @@ async function renderAdminProducts(chatId: number, messageId?: number) {
     },
   ]);
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Товары</b>\n\nУправление ассортиментом и ценами.`,
@@ -544,7 +580,7 @@ async function renderAdminProductDetails(chatId: number, productId: string, mess
   const archiveLabel = product.isArchived ? "Восстановить" : "В архив";
   const archiveAction = product.isArchived ? `admin:product:restore:${product.id}` : `admin:product:archive:${product.id}`;
 
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text,
@@ -563,7 +599,7 @@ async function renderAdminProductDetails(chatId: number, productId: string, mess
 }
 
 async function renderAdminProductDeleteConfirm(chatId: number, productId: string, messageId?: number) {
-  await sendOrEditMessage({
+  return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Удалить товар?</b>\n\nУдаление возможно только пока у товара нет истории продаж и движения склада.`,
@@ -578,36 +614,32 @@ async function renderAdminProductDeleteConfirm(chatId: number, productId: string
 
 async function showHome(chatId: number, user: AppUser, messageId?: number) {
   if (!user.is_active) {
-    await sendOrEditMessage({
+    return sendOrEditMessage({
       chatId,
       messageId,
       text: buildAccessDeniedText(),
-      replyMarkup: buildOpenAppKeyboard(),
     });
-    return;
   }
 
-  if (user.role === "admin") {
-    await renderAdminMenu(chatId, user, messageId);
-    return;
-  }
-
-  await renderSellerMenu(chatId, user, messageId);
+  return renderCompactHome(chatId, user, messageId);
 }
 
 export function startTelegramBot() {
   const conversationState = new Map<number, BotConversationState>();
+  const lastUiMessageByChat = new Map<number, number>();
   let stopped = false;
   let offset = 0;
 
   async function handleDenied(chatId: number, messageId?: number) {
     conversationState.delete(chatId);
-    await sendOrEditMessage({
+    const renderedMessageId = await sendOrEditMessage({
       chatId,
       messageId,
       text: buildAccessDeniedText(),
-      replyMarkup: buildOpenAppKeyboard(),
     });
+    if (renderedMessageId) {
+      lastUiMessageByChat.set(chatId, renderedMessageId);
+    }
   }
 
   async function resolveUser(telegramId: number) {
@@ -627,7 +659,10 @@ export function startTelegramBot() {
         chatId,
         text: "Действие отменено.",
       });
-      await showHome(chatId, user);
+      const renderedMessageId = await showHome(chatId, user, lastUiMessageByChat.get(chatId));
+      if (renderedMessageId) {
+        lastUiMessageByChat.set(chatId, renderedMessageId);
+      }
       return true;
     }
 
@@ -839,6 +874,10 @@ export function startTelegramBot() {
     }
 
     if (user.role === "seller") {
+      if (data === "seller:menu") {
+        await renderSellerMenu(chatId, user, messageId);
+        return;
+      }
       if (data === "seller:shift") {
         await renderSellerShift(chatId, user, messageId);
         return;
@@ -851,6 +890,11 @@ export function startTelegramBot() {
       return;
     }
 
+    if (data === "admin:menu") {
+      conversationState.delete(chatId);
+      await renderAdminMenu(chatId, user, messageId);
+      return;
+    }
     if (data === "admin:dashboard") {
       conversationState.delete(chatId);
       await renderAdminDashboard(chatId, messageId);
@@ -1133,7 +1177,10 @@ export function startTelegramBot() {
 
     if (text === "/start" || text === "/menu") {
       conversationState.delete(chatId);
-      await showHome(chatId, user);
+      const renderedMessageId = await showHome(chatId, user, lastUiMessageByChat.get(chatId));
+      if (renderedMessageId) {
+        lastUiMessageByChat.set(chatId, renderedMessageId);
+      }
       return;
     }
 
