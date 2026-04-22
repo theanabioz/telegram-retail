@@ -10,6 +10,7 @@ done
 
 ROOT_DIR="$(cd "$(dirname "${SOURCE_PATH}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env.server"
+COMPOSE_FILE="${ROOT_DIR}/docker-compose.server.yml"
 BACKUP_DIR="${BACKUP_DIR:-/opt/telegram-retail/backups/manual}"
 source "${ROOT_DIR}/scripts/server/load-env.sh"
 
@@ -24,8 +25,17 @@ mkdir -p "${BACKUP_DIR}"
 
 stamp="$(date +%Y-%m-%d_%H-%M-%S)"
 target="${BACKUP_DIR}/postgres_${stamp}.sql.gz"
+tmp_target="${target}.tmp"
 
-docker compose --env-file "${ENV_FILE}" -f "${ROOT_DIR}/docker-compose.server.yml" exec -T postgres \
-  pg_dump -U "${POSTGRES_USER:-telegram_retail}" "${POSTGRES_DB:-telegram_retail}" | gzip > "${target}"
+cleanup() {
+  rm -f "${tmp_target}"
+}
+trap cleanup EXIT
+
+docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
+  pg_dump -U "${POSTGRES_USER:-telegram_retail}" "${POSTGRES_DB:-telegram_retail}" | gzip > "${tmp_target}"
+
+mv "${tmp_target}" "${target}"
+trap - EXIT
 
 echo "Backup written to ${target}"

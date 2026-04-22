@@ -43,23 +43,23 @@ POSTGRES_DB="${POSTGRES_DB:-telegram_retail}"
 POSTGRES_USER="${POSTGRES_USER:-telegram_retail}"
 
 echo "==> Waiting for postgres container"
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d postgres >/dev/null
-until docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
+docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d postgres >/dev/null
+until docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
   pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; do
   sleep 2
 done
 
 echo "==> Resetting public schema in ${POSTGRES_DB}"
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
+docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
   psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -v ON_ERROR_STOP=1 \
   -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 echo "==> Restoring ${BACKUP_FILE}"
 if [[ "${BACKUP_FILE}" == *.gz ]]; then
-  gzip -dc "${BACKUP_FILE}" | docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
+  gzip -dc "${BACKUP_FILE}" | docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
     psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -v ON_ERROR_STOP=1
 else
-  cat "${BACKUP_FILE}" | docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
+  cat "${BACKUP_FILE}" | docker compose --profile selfhosted-db --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T postgres \
     psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -v ON_ERROR_STOP=1
 fi
 
