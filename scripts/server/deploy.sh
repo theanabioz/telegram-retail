@@ -24,3 +24,5 @@ chown -R 70:70 /opt/telegram-retail/backups
 
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" --profile selfhosted-db up -d --build
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" --profile selfhosted-db ps
+
+"${ROOT_DIR}/scripts/server/update-telegram-menu-button.sh"
