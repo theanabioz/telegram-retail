@@ -1,5 +1,10 @@
 import { HttpError } from "../../lib/http-error.js";
-import { applyInventoryMovement } from "../inventory/inventory.service.js";
+import { withTransaction } from "../../lib/db.js";
+import {
+  applyInventoryMovement,
+  applyInventoryMovementInTransaction,
+  notifyInventoryMovementIfNeeded,
+} from "../inventory/inventory.service.js";
 import { findOpenShiftByUserId } from "../shifts/shifts.repository.js";
 import { findCurrentAssignment } from "../users/users.repository.js";
 import {
@@ -266,59 +271,63 @@ export async function checkoutDraft(userId: string, paymentMethod: "cash" | "car
     throw new HttpError(409, "Draft cart is empty");
   }
 
-  const catalog = await getSellerCatalog(assignment.store_id);
+  const result = await withTransaction(async (client) => {
+    const sale = await createSale(
+      {
+        sellerId: userId,
+        storeId: assignment.store_id,
+        shiftId: shift.id,
+        paymentMethod,
+        subtotalAmount: draftState.summary.subtotalAmount,
+        discountAmount: draftState.summary.discountAmount,
+        totalAmount: draftState.summary.totalAmount,
+      },
+      client
+    );
 
-  for (const item of draftState.items) {
-    const stockItem = catalog.find((entry) => entry.product_id === item.product_id);
-    const availableStock = stockItem?.stock_quantity ?? 0;
+    await insertSaleItems(
+      sale.id,
+      draftState.items.map((item) => ({
+        productId: item.product_id,
+        productNameSnapshot: item.product_name_snapshot,
+        skuSnapshot: item.sku_snapshot,
+        basePrice: item.base_price,
+        finalPrice: item.final_price,
+        discountType: item.discount_type,
+        discountValue: item.discount_value,
+        quantity: item.quantity,
+        lineTotal: item.line_total,
+      })),
+      client
+    );
 
-    if (availableStock < item.quantity) {
-      throw new HttpError(409, `Insufficient stock for ${item.product_name_snapshot}`);
+    const movements = [];
+    for (const item of draftState.items) {
+      const movementInput = {
+        storeId: assignment.store_id,
+        productId: item.product_id,
+        actorUserId: userId,
+        movementType: "sale" as const,
+        quantityDelta: -item.quantity,
+        saleId: sale.id,
+        shiftId: shift.id,
+        reason: `Sale checkout for ${item.product_name_snapshot}`,
+      };
+      const movement = await applyInventoryMovementInTransaction(movementInput, client);
+      movements.push({ input: movementInput, movement });
     }
-  }
 
-  const sale = await createSale({
-    sellerId: userId,
-    storeId: assignment.store_id,
-    shiftId: shift.id,
-    paymentMethod,
-    subtotalAmount: draftState.summary.subtotalAmount,
-    discountAmount: draftState.summary.discountAmount,
-    totalAmount: draftState.summary.totalAmount,
+    await deleteDraftSale(draftState.draft.id, client);
+
+    return { sale, movements };
   });
 
-  await insertSaleItems(
-    sale.id,
-    draftState.items.map((item) => ({
-      productId: item.product_id,
-      productNameSnapshot: item.product_name_snapshot,
-      skuSnapshot: item.sku_snapshot,
-      basePrice: item.base_price,
-      finalPrice: item.final_price,
-      discountType: item.discount_type,
-      discountValue: item.discount_value,
-      quantity: item.quantity,
-      lineTotal: item.line_total,
-    }))
-  );
-
-  for (const item of draftState.items) {
-    await applyInventoryMovement({
-      storeId: assignment.store_id,
-      productId: item.product_id,
-      actorUserId: userId,
-      movementType: "sale",
-      quantityDelta: -item.quantity,
-      saleId: sale.id,
-      shiftId: shift.id,
-      reason: `Sale checkout for ${item.product_name_snapshot}`,
-    });
+  for (const movement of result.movements) {
+    notifyInventoryMovementIfNeeded(movement.input, movement.movement);
   }
 
-  await deleteDraftSale(draftState.draft.id);
-
   return {
-    sale,
+    sale: result.sale,
     items: draftState.items,
     summary: draftState.summary,
   };

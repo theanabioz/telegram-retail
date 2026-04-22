@@ -1,5 +1,5 @@
 import { HttpError } from "../../lib/http-error.js";
-import { maybeOne, one, queryDb } from "../../lib/db.js";
+import { maybeOne, one, queryDb, type DbLike } from "../../lib/db.js";
 
 export type AdminSaleRow = {
   id: string;
@@ -351,13 +351,14 @@ export async function createAdminProduct(input: {
   sku: string;
   default_price: number;
   is_active: boolean;
-}) {
+}, db?: DbLike) {
   try {
     const row = await one<AdminProductRow>(
       `insert into public.products (name, sku, default_price, is_active)
        values ($1, $2, $3, $4)
        returning id, name, sku, default_price, is_active, archived_at, created_at, updated_at`,
-      [input.name, input.sku, input.default_price, input.is_active]
+      [input.name, input.sku, input.default_price, input.is_active],
+      db
     );
 
     return mapTimestamps(mapNumbers(row, ["default_price"]), ["archived_at", "created_at", "updated_at"]);
@@ -457,7 +458,7 @@ export async function restoreAdminProduct(productId: string) {
   }
 }
 
-export async function createStoreProductsForProduct(input: { productId: string; price: number; storeIds: string[] }) {
+export async function createStoreProductsForProduct(input: { productId: string; price: number; storeIds: string[] }, db?: DbLike) {
   if (input.storeIds.length === 0) {
     return;
   }
@@ -475,14 +476,15 @@ export async function createStoreProductsForProduct(input: { productId: string; 
        values ${tuples.join(", ")}
        on conflict (store_id, product_id)
        do update set price = excluded.price, is_enabled = excluded.is_enabled`,
-      values
+      values,
+      db
     );
   } catch (error) {
     throw new HttpError(500, `Failed to propagate product to stores: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export async function createInventoryRowsForProduct(input: { productId: string; storeIds: string[] }) {
+export async function createInventoryRowsForProduct(input: { productId: string; storeIds: string[] }, db?: DbLike) {
   if (input.storeIds.length === 0) {
     return;
   }
@@ -500,7 +502,8 @@ export async function createInventoryRowsForProduct(input: { productId: string; 
        values ${tuples.join(", ")}
        on conflict (store_id, product_id)
        do update set quantity = public.inventory.quantity`,
-      values
+      values,
+      db
     );
   } catch (error) {
     throw new HttpError(500, `Failed to create product inventory rows: ${error instanceof Error ? error.message : String(error)}`);
@@ -616,7 +619,7 @@ export async function updateAdminStore(
   }
 }
 
-export async function closeCurrentAssignment(userId: string) {
+export async function closeCurrentAssignment(userId: string, db?: DbLike) {
   try {
     await queryDb(
       `update public.user_store_assignments
@@ -624,20 +627,22 @@ export async function closeCurrentAssignment(userId: string) {
            ended_at = now()
        where user_id = $1
          and is_current = true`,
-      [userId]
+      [userId],
+      db
     );
   } catch (error) {
     throw new HttpError(500, `Failed to close current assignment: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export async function createUserStoreAssignment(input: { userId: string; storeId: string; assignedBy: string }) {
+export async function createUserStoreAssignment(input: { userId: string; storeId: string; assignedBy: string }, db?: DbLike) {
   try {
     const row = await one<AdminAssignmentRow>(
       `insert into public.user_store_assignments (user_id, store_id, assigned_by, is_current)
        values ($1, $2, $3, true)
        returning id, user_id, store_id, assigned_by, started_at, is_current`,
-      [input.userId, input.storeId, input.assignedBy]
+      [input.userId, input.storeId, input.assignedBy],
+      db
     );
     return mapTimestamps(row, ["started_at"]);
   } catch (error) {

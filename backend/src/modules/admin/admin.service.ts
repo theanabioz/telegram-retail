@@ -29,6 +29,7 @@ import {
   updateAdminStoreProduct,
 } from "./admin.repository.js";
 import { HttpError } from "../../lib/http-error.js";
+import { withTransaction } from "../../lib/db.js";
 import { findCurrentAssignment, findUserById } from "../users/users.repository.js";
 import { listInventoryHistory } from "../inventory/inventory.repository.js";
 import { runAdminInventoryAdjustment } from "../inventory/inventory.service.js";
@@ -581,7 +582,28 @@ export async function assignSellerToStore(input: {
   }
 
   if (currentAssignment) {
-    await closeCurrentAssignment(seller.id);
+    const assignment = await withTransaction(async (client) => {
+      await closeCurrentAssignment(seller.id, client);
+      return createUserStoreAssignment(
+        {
+          userId: seller.id,
+          storeId: store.id,
+          assignedBy: input.adminUserId,
+        },
+        client
+      );
+    });
+
+    return {
+      assignment: {
+        id: assignment.id,
+        sellerId: seller.id,
+        sellerName: seller.full_name,
+        storeId: store.id,
+        storeName: store.name,
+        startedAt: assignment.started_at,
+      },
+    };
   }
 
   const assignment = await createUserStoreAssignment({
@@ -672,29 +694,38 @@ export async function createProduct(input: {
   defaultPrice: number;
   isActive?: boolean;
 }) {
-  const [stores, product] = await Promise.all([
-    listAdminStores(),
-    createAdminProduct({
-      name: input.name.trim(),
-      sku: input.sku.trim(),
-      default_price: input.defaultPrice,
-      is_active: input.isActive ?? true,
-    }),
-  ]);
+  const stores = await listAdminStores();
+  const product = await withTransaction(async (client) => {
+    const created = await createAdminProduct(
+      {
+        name: input.name.trim(),
+        sku: input.sku.trim(),
+        default_price: input.defaultPrice,
+        is_active: input.isActive ?? true,
+      },
+      client
+    );
 
-  const storeIds = stores.map((store) => store.id);
+    const storeIds = stores.map((store) => store.id);
 
-  await Promise.all([
-    createStoreProductsForProduct({
-      productId: product.id,
-      price: Number(product.default_price),
-      storeIds,
-    }),
-    createInventoryRowsForProduct({
-      productId: product.id,
-      storeIds,
-    }),
-  ]);
+    await createStoreProductsForProduct(
+      {
+        productId: created.id,
+        price: Number(created.default_price),
+        storeIds,
+      },
+      client
+    );
+    await createInventoryRowsForProduct(
+      {
+        productId: created.id,
+        storeIds,
+      },
+      client
+    );
+
+    return created;
+  });
 
   return {
     product: {

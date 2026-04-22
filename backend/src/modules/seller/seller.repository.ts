@@ -1,5 +1,5 @@
 import { HttpError } from "../../lib/http-error.js";
-import { maybeOne, one, queryDb } from "../../lib/db.js";
+import { maybeOne, one, queryDb, type DbLike } from "../../lib/db.js";
 
 export type SellerCatalogRow = {
   product_id: string;
@@ -310,9 +310,9 @@ export async function deleteDraftItem(itemId: string) {
   }
 }
 
-export async function deleteDraftSale(draftSaleId: string) {
+export async function deleteDraftSale(draftSaleId: string, db?: DbLike) {
   try {
-    await queryDb(`delete from public.draft_sales where id = $1`, [draftSaleId]);
+    await queryDb(`delete from public.draft_sales where id = $1`, [draftSaleId], db);
   } catch (error) {
     throw new HttpError(500, `Failed to delete draft sale: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -326,7 +326,7 @@ export async function createSale(input: {
   subtotalAmount: number;
   discountAmount: number;
   totalAmount: number;
-}) {
+}, db?: DbLike) {
   try {
     const row = await one<SaleRecord>(
       `insert into public.sales (
@@ -342,7 +342,8 @@ export async function createSale(input: {
         input.subtotalAmount,
         input.discountAmount,
         input.totalAmount,
-      ]
+      ],
+      db
     );
 
     return toNumber(row, ["subtotal_amount", "discount_amount", "total_amount"]);
@@ -363,7 +364,8 @@ export async function insertSaleItems(
     discountValue: number | null;
     quantity: number;
     lineTotal: number;
-  }>
+  }>,
+  db?: DbLike
 ) {
   if (items.length === 0) {
     return;
@@ -394,7 +396,8 @@ export async function insertSaleItems(
          discount_type, discount_value, quantity, line_total
        )
        values ${tuples.join(", ")}`,
-      values
+      values,
+      db
     );
   } catch (error) {
     throw new HttpError(500, `Failed to insert sale items: ${error instanceof Error ? error.message : String(error)}`);
