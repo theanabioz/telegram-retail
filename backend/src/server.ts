@@ -2,11 +2,13 @@ import { createServer } from "node:http";
 import { createApp } from "./app.js";
 import { env } from "./config.js";
 import { closeDbPool } from "./lib/db.js";
+import { startTelegramBot } from "./lib/telegram-bot.js";
 import { attachRealtimeServer } from "./realtime/server.js";
 
 const app = createApp();
 const server = createServer(app);
 const realtimeServer = attachRealtimeServer(server);
+const telegramBot = startTelegramBot();
 let isShuttingDown = false;
 
 async function closeHttpServer() {
@@ -37,6 +39,7 @@ async function shutdown(reason: string, exitCode: number) {
   forceExitTimer.unref();
 
   try {
+    telegramBot.dispose();
     realtimeServer.dispose();
     await closeHttpServer();
     await closeDbPool();

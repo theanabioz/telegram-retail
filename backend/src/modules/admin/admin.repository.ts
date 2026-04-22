@@ -318,6 +318,86 @@ export async function createAdminUser(input: {
   }
 }
 
+export async function updateAdminUser(
+  userId: string,
+  updates: Partial<Pick<AdminUserRow, "full_name" | "is_active">>
+) {
+  try {
+    const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (entries.length === 0) {
+      return await maybeOne<AdminUserRow>(
+        `select id, telegram_id, full_name, role, is_active
+         from public.users
+         where id = $1`,
+        [userId]
+      );
+    }
+
+    const columns = entries.map(([key], index) => `${key} = $${index + 2}`);
+    const values = entries.map(([, value]) => value);
+    return await maybeOne<AdminUserRow>(
+      `update public.users
+       set ${columns.join(", ")}
+       where id = $1
+       returning id, telegram_id, full_name, role, is_active`,
+      [userId, ...values]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to update user: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function getUserReferenceCounts(userId: string) {
+  try {
+    const [assignments, shifts, sales, returns, inventoryMovements, impersonationAsAdmin, impersonationAsSeller] =
+      await Promise.all([
+        maybeOne<{ count: string }>(
+          `select count(*)::text as count from public.user_store_assignments where user_id = $1`,
+          [userId]
+        ),
+        maybeOne<{ count: string }>(`select count(*)::text as count from public.shifts where user_id = $1`, [userId]),
+        maybeOne<{ count: string }>(`select count(*)::text as count from public.sales where seller_id = $1`, [userId]),
+        maybeOne<{ count: string }>(`select count(*)::text as count from public.returns where seller_id = $1`, [userId]),
+        maybeOne<{ count: string }>(
+          `select count(*)::text as count from public.inventory_movements where actor_user_id = $1`,
+          [userId]
+        ),
+        maybeOne<{ count: string }>(
+          `select count(*)::text as count from public.impersonation_logs where admin_user_id = $1`,
+          [userId]
+        ),
+        maybeOne<{ count: string }>(
+          `select count(*)::text as count from public.impersonation_logs where seller_user_id = $1`,
+          [userId]
+        ),
+      ]);
+
+    return {
+      assignments: Number(assignments?.count ?? 0),
+      shifts: Number(shifts?.count ?? 0),
+      sales: Number(sales?.count ?? 0),
+      returns: Number(returns?.count ?? 0),
+      inventoryMovements: Number(inventoryMovements?.count ?? 0),
+      impersonationAsAdmin: Number(impersonationAsAdmin?.count ?? 0),
+      impersonationAsSeller: Number(impersonationAsSeller?.count ?? 0),
+    };
+  } catch (error) {
+    throw new HttpError(
+      500,
+      `Failed to check user references: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+export async function deleteAdminUser(userId: string) {
+  try {
+    await queryDb(`delete from public.user_store_assignments where user_id = $1`, [userId]);
+    await queryDb(`delete from public.users where id = $1`, [userId]);
+  } catch (error) {
+    throw new HttpError(500, `Failed to delete user: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function listCurrentAssignments() {
   try {
     const result = await queryDb<AdminAssignmentRow>(
@@ -665,6 +745,49 @@ export async function updateAdminStore(
     return row ? mapTimestamps(row, ["created_at", "updated_at"]) : null;
   } catch (error) {
     throw new HttpError(500, `Failed to update store: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function getStoreReferenceCounts(storeId: string) {
+  try {
+    const [assignments, shifts, sales, returns, inventoryMovements] = await Promise.all([
+      maybeOne<{ count: string }>(
+        `select count(*)::text as count
+         from public.user_store_assignments
+         where store_id = $1`,
+        [storeId]
+      ),
+      maybeOne<{ count: string }>(`select count(*)::text as count from public.shifts where store_id = $1`, [storeId]),
+      maybeOne<{ count: string }>(`select count(*)::text as count from public.sales where store_id = $1`, [storeId]),
+      maybeOne<{ count: string }>(`select count(*)::text as count from public.returns where store_id = $1`, [storeId]),
+      maybeOne<{ count: string }>(
+        `select count(*)::text as count from public.inventory_movements where store_id = $1`,
+        [storeId]
+      ),
+    ]);
+
+    return {
+      assignments: Number(assignments?.count ?? 0),
+      shifts: Number(shifts?.count ?? 0),
+      sales: Number(sales?.count ?? 0),
+      returns: Number(returns?.count ?? 0),
+      inventoryMovements: Number(inventoryMovements?.count ?? 0),
+    };
+  } catch (error) {
+    throw new HttpError(
+      500,
+      `Failed to check store references: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+export async function deleteAdminStore(storeId: string) {
+  try {
+    await queryDb(`delete from public.inventory where store_id = $1`, [storeId]);
+    await queryDb(`delete from public.store_products where store_id = $1`, [storeId]);
+    await queryDb(`delete from public.stores where id = $1`, [storeId]);
+  } catch (error) {
+    throw new HttpError(500, `Failed to delete store: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

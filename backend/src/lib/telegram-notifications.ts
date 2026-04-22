@@ -1,23 +1,10 @@
-import { env } from "../config.js";
 import { maybeOne, queryDb } from "./db.js";
-
-type TelegramUpdate = {
-  message?: {
-    chat?: {
-      id?: number;
-      type?: string;
-    };
-  };
-};
+import { sendTelegramMessage } from "./telegram-api.js";
 
 const LOW_STOCK_THRESHOLD = 10;
-const TARGET_CACHE_TTL_MS = 60_000;
 const ALERT_TIME_ZONE = "Europe/Lisbon";
 const QUIET_HOURS_START = 22;
 const QUIET_HOURS_END = 8;
-
-let cachedChatIds: string[] = [];
-let cachedAt = 0;
 
 function escapeHtml(value: string) {
   return value
@@ -80,71 +67,54 @@ function buildText(title: string, lines: string[]) {
   return [`<b>${escapeHtml(title)}</b>`, ...lines].join("\n");
 }
 
-async function telegramRequest<T>(method: string, body?: Record<string, unknown>) {
-  const response = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, {
-    method: body ? "POST" : "GET",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+async function resolveTelegramChatIds(input: {
+  roles?: Array<"admin" | "seller">;
+  userIds?: string[];
+  telegramIds?: Array<number | string>;
+}) {
+  const normalizedTelegramIds = (input.telegramIds ?? [])
+    .map((value) => String(value).trim())
+    .filter(Boolean);
 
-  const payload = (await response.json().catch(() => null)) as
-    | { ok?: boolean; result?: T; description?: string }
-    | null;
+  const roleClauses: string[] = [];
+  const params: unknown[] = [];
+  let index = 1;
 
-  if (!response.ok || !payload?.ok) {
-    throw new Error(payload?.description ?? `Telegram API ${method} failed with ${response.status}`);
+  if ((input.roles ?? []).length > 0) {
+    roleClauses.push(`role = any($${index++}::public.user_role[])`);
+    params.push(input.roles);
   }
 
-  return payload.result as T;
-}
-
-async function resolveTelegramAlertChatIds() {
-  if (env.TELEGRAM_ALERT_CHAT_IDS.length > 0) {
-    return env.TELEGRAM_ALERT_CHAT_IDS;
+  if ((input.userIds ?? []).length > 0) {
+    roleClauses.push(`id = any($${index++}::uuid[])`);
+    params.push(input.userIds);
   }
 
-  const now = Date.now();
-  if (cachedChatIds.length > 0 && now - cachedAt < TARGET_CACHE_TTL_MS) {
-    return cachedChatIds;
+  if (normalizedTelegramIds.length > 0) {
+    roleClauses.push(`telegram_id::text = any($${index++}::text[])`);
+    params.push(normalizedTelegramIds);
   }
 
-  const updates = await telegramRequest<TelegramUpdate[]>("getUpdates");
-  const discoveredChatIds = Array.from(
-    new Set(
-      updates
-        .map((update) => update.message?.chat)
-        .filter((chat): chat is { id: number; type?: string } => Boolean(chat?.id))
-        .filter((chat) => chat.type === "private" || !chat.type)
-        .map((chat) => String(chat.id))
-    )
-  );
-
-  cachedChatIds = discoveredChatIds;
-  cachedAt = now;
-
-  if (discoveredChatIds.length > 0) {
-    return discoveredChatIds;
+  if (roleClauses.length === 0) {
+    return [] as string[];
   }
 
-  const usersResult = await queryDb<{ telegram_id: number }>(
+  const result = await queryDb<{ telegram_id: number }>(
     `select telegram_id
      from public.users
-     where is_active = true`
+     where is_active = true
+       and (${roleClauses.join(" or ")})`,
+    params
   );
 
-  const fallbackChatIds = Array.from(
+  return Array.from(
     new Set(
-      usersResult.rows
-        .map((user) => user.telegram_id)
+      result.rows
+        .map((row) => row.telegram_id)
         .filter((telegramId): telegramId is number => Number.isFinite(telegramId))
         .map((telegramId) => String(telegramId))
     )
   );
-
-  cachedChatIds = fallbackChatIds;
-  cachedAt = now;
-
-  return fallbackChatIds;
 }
 
 async function getUserName(userId: string) {
@@ -171,9 +141,17 @@ async function getProductName(productId: string) {
   return data?.name ?? "Unknown product";
 }
 
-async function sendTelegramAlert(title: string, lines: string[]) {
+async function sendTelegramAlert(
+  title: string,
+  lines: string[],
+  target: {
+    roles?: Array<"admin" | "seller">;
+    userIds?: string[];
+    telegramIds?: Array<number | string>;
+  }
+) {
   try {
-    const chatIds = await resolveTelegramAlertChatIds();
+    const chatIds = await resolveTelegramChatIds(target);
 
     if (chatIds.length === 0) {
       console.warn(`[telegram-alert] skipped "${title}" because no target chats were found`);
@@ -185,12 +163,12 @@ async function sendTelegramAlert(title: string, lines: string[]) {
 
     await Promise.allSettled(
       chatIds.map((chatId) =>
-        telegramRequest("sendMessage", {
-          chat_id: chatId,
+        sendTelegramMessage({
+          chatId,
           text,
-          parse_mode: "HTML",
-          disable_web_page_preview: true,
-          disable_notification: disableNotification,
+          parseMode: "HTML",
+          disableWebPagePreview: true,
+          disableNotification,
         })
       )
     );
@@ -205,14 +183,18 @@ export async function notifyShiftStarted(input: { sellerUserId: string; storeId:
   const [sellerName, storeName] = await Promise.all([getUserName(input.sellerUserId), getStoreName(input.storeId)]);
   const nowIso = new Date().toISOString();
 
-  await sendTelegramAlert("Открыта смена", [
-    buildLine("Продавец", sellerName),
-    buildLine("Магазин", storeName),
-    buildLine("Дата", formatDate(nowIso)),
-    buildLine("Время открытия", formatTime(nowIso)),
-    "",
-    "Смена успешно начата и готова к продажам.",
-  ]);
+  await sendTelegramAlert(
+    "Открыта смена",
+    [
+      buildLine("Продавец", sellerName),
+      buildLine("Магазин", storeName),
+      buildLine("Дата", formatDate(nowIso)),
+      buildLine("Время открытия", formatTime(nowIso)),
+      "",
+      "Смена успешно начата и готова к продажам.",
+    ],
+    { roles: ["admin"] }
+  );
 }
 
 export async function notifyShiftEnded(input: {
@@ -231,21 +213,28 @@ export async function notifyShiftEnded(input: {
 }) {
   const [sellerName, storeName] = await Promise.all([getUserName(input.sellerUserId), getStoreName(input.storeId)]);
 
-  await sendTelegramAlert("Отчет по смене", [
-    buildLine("Продавец", sellerName),
-    buildLine("Магазин", storeName),
-    buildLine("Дата", formatDate(input.endedAt)),
-    "",
-    buildLine("Начало", formatTime(input.startedAt)),
-    buildLine("Завершение", formatTime(input.endedAt)),
-    buildLine("Отработано", formatDuration(input.workedSeconds)),
-    buildLine("Пауза", formatDuration(input.pausedSeconds)),
-    "",
-    buildLine("Продаж за смену", String(input.salesCount)),
-    buildLine("Выручка за смену", formatCurrency(input.totalRevenue)),
-    buildLine("Наличные", `${input.cashSalesCount} шт. • ${formatCurrency(input.cashRevenue)}`),
-    buildLine("Карта", `${input.cardSalesCount} шт. • ${formatCurrency(input.cardRevenue)}`),
-  ]);
+  await sendTelegramAlert(
+    "Отчет по смене",
+    [
+      buildLine("Продавец", sellerName),
+      buildLine("Магазин", storeName),
+      buildLine("Дата", formatDate(input.endedAt)),
+      "",
+      buildLine("Начало", formatTime(input.startedAt)),
+      buildLine("Завершение", formatTime(input.endedAt)),
+      buildLine("Отработано", formatDuration(input.workedSeconds)),
+      buildLine("Пауза", formatDuration(input.pausedSeconds)),
+      "",
+      buildLine("Продаж за смену", String(input.salesCount)),
+      buildLine("Выручка за смену", formatCurrency(input.totalRevenue)),
+      buildLine("Наличные", `${input.cashSalesCount} шт. • ${formatCurrency(input.cashRevenue)}`),
+      buildLine("Карта", `${input.cardSalesCount} шт. • ${formatCurrency(input.cardRevenue)}`),
+    ],
+    {
+      roles: ["admin"],
+      userIds: [input.sellerUserId],
+    }
+  );
 }
 
 export async function notifyLowStockIfNeeded(input: {
@@ -260,11 +249,15 @@ export async function notifyLowStockIfNeeded(input: {
 
   const [storeName, productName] = await Promise.all([getStoreName(input.storeId), getProductName(input.productId)]);
 
-  await sendTelegramAlert("Низкий остаток", [
-    buildLine("Магазин", storeName),
-    buildLine("Товар", productName),
-    buildLine("Остаток", String(input.nextQuantity)),
-    "",
-    "Остаток опустился до порогового значения. Проверь пополнение.",
-  ]);
+  await sendTelegramAlert(
+    "Низкий остаток",
+    [
+      buildLine("Магазин", storeName),
+      buildLine("Товар", productName),
+      buildLine("Остаток", String(input.nextQuantity)),
+      "",
+      "Остаток опустился до порогового значения. Проверь пополнение.",
+    ],
+    { roles: ["admin"] }
+  );
 }

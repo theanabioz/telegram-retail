@@ -28,6 +28,7 @@ const envSchema = z.object({
   PG_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   PG_CONNECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
   BOT_TOKEN: z.string().min(1),
+  APP_DOMAIN: z.string().min(1).default("albufeirashop.xyz"),
   TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: z.coerce.number().int().positive().default(300),
   TELEGRAM_ALERT_CHAT_IDS: z
     .string()

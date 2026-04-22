@@ -3,6 +3,8 @@ import {
   createAdminUser,
   createAdminProduct,
   createAdminStore,
+  deleteAdminStore,
+  deleteAdminUser,
   deleteAdminProduct,
   archiveAdminProduct,
   createInventoryRowsForProduct,
@@ -24,9 +26,12 @@ import {
   listProducts,
   restoreAdminProduct,
   getProductReferenceCounts,
+  getStoreReferenceCounts,
+  getUserReferenceCounts,
   updateAdminStore,
   updateAdminProduct,
   updateAdminStoreProduct,
+  updateAdminUser,
 } from "./admin.repository.js";
 import { HttpError } from "../../lib/http-error.js";
 import { withTransaction } from "../../lib/db.js";
@@ -425,6 +430,34 @@ export async function updateStore(
   };
 }
 
+export async function deleteStore(storeId: string) {
+  const [store, referenceCounts] = await Promise.all([
+    findAdminStoreById(storeId),
+    getStoreReferenceCounts(storeId),
+  ]);
+
+  if (!store) {
+    throw new HttpError(404, "Store not found");
+  }
+
+  if (
+    referenceCounts.assignments > 0 ||
+    referenceCounts.shifts > 0 ||
+    referenceCounts.sales > 0 ||
+    referenceCounts.returns > 0 ||
+    referenceCounts.inventoryMovements > 0
+  ) {
+    throw new HttpError(409, "Store already has operational history and cannot be deleted");
+  }
+
+  await deleteAdminStore(store.id);
+
+  return {
+    deleted: true,
+    storeId: store.id,
+  };
+}
+
 export async function getAdminStaff() {
   const [users, stores, assignments, openShifts, sales] = await Promise.all([
     listAdminUsers(),
@@ -533,6 +566,85 @@ export async function createSeller(input: {
       revenue: 0,
       lastSaleAt: null,
     },
+  };
+}
+
+export async function updateSeller(
+  sellerUserId: string,
+  input: {
+    fullName?: string;
+    isActive?: boolean;
+  }
+) {
+  const [seller, openShift, currentAssignment] = await Promise.all([
+    findUserById(sellerUserId),
+    findOpenShiftByUserId(sellerUserId),
+    findCurrentAssignment(sellerUserId),
+  ]);
+
+  if (!seller || seller.role !== "seller") {
+    throw new HttpError(404, "Seller not found");
+  }
+
+  if (input.isActive === false && openShift) {
+    throw new HttpError(409, "Seller with an active shift cannot be deactivated");
+  }
+
+  const updated = await withTransaction(async (client) => {
+    if (input.isActive === false && currentAssignment) {
+      await closeCurrentAssignment(seller.id, client);
+    }
+
+    return updateAdminUser(seller.id, {
+      full_name: input.fullName?.trim(),
+      is_active: input.isActive,
+    });
+  });
+
+  if (!updated) {
+    throw new HttpError(404, "Seller not found");
+  }
+
+  return {
+    seller: {
+      id: updated.id,
+      telegramId: updated.telegram_id,
+      fullName: updated.full_name,
+      isActive: updated.is_active,
+    },
+  };
+}
+
+export async function deleteSeller(sellerUserId: string) {
+  const [seller, openShift, referenceCounts] = await Promise.all([
+    findUserById(sellerUserId),
+    findOpenShiftByUserId(sellerUserId),
+    getUserReferenceCounts(sellerUserId),
+  ]);
+
+  if (!seller || seller.role !== "seller") {
+    throw new HttpError(404, "Seller not found");
+  }
+
+  if (openShift) {
+    throw new HttpError(409, "Seller with an active shift cannot be deleted");
+  }
+
+  if (
+    referenceCounts.shifts > 0 ||
+    referenceCounts.sales > 0 ||
+    referenceCounts.returns > 0 ||
+    referenceCounts.inventoryMovements > 0 ||
+    referenceCounts.impersonationAsSeller > 0
+  ) {
+    throw new HttpError(409, "Seller already has operational history and cannot be deleted");
+  }
+
+  await deleteAdminUser(seller.id);
+
+  return {
+    deleted: true,
+    sellerId: seller.id,
   };
 }
 
