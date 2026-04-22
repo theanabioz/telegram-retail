@@ -5,6 +5,7 @@ import {
   sendTelegramMessage,
   telegramRequest,
   type TelegramInlineKeyboardMarkup,
+  type TelegramReplyKeyboardMarkup,
 } from "./telegram-api.js";
 import { HttpError } from "./http-error.js";
 import { findCurrentAssignment, findUserByTelegramId, type AppUser } from "../modules/users/users.repository.js";
@@ -119,6 +120,10 @@ function parsePrice(text: string) {
   return Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null;
 }
 
+function buildAppUrl() {
+  return `https://${env.APP_DOMAIN}/`;
+}
+
 function combineKeyboards(
   ...rows: Array<TelegramInlineKeyboardMarkup | null | undefined>
 ): TelegramInlineKeyboardMarkup | undefined {
@@ -126,20 +131,38 @@ function combineKeyboards(
   return inline_keyboard.length > 0 ? { inline_keyboard } : undefined;
 }
 
+function isInlineKeyboardMarkup(
+  replyMarkup?: TelegramInlineKeyboardMarkup | TelegramReplyKeyboardMarkup
+): replyMarkup is TelegramInlineKeyboardMarkup {
+  return Boolean(replyMarkup && "inline_keyboard" in replyMarkup);
+}
+
+function buildHomeKeyboard(user: AppUser): TelegramReplyKeyboardMarkup {
+  return {
+    keyboard: [
+      [{ text: user.role === "admin" ? "Панель" : "Меню" }],
+      [{ text: "Mini App", web_app: { url: buildAppUrl() } }],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false,
+    is_persistent: false,
+  };
+}
+
 async function sendOrEditMessage(input: {
   chatId: number | string;
   messageId?: number;
   text: string;
-  replyMarkup?: TelegramInlineKeyboardMarkup;
+  replyMarkup?: TelegramInlineKeyboardMarkup | TelegramReplyKeyboardMarkup;
 }) {
-  if (input.messageId) {
+  if (input.messageId && (!input.replyMarkup || isInlineKeyboardMarkup(input.replyMarkup))) {
     try {
       await editTelegramMessage({
         chatId: input.chatId,
         messageId: input.messageId,
         text: input.text,
         parseMode: "HTML",
-        replyMarkup: input.replyMarkup,
+        replyMarkup: isInlineKeyboardMarkup(input.replyMarkup) ? input.replyMarkup : undefined,
       });
       return input.messageId;
     } catch {
@@ -220,11 +243,9 @@ async function renderCompactHome(chatId: number, user: AppUser, messageId?: numb
         `<b>Выручка сегодня:</b> ${escapeHtml(formatCurrency(dashboard.summary.totalRevenueToday))}`,
         `<b>Продажи сегодня:</b> ${dashboard.summary.completedSalesToday}`,
         "",
-        "Панель управления скрыта, чтобы чат оставался чистым.",
+        "Используй кнопку <b>Панель</b> на клавиатуре ниже, когда захочешь открыть управление.",
       ].join("\n"),
-      replyMarkup: {
-        inline_keyboard: [[{ text: "Открыть панель", callback_data: "admin:menu" }]],
-      },
+      replyMarkup: buildHomeKeyboard(user),
     });
   }
 
@@ -242,11 +263,9 @@ async function renderCompactHome(chatId: number, user: AppUser, messageId?: numb
       `<b>Магазин:</b> ${escapeHtml(assignment?.store_name ?? "Не назначен")}`,
       `<b>Смена:</b> ${shiftState.activeShift ? "открыта" : "закрыта"}`,
       "",
-      "Детальное меню скрыто, чтобы не занимать чат.",
+      "Используй кнопку <b>Меню</b> на клавиатуре ниже, когда захочешь открыть действия.",
     ].join("\n"),
-    replyMarkup: {
-      inline_keyboard: [[{ text: "Открыть меню", callback_data: "seller:menu" }]],
-    },
+    replyMarkup: buildHomeKeyboard(user),
   });
 }
 
@@ -1184,9 +1203,29 @@ export function startTelegramBot() {
       return;
     }
 
+    if (user.role === "admin" && text === "Панель") {
+      const renderedMessageId = await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId));
+      if (renderedMessageId) {
+        lastUiMessageByChat.set(chatId, renderedMessageId);
+      }
+      return;
+    }
+
+    if (user.role === "seller" && text === "Меню") {
+      const renderedMessageId = await renderSellerMenu(chatId, user, lastUiMessageByChat.get(chatId));
+      if (renderedMessageId) {
+        lastUiMessageByChat.set(chatId, renderedMessageId);
+      }
+      return;
+    }
+
     await sendTelegramMessage({
       chatId,
-      text: "Напиши /menu чтобы открыть доступные действия.",
+      text:
+        user.role === "admin"
+          ? "Используй кнопку «Панель» на клавиатуре или команду /menu."
+          : "Используй кнопку «Меню» на клавиатуре или команду /menu.",
+      replyMarkup: buildHomeKeyboard(user),
     });
   }
 

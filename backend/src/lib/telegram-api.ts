@@ -10,6 +10,29 @@ export type TelegramInlineKeyboardMarkup = {
   inline_keyboard: TelegramInlineKeyboardButton[][];
 };
 
+export type TelegramReplyKeyboardButton = {
+  text: string;
+  web_app?: {
+    url: string;
+  };
+};
+
+export type TelegramReplyKeyboardMarkup = {
+  keyboard: TelegramReplyKeyboardButton[][];
+  resize_keyboard?: boolean;
+  one_time_keyboard?: boolean;
+  is_persistent?: boolean;
+};
+
+export type TelegramReplyKeyboardRemove = {
+  remove_keyboard: true;
+};
+
+export type TelegramReplyMarkup =
+  | TelegramInlineKeyboardMarkup
+  | TelegramReplyKeyboardMarkup
+  | TelegramReplyKeyboardRemove;
+
 export async function telegramRequest<T>(method: string, body?: Record<string, unknown>) {
   const response = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, {
     method: body ? "POST" : "GET",
@@ -34,7 +57,7 @@ export async function sendTelegramMessage(input: {
   parseMode?: "HTML";
   disableNotification?: boolean;
   disableWebPagePreview?: boolean;
-  replyMarkup?: TelegramInlineKeyboardMarkup;
+  replyMarkup?: TelegramReplyMarkup;
 }) {
   return telegramRequest("sendMessage", {
     chat_id: input.chatId,
