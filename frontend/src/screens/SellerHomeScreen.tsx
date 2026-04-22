@@ -66,6 +66,33 @@ function formatDuration(totalSeconds: number) {
   return `${hours}h ${minutes}m`;
 }
 
+function formatShiftSalesCount(count: number, locale: "en" | "ru" | "pt") {
+  if (locale === "pt") {
+    return `${count} ${count === 1 ? "venda" : "vendas"}`;
+  }
+
+  if (locale === "ru") {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    const label = mod10 === 1 && mod100 !== 11 ? "продажа" : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "продажи" : "продаж";
+    return `${count} ${label}`;
+  }
+
+  return `${count} ${count === 1 ? "sale" : "sales"}`;
+}
+
+function formatStockUnit(count: number, locale: "en" | "ru" | "pt") {
+  if (locale === "pt") {
+    return count === 1 ? "unidade" : "unidades";
+  }
+
+  if (locale === "ru") {
+    return "ед.";
+  }
+
+  return count === 1 ? "unit" : "units";
+}
+
 function formatShiftDateRange(startedAt: string, endedAt: string | null) {
   const start = new Date(startedAt);
   const end = endedAt ? new Date(endedAt) : null;
@@ -667,8 +694,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
     const confirmMessage =
       operation === "restock"
-        ? t("stock.confirmRestock", { count: quantity })
-        : t("stock.confirmWriteoff", { count: quantity });
+        ? t("stock.confirmRestock", { count: quantity, unit: formatStockUnit(quantity, locale) })
+        : t("stock.confirmWriteoff", { count: quantity, unit: formatStockUnit(quantity, locale) });
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -2132,7 +2159,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   {t("shift.paymentBreakdown")}
                 </Text>
                 <Text fontSize="sm" color="surface.500" fontWeight="700">
-                  {shiftDetails.salesSummary.count} sales
+                  {formatShiftSalesCount(shiftDetails.salesSummary.count, locale)}
                 </Text>
               </HStack>
 
