@@ -33,15 +33,7 @@ const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 const BLOCKED_ILLUSTRATION_SRC = "/access-blocked.png";
-
-function AppSilentBootState() {
-  return (
-    <Box
-      minH="var(--app-viewport-height, 100vh)"
-      bg="#f8f7f4"
-    />
-  );
-}
+const LOADING_ILLUSTRATION_SRC = "/access-loading.png";
 
 function isStartupCacheFresh(cachedAt?: number) {
   return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
@@ -110,6 +102,7 @@ function AppBootState({
   imageSrc,
   imageAlt,
   offsetY,
+  descriptionOffsetY,
 }: {
   title: string;
   description: string;
@@ -118,6 +111,7 @@ function AppBootState({
   imageSrc?: string;
   imageAlt?: string;
   offsetY?: string;
+  descriptionOffsetY?: string;
 }) {
   const hasIllustration = Boolean(imageSrc);
 
@@ -170,7 +164,13 @@ function AppBootState({
               {title}
             </Text>
           ) : null}
-          <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px" mt={hasIllustration ? "-22px" : 0}>
+          <Text
+            color="surface.500"
+            fontSize="sm"
+            fontWeight="700"
+            maxW="260px"
+            mt={descriptionOffsetY ?? (hasIllustration ? "-22px" : 0)}
+          >
             {description}
           </Text>
         </VStack>
@@ -337,6 +337,9 @@ export function App() {
   useEffect(() => {
     const illustration = new window.Image();
     illustration.src = BLOCKED_ILLUSTRATION_SRC;
+
+    const loadingIllustration = new window.Image();
+    loadingIllustration.src = LOADING_ILLUSTRATION_SRC;
   }, []);
 
   useEffect(() => {
@@ -399,7 +402,16 @@ export function App() {
   };
 
   if (session.loading) {
-    return <AppSilentBootState />;
+    return (
+      <AppBootState
+        title={t("app.boot.openingTitle")}
+        description="Preparing your workspace..."
+        imageSrc={LOADING_ILLUSTRATION_SRC}
+        imageAlt="Workspace loading"
+        offsetY="-36px"
+        descriptionOffsetY="-34px"
+      />
+    );
   }
 
   if (session.blocked) {
@@ -410,6 +422,7 @@ export function App() {
         imageSrc={BLOCKED_ILLUSTRATION_SRC}
         imageAlt={t("app.blocked.title")}
         offsetY="-32px"
+        descriptionOffsetY="-40px"
       />
     );
   }
