@@ -125,7 +125,7 @@ function getCachedAdminStartup() {
     }
 
     const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse; cachedAt?: number };
-    return cached.token === token && isStartupCacheFresh(cached.cachedAt)
+    return isStartupCacheFresh(cached.cachedAt)
       ? cached.startup
       : null;
   } catch {

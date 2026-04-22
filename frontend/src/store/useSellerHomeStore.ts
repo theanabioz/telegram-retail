@@ -240,7 +240,7 @@ function readSellerStartupCache(token: string) {
     }
 
     const cached = JSON.parse(raw) as SellerStartupCache;
-    return cached.token === token && isStartupCacheFresh(cached.cachedAt)
+    return isStartupCacheFresh(cached.cachedAt)
       ? cached.startup
       : null;
   } catch {

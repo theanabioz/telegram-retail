@@ -68,7 +68,7 @@ function readCachedOperator(panel: DevPanel, token: string | null) {
       };
     };
 
-    if (cached.token !== token || !isStartupCacheFresh(cached.cachedAt)) {
+    if (!isStartupCacheFresh(cached.cachedAt)) {
       return null;
     }
 
