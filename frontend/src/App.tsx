@@ -112,7 +112,14 @@ function AppBootState({
   const hasIllustration = Boolean(imageSrc);
 
   return (
-    <Box minH="var(--app-viewport-height, 100vh)" px={5} pt="var(--app-screen-pt)" display="grid" placeItems="center">
+    <Box
+      minH="var(--app-viewport-height, 100vh)"
+      px={5}
+      pt="var(--app-screen-pt)"
+      display="grid"
+      placeItems="center"
+      bg={hasIllustration ? "#f8f7f4" : undefined}
+    >
       <VStack
         spacing={4}
         textAlign="center"
