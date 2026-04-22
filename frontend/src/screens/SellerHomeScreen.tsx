@@ -46,6 +46,7 @@ import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegram
 import { isTelegramFullscreenLike } from "../lib/telegramViewport";
 import { useSellerHomeStore } from "../store/useSellerHomeStore";
 import type { DraftResponse, ShiftHistoryItem } from "../types/seller";
+import { ConfirmActionModal, type ConfirmActionModalState } from "../components/ConfirmActionModal";
 
 type SellerHomeScreenProps = {
   currentPanel: "admin" | "seller";
@@ -303,6 +304,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [discountModalItemId, setDiscountModalItemId] = useState<string | null>(null);
   const [isDraftCartOpen, setIsDraftCartOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionModalState | null>(null);
   const [shiftView, setShiftView] = useState<"overview" | "history" | "detail">("overview");
   const [isSellerProfileOpen, setIsSellerProfileOpen] = useState(false);
   const [sellerProfileWeekIndex, setSellerProfileWeekIndex] = useState(0);
@@ -692,21 +694,24 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       return;
     }
 
-    const confirmMessage =
-      operation === "restock"
-        ? t("stock.confirmRestock", { count: quantity, unit: formatStockUnit(quantity, locale) })
-        : t("stock.confirmWriteoff", { count: quantity, unit: formatStockUnit(quantity, locale) });
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
+    setConfirmAction({
+      title: operation === "restock" ? t("stock.restock") : t("stock.writeoff"),
+      description:
+        operation === "restock"
+          ? t("stock.confirmRestock", { count: quantity, unit: formatStockUnit(quantity, locale) })
+          : t("stock.confirmWriteoff", { count: quantity, unit: formatStockUnit(quantity, locale) }),
+      confirmLabel: operation === "restock" ? t("stock.restock") : t("stock.writeoff"),
+      tone: operation === "writeoff" ? "danger" : "primary",
+      onConfirm: () => {
+        if (operation === "restock") {
+          void restockProduct(productId, quantity, defaultReason);
+        } else {
+          void writeoffProduct(productId, quantity, defaultReason);
+        }
 
-    if (operation === "restock") {
-      void restockProduct(productId, quantity, defaultReason);
-    } else {
-      void writeoffProduct(productId, quantity, defaultReason);
-    }
-
-    updateStockDraft(productId, { quantity: "1" });
+        updateStockDraft(productId, { quantity: "1" });
+      },
+    });
   };
 
   const getDiscountDraft = (item: DraftResponse["items"][number]) =>
@@ -1403,17 +1408,15 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   {formatSellerPaymentMethod(selectedSale.payment_method)} · {selectedSale.status === "deleted" ? t("status.deleted") : t("status.completed")}
                 </Text>
               </VStack>
-              {!supportsTelegramBackButton ? (
-                <Button
-                  size="sm"
-                  borderRadius="14px"
-                  variant="outline"
-                  borderColor="var(--app-border)"
-                  onClick={() => setSelectedSaleId(null)}
-                >
-                  {t("orders.back")}
-                </Button>
-              ) : null}
+              <Button
+                size="sm"
+                borderRadius="14px"
+                variant="outline"
+                borderColor="var(--app-border)"
+                onClick={() => setSelectedSaleId(null)}
+              >
+                {t("orders.back")}
+              </Button>
             </HStack>
 
             <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
@@ -1856,11 +1859,15 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   border="1px solid"
                   borderColor="rgba(248,113,113,0.12)"
                   fontWeight="800"
-                  onClick={() => {
-                    if (window.confirm(t("shift.confirmStop"))) {
-                      void stopShift();
-                    }
-                  }}
+                  onClick={() =>
+                    setConfirmAction({
+                      title: t("shift.end"),
+                      description: t("shift.confirmStop"),
+                      confirmLabel: t("shift.end"),
+                      tone: "danger",
+                      onConfirm: () => void stopShift(),
+                    })
+                  }
                   isDisabled={shiftStatus === "inactive" || shiftStatus === "closed"}
                   isLoading={isShiftPending && shiftStatus !== "inactive" && shiftStatus !== "closed"}
                   leftIcon={<Box as={HiOutlinePower} boxSize={5} />}
@@ -2695,6 +2702,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
       {renderDraftCartSheet()}
       {renderDiscountModal()}
+      <ConfirmActionModal
+        action={confirmAction}
+        cancelLabel={t("common.cancel")}
+        onClose={() => setConfirmAction(null)}
+      />
 
       <Box
         position="fixed"

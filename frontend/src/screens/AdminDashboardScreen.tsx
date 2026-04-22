@@ -14,6 +14,7 @@ import {
 import { LuActivity, LuCheck, LuChevronDown, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
+import { ConfirmActionModal, type ConfirmActionModalState } from "../components/ConfirmActionModal";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
@@ -440,6 +441,7 @@ export function AdminDashboardScreen({
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
   const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
   const [selectedAdminReturnId, setSelectedAdminReturnId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionModalState | null>(null);
   const [salesView, setSalesView] = useState<SalesLedgerSnapshot>(() => {
     const cachedStartup = getCachedAdminStartup();
     return {
@@ -1405,67 +1407,73 @@ export function AdminDashboardScreen({
   };
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
-    const confirmed = window.confirm(t("admin.inventory.confirmDelete", { name: productName }));
+    setConfirmAction({
+      title: t("admin.inventory.deleteProduct"),
+      description: t("admin.inventory.confirmDelete", { name: productName }),
+      confirmLabel: t("admin.inventory.deleteProduct"),
+      tone: "danger",
+      onConfirm: async () => {
+        try {
+          await deleteProduct(productId);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : t("admin.inventory.deleteFailed");
+          window.alert(message);
+          return;
+        }
 
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await deleteProduct(productId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t("admin.inventory.deleteFailed");
-      window.alert(message);
-      return;
-    }
-
-    setSelectedProductId(null);
-    setProductDetailMode("overview");
-    setProductEdits((current) => {
-      const next = { ...current };
-      delete next[productId];
-      return next;
+        setSelectedProductId(null);
+        setProductDetailMode("overview");
+        setProductEdits((current) => {
+          const next = { ...current };
+          delete next[productId];
+          return next;
+        });
+      },
     });
   };
 
   const handleArchiveProduct = async (productId: string, productName: string) => {
-    const confirmed = window.confirm(t("admin.inventory.confirmArchive", { name: productName }));
+    setConfirmAction({
+      title: t("admin.inventory.archiveProduct"),
+      description: t("admin.inventory.confirmArchive", { name: productName }),
+      confirmLabel: t("admin.inventory.archiveProduct"),
+      tone: "danger",
+      onConfirm: async () => {
+        try {
+          await archiveProduct(productId);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : t("admin.inventory.archiveFailed");
+          window.alert(message);
+          return;
+        }
 
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await archiveProduct(productId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t("admin.inventory.archiveFailed");
-      window.alert(message);
-      return;
-    }
-
-    setSelectedProductId(null);
-    setProductDetailMode("overview");
-    setProductCatalogMode("catalog");
+        setSelectedProductId(null);
+        setProductDetailMode("overview");
+        setProductCatalogMode("catalog");
+      },
+    });
   };
 
   const handleRestoreProduct = async (productId: string, productName: string) => {
-    const confirmed = window.confirm(t("admin.inventory.confirmRestore", { name: productName }));
+    setConfirmAction({
+      title: t("admin.inventory.restoreProduct"),
+      description: t("admin.inventory.confirmRestore", { name: productName }),
+      confirmLabel: t("admin.inventory.restoreProduct"),
+      tone: "primary",
+      onConfirm: async () => {
+        try {
+          await restoreProduct(productId);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : t("admin.inventory.restoreFailed");
+          window.alert(message);
+          return;
+        }
 
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await restoreProduct(productId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t("admin.inventory.restoreFailed");
-      window.alert(message);
-      return;
-    }
-
-    setSelectedProductId(null);
-    setProductDetailMode("overview");
-    setProductCatalogMode("catalog");
+        setSelectedProductId(null);
+        setProductDetailMode("overview");
+        setProductCatalogMode("catalog");
+      },
+    });
   };
 
   const handleSaveProductStoreSetting = async (storeProductId: string) => {
@@ -3546,17 +3554,15 @@ export function AdminDashboardScreen({
                     {formatDateTime(selectedSale.createdAt)}
                   </Text>
                 </VStack>
-                {!supportsTelegramBackButton ? (
-                  <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="var(--app-border)"
-                    onClick={() => setSelectedAdminSaleId(null)}
-                  >
-                    {t("orders.back")}
-                  </Button>
-                ) : null}
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => setSelectedAdminSaleId(null)}
+                >
+                  {t("orders.back")}
+                </Button>
               </HStack>
 
               <HStack justify="space-between">
@@ -3648,17 +3654,15 @@ export function AdminDashboardScreen({
                     {formatDateTime(selectedReturn.createdAt)}
                   </Text>
                 </VStack>
-                {!supportsTelegramBackButton ? (
-                  <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="var(--app-border)"
-                    onClick={() => setSelectedAdminReturnId(null)}
-                  >
-                    {t("orders.back")}
-                  </Button>
-                ) : null}
+                <Button
+                  size="sm"
+                  borderRadius="14px"
+                  variant="outline"
+                  borderColor="var(--app-border)"
+                  onClick={() => setSelectedAdminReturnId(null)}
+                >
+                  {t("orders.back")}
+                </Button>
               </HStack>
 
               <Box bg="rgba(74,132,244,0.08)" borderRadius="16px" px={3} py={3}>
@@ -5800,6 +5804,12 @@ export function AdminDashboardScreen({
           {renderTab()}
         </VStack>
       </Container>
+
+      <ConfirmActionModal
+        action={confirmAction}
+        cancelLabel={t("common.cancel")}
+        onClose={() => setConfirmAction(null)}
+      />
 
       <Box position="fixed" left={0} right={0} bottom={0} zIndex={30}>
         <AdminNav activeTab={activeTab} onChange={handleAdminTabChange} onReselect={resetAdminSection} />
