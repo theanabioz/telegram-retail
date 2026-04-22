@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Box, Button, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Image, Text, VStack } from "@chakra-ui/react";
 import { ApiError, apiGet, apiPost } from "./lib/api";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
@@ -97,39 +97,58 @@ function AppBootState({
   description,
   actionLabel,
   onAction,
+  imageSrc,
+  imageAlt,
 }: {
   title: string;
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  imageSrc?: string;
+  imageAlt?: string;
 }) {
+  const hasIllustration = Boolean(imageSrc);
+
   return (
     <Box minH="var(--app-viewport-height, 100vh)" px={5} pt="var(--app-screen-pt)" display="grid" placeItems="center">
       <VStack
         spacing={4}
         textAlign="center"
-        bg="rgba(255,255,255,0.86)"
+        bg={hasIllustration ? "transparent" : "rgba(255,255,255,0.86)"}
         borderRadius="28px"
         px={6}
         py={7}
-        boxShadow="0 18px 36px rgba(18, 18, 18, 0.06)"
+        boxShadow={hasIllustration ? "none" : "0 18px 36px rgba(18, 18, 18, 0.06)"}
+        maxW="420px"
       >
-        <Box
-          w="42px"
-          h="42px"
-          borderRadius="16px"
-          bg="brand.500"
-          color="white"
-          display="grid"
-          placeItems="center"
-          fontWeight="900"
-        >
-          CS
-        </Box>
+        {imageSrc ? (
+          <Image
+            src={imageSrc}
+            alt={imageAlt ?? title}
+            w="min(100%, 360px)"
+            objectFit="contain"
+            borderRadius="28px"
+          />
+        ) : (
+          <Box
+            w="42px"
+            h="42px"
+            borderRadius="16px"
+            bg="brand.500"
+            color="white"
+            display="grid"
+            placeItems="center"
+            fontWeight="900"
+          >
+            CS
+          </Box>
+        )}
         <VStack spacing={1}>
-          <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
-            {title}
-          </Text>
+          {!imageSrc ? (
+            <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
+              {title}
+            </Text>
+          ) : null}
           <Text color="surface.500" fontSize="sm" fontWeight="700" maxW="260px">
             {description}
           </Text>
@@ -356,7 +375,14 @@ export function App() {
   }
 
   if (session.blocked) {
-    return <AppBootState title={t("app.blocked.title")} description={t("app.blocked.description")} />;
+    return (
+      <AppBootState
+        title={t("app.blocked.title")}
+        description={t("app.blocked.description")}
+        imageSrc="/access-blocked.png"
+        imageAlt={t("app.blocked.title")}
+      />
+    );
   }
 
   if (session.error) {
