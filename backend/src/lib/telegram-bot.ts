@@ -20,6 +20,7 @@ import {
   deleteStore,
   getAdminDashboard,
   getAdminProducts,
+  getAdminSalesPeriodSummaries,
   getAdminStaff,
   getAdminStores,
   restoreProduct,
@@ -124,6 +125,15 @@ function combineKeyboards(
 ): TelegramInlineKeyboardMarkup | undefined {
   const inline_keyboard = rows.flatMap((item) => item?.inline_keyboard ?? []);
   return inline_keyboard.length > 0 ? { inline_keyboard } : undefined;
+}
+
+function buildSingleColumnPicker(options: Array<{ text: string; callbackData: string }>, backCallback: string) {
+  return {
+    inline_keyboard: [
+      ...options.map((option) => [{ text: option.text, callback_data: option.callbackData }]),
+      [{ text: "Назад", callback_data: backCallback }],
+    ],
+  } satisfies TelegramInlineKeyboardMarkup;
 }
 
 async function sendOrEditMessage(input: {
@@ -337,9 +347,14 @@ async function renderAdminMenu(chatId: number, admin: AppUser, messageId?: numbe
     text,
     replyMarkup: {
       inline_keyboard: [
-        [{ text: "Сводка", callback_data: "admin:dashboard" }],
-        [{ text: "Продавцы", callback_data: "admin:sellers" }],
-        [{ text: "Магазины", callback_data: "admin:stores" }],
+        [
+          { text: "Сводка", callback_data: "admin:dashboard" },
+          { text: "Отчеты", callback_data: "admin:reports" },
+        ],
+        [
+          { text: "Продавцы", callback_data: "admin:sellers" },
+          { text: "Магазины", callback_data: "admin:stores" },
+        ],
         [{ text: "Товары", callback_data: "admin:products" }],
         [{ text: "Свернуть", callback_data: "home" }],
       ],
@@ -380,25 +395,57 @@ async function renderAdminDashboard(chatId: number, messageId?: number) {
 }
 
 async function renderAdminSellers(chatId: number, messageId?: number) {
-  const staff = await getAdminStaff();
-  const rows = staff.sellers.map((seller) => [
-    {
-      text: `${seller.fullName}${seller.isActive ? "" : " • off"}`,
-      callback_data: `admin:seller:${seller.id}`,
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Продавцы</b>\n\nСначала выбери действие, потом конкретного продавца.`,
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          { text: "Добавить", callback_data: "admin:sellers:new" },
+          { text: "Переименовать", callback_data: "admin:sellers:pick:rename" },
+        ],
+        [
+          { text: "Назначить магазин", callback_data: "admin:sellers:pick:assign" },
+          { text: "Вкл / выкл", callback_data: "admin:sellers:pick:toggle" },
+        ],
+        [{ text: "Удалить", callback_data: "admin:sellers:pick:delete" }],
+        [{ text: "Назад", callback_data: "home" }],
+      ],
     },
-  ]);
+  });
+}
+
+async function renderAdminSellerActionPicker(
+  chatId: number,
+  action: "rename" | "assign" | "toggle" | "delete",
+  messageId?: number
+) {
+  const staff = await getAdminStaff();
+  const actionLabelMap = {
+    rename: "Кого переименовать",
+    assign: "Кому назначить магазин",
+    toggle: "Кого включить или выключить",
+    delete: "Кого удалить",
+  } as const;
+  const callbackPrefixMap = {
+    rename: "admin:sellers:rename:",
+    assign: "admin:sellers:assign:",
+    toggle: "admin:sellers:toggle:",
+    delete: "admin:sellers:delete:",
+  } as const;
 
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Продавцы</b>\n\nУправление сотрудниками и их магазинами.`,
-    replyMarkup: {
-      inline_keyboard: [
-        [{ text: "Добавить продавца", callback_data: "admin:seller:new" }],
-        ...rows,
-        [{ text: "Назад", callback_data: "home" }],
-      ],
-    },
+    text: `<b>Продавцы</b>\n\n${actionLabelMap[action]}?`,
+    replyMarkup: buildSingleColumnPicker(
+      staff.sellers.map((seller, index) => ({
+        text: `${index + 1}. ${seller.fullName}${seller.isActive ? "" : " • off"}`,
+        callbackData: `${callbackPrefixMap[action]}${seller.id}`,
+      })),
+      "admin:sellers"
+    ),
   });
 }
 
@@ -435,15 +482,20 @@ async function renderAdminSellerDetails(chatId: number, sellerId: string, messag
   });
 }
 
-async function renderAdminSellerDeleteConfirm(chatId: number, sellerId: string, messageId?: number) {
+async function renderAdminSellerDeleteConfirm(
+  chatId: number,
+  sellerId: string,
+  messageId?: number,
+  options?: { confirmCallback?: string; backCallback?: string }
+) {
   return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Удалить продавца?</b>\n\nЭто действие необратимо, если у продавца нет операционной истории.`,
     replyMarkup: {
       inline_keyboard: [
-        [{ text: "Да, удалить", callback_data: `admin:seller:delete:confirm:${sellerId}` }],
-        [{ text: "Назад", callback_data: `admin:seller:${sellerId}` }],
+        [{ text: "Да, удалить", callback_data: options?.confirmCallback ?? `admin:seller:delete:confirm:${sellerId}` }],
+        [{ text: "Назад", callback_data: options?.backCallback ?? `admin:seller:${sellerId}` }],
       ],
     },
   });
@@ -452,7 +504,8 @@ async function renderAdminSellerDeleteConfirm(chatId: number, sellerId: string, 
 async function renderAssignStorePicker(
   chatId: number,
   sellerId: string,
-  messageId?: number
+  messageId?: number,
+  backCallback = `admin:seller:${sellerId}`
 ) {
   const stores = await getAdminStores();
   const storeRows = stores.stores
@@ -464,31 +517,63 @@ async function renderAssignStorePicker(
     messageId,
     text: `<b>Выбери магазин для продавца</b>`,
     replyMarkup: {
-      inline_keyboard: [...storeRows, [{ text: "Назад", callback_data: `admin:seller:${sellerId}` }]],
+      inline_keyboard: [...storeRows, [{ text: "Назад", callback_data: backCallback }]],
     },
   });
 }
 
 async function renderAdminStores(chatId: number, messageId?: number) {
-  const stores = await getAdminStores();
-  const rows = stores.stores.map((store) => [
-    {
-      text: `${store.name}${store.isActive ? "" : " • off"}`,
-      callback_data: `admin:store:${store.id}`,
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Магазины</b>\n\nСначала выбери действие, потом конкретный магазин.`,
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          { text: "Добавить", callback_data: "admin:stores:new" },
+          { text: "Переименовать", callback_data: "admin:stores:pick:rename" },
+        ],
+        [
+          { text: "Изменить адрес", callback_data: "admin:stores:pick:address" },
+          { text: "Вкл / выкл", callback_data: "admin:stores:pick:toggle" },
+        ],
+        [{ text: "Удалить", callback_data: "admin:stores:pick:delete" }],
+        [{ text: "Назад", callback_data: "home" }],
+      ],
     },
-  ]);
+  });
+}
+
+async function renderAdminStoreActionPicker(
+  chatId: number,
+  action: "rename" | "address" | "toggle" | "delete",
+  messageId?: number
+) {
+  const stores = await getAdminStores();
+  const actionLabelMap = {
+    rename: "Какой магазин переименовать",
+    address: "У какого магазина изменить адрес",
+    toggle: "Какой магазин включить или выключить",
+    delete: "Какой магазин удалить",
+  } as const;
+  const callbackPrefixMap = {
+    rename: "admin:stores:rename:",
+    address: "admin:stores:address:",
+    toggle: "admin:stores:toggle:",
+    delete: "admin:stores:delete:",
+  } as const;
 
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Магазины</b>\n\nСоздание, редактирование и контроль статуса.`,
-    replyMarkup: {
-      inline_keyboard: [
-        [{ text: "Добавить магазин", callback_data: "admin:store:new" }],
-        ...rows,
-        [{ text: "Назад", callback_data: "home" }],
-      ],
-    },
+    text: `<b>Магазины</b>\n\n${actionLabelMap[action]}?`,
+    replyMarkup: buildSingleColumnPicker(
+      stores.stores.map((store, index) => ({
+        text: `${index + 1}. ${store.name}${store.isActive ? "" : " • off"}`,
+        callbackData: `${callbackPrefixMap[action]}${store.id}`,
+      })),
+      "admin:stores"
+    ),
   });
 }
 
@@ -525,39 +610,156 @@ async function renderAdminStoreDetails(chatId: number, storeId: string, messageI
   });
 }
 
-async function renderAdminStoreDeleteConfirm(chatId: number, storeId: string, messageId?: number) {
+async function renderAdminStoreDeleteConfirm(
+  chatId: number,
+  storeId: string,
+  messageId?: number,
+  options?: { confirmCallback?: string; backCallback?: string }
+) {
   return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Удалить магазин?</b>\n\nУдаление возможно только если у магазина нет операционной истории.`,
     replyMarkup: {
       inline_keyboard: [
-        [{ text: "Да, удалить", callback_data: `admin:store:delete:confirm:${storeId}` }],
-        [{ text: "Назад", callback_data: `admin:store:${storeId}` }],
+        [{ text: "Да, удалить", callback_data: options?.confirmCallback ?? `admin:store:delete:confirm:${storeId}` }],
+        [{ text: "Назад", callback_data: options?.backCallback ?? `admin:store:${storeId}` }],
       ],
     },
   });
 }
 
 async function renderAdminProducts(chatId: number, messageId?: number) {
-  const products = await getAdminProducts();
-  const rows = products.products.map((product) => [
-    {
-      text: `${product.name}${product.isActive ? "" : " • off"}`,
-      callback_data: `admin:product:${product.id}`,
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Товары</b>\n\nСначала выбери действие, потом конкретный товар.`,
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          { text: "Добавить", callback_data: "admin:products:new" },
+          { text: "Переименовать", callback_data: "admin:products:pick:rename" },
+        ],
+        [
+          { text: "Изменить SKU", callback_data: "admin:products:pick:sku" },
+          { text: "Изменить цену", callback_data: "admin:products:pick:price" },
+        ],
+        [
+          { text: "Вкл / выкл", callback_data: "admin:products:pick:toggle" },
+          { text: "Архив", callback_data: "admin:products:pick:archive" },
+        ],
+        [{ text: "Удалить", callback_data: "admin:products:pick:delete" }],
+        [{ text: "Назад", callback_data: "home" }],
+      ],
     },
-  ]);
+  });
+}
+
+async function renderAdminProductActionPicker(
+  chatId: number,
+  action: "rename" | "sku" | "price" | "toggle" | "archive" | "delete",
+  messageId?: number
+) {
+  const products = await getAdminProducts({ archived: true });
+  const actionLabelMap = {
+    rename: "Какой товар переименовать",
+    sku: "У какого товара изменить SKU",
+    price: "У какого товара изменить цену",
+    toggle: "Какой товар включить или выключить",
+    archive: "Какой товар архивировать или восстановить",
+    delete: "Какой товар удалить",
+  } as const;
+  const callbackPrefixMap = {
+    rename: "admin:products:rename:",
+    sku: "admin:products:sku:",
+    price: "admin:products:price:",
+    toggle: "admin:products:toggle:",
+    archive: "admin:products:archive:",
+    delete: "admin:products:delete:",
+  } as const;
 
   return sendOrEditMessage({
     chatId,
     messageId,
-    text: `<b>Товары</b>\n\nУправление ассортиментом и ценами.`,
+    text: `<b>Товары</b>\n\n${actionLabelMap[action]}?`,
+    replyMarkup: buildSingleColumnPicker(
+      products.products.map((product, index) => ({
+        text: `${index + 1}. ${product.name}${product.isActive ? "" : " • off"}${product.isArchived ? " • archived" : ""}`,
+        callbackData: `${callbackPrefixMap[action]}${product.id}`,
+      })),
+      "admin:products"
+    ),
+  });
+}
+
+async function renderAdminToggleConfirm(
+  chatId: number,
+  input: {
+    title: string;
+    itemName: string;
+    enabled: boolean;
+    confirmCallback: string;
+    backCallback: string;
+  },
+  messageId?: number
+) {
+  const nextLabel = input.enabled ? "выключить" : "включить";
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>${escapeHtml(input.title)}</b>\n\n${escapeHtml(input.itemName)}: ${nextLabel}?`,
     replyMarkup: {
       inline_keyboard: [
-        [{ text: "Добавить товар", callback_data: "admin:product:new" }],
-        ...rows,
-        [{ text: "Назад", callback_data: "home" }],
+        [{ text: `Да, ${nextLabel}`, callback_data: input.confirmCallback }],
+        [{ text: "Назад", callback_data: input.backCallback }],
       ],
+    },
+  });
+}
+
+async function renderAdminReportsMenu(chatId: number, messageId?: number) {
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: `<b>Отчеты</b>\n\nВыбери период для быстрой сводки. PDF добавим следующим шагом, когда утвердим структуру.`,
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          { text: "Сегодня", callback_data: "admin:reports:today" },
+          { text: "Неделя", callback_data: "admin:reports:week" },
+        ],
+        [{ text: "Месяц", callback_data: "admin:reports:month" }],
+        [{ text: "Назад", callback_data: "admin:menu" }],
+      ],
+    },
+  });
+}
+
+async function renderAdminReportPeriod(chatId: number, period: "today" | "week" | "month", messageId?: number) {
+  const summaries = await getAdminSalesPeriodSummaries();
+  const summary = summaries[period];
+  const labelMap = {
+    today: "Сегодня",
+    week: "За неделю",
+    month: "За месяц",
+  } as const;
+
+  return sendOrEditMessage({
+    chatId,
+    messageId,
+    text: [
+      `<b>Отчет: ${labelMap[period]}</b>`,
+      `<b>Выручка:</b> ${escapeHtml(formatCurrency(summary.revenue))}`,
+      `<b>Продажи:</b> ${summary.salesCount}`,
+      `<b>Наличные:</b> ${escapeHtml(formatCurrency(summary.cashTotal))}`,
+      `<b>Карта:</b> ${escapeHtml(formatCurrency(summary.cardTotal))}`,
+      `<b>Возвраты:</b> ${summary.returnsCount}`,
+      `<b>Сумма возвратов:</b> ${escapeHtml(formatCurrency(summary.returnsTotal))}`,
+      `<b>Возвращено единиц:</b> ${summary.returnedUnits}`,
+    ].join("\n"),
+    replyMarkup: {
+      inline_keyboard: [[{ text: "Назад", callback_data: "admin:reports" }]],
     },
   });
 }
@@ -600,15 +802,20 @@ async function renderAdminProductDetails(chatId: number, productId: string, mess
   });
 }
 
-async function renderAdminProductDeleteConfirm(chatId: number, productId: string, messageId?: number) {
+async function renderAdminProductDeleteConfirm(
+  chatId: number,
+  productId: string,
+  messageId?: number,
+  options?: { confirmCallback?: string; backCallback?: string }
+) {
   return sendOrEditMessage({
     chatId,
     messageId,
     text: `<b>Удалить товар?</b>\n\nУдаление возможно только пока у товара нет истории продаж и движения склада.`,
     replyMarkup: {
       inline_keyboard: [
-        [{ text: "Да, удалить", callback_data: `admin:product:delete:confirm:${productId}` }],
-        [{ text: "Назад", callback_data: `admin:product:${productId}` }],
+        [{ text: "Да, удалить", callback_data: options?.confirmCallback ?? `admin:product:delete:confirm:${productId}` }],
+        [{ text: "Назад", callback_data: options?.backCallback ?? `admin:product:${productId}` }],
       ],
     },
   });
@@ -723,7 +930,7 @@ export function startTelegramBot() {
         await updateSeller(state.sellerId, { fullName });
         conversationState.delete(chatId);
         await sendTelegramMessage({ chatId, text: "Имя продавца обновлено." });
-        await renderAdminSellerDetails(chatId, state.sellerId);
+        await renderAdminSellers(chatId);
         return true;
       }
 
@@ -756,7 +963,7 @@ export function startTelegramBot() {
         await updateStore(state.storeId, { name });
         conversationState.delete(chatId);
         await sendTelegramMessage({ chatId, text: "Название магазина обновлено." });
-        await renderAdminStoreDetails(chatId, state.storeId);
+        await renderAdminStores(chatId);
         return true;
       }
 
@@ -765,7 +972,7 @@ export function startTelegramBot() {
         await updateStore(state.storeId, { address });
         conversationState.delete(chatId);
         await sendTelegramMessage({ chatId, text: "Адрес магазина обновлен." });
-        await renderAdminStoreDetails(chatId, state.storeId);
+        await renderAdminStores(chatId);
         return true;
       }
 
@@ -817,7 +1024,7 @@ export function startTelegramBot() {
         await updateProduct(state.productId, { name });
         conversationState.delete(chatId);
         await sendTelegramMessage({ chatId, text: "Название товара обновлено." });
-        await renderAdminProductDetails(chatId, state.productId);
+        await renderAdminProducts(chatId);
         return true;
       }
 
@@ -830,7 +1037,7 @@ export function startTelegramBot() {
         await updateProduct(state.productId, { sku });
         conversationState.delete(chatId);
         await sendTelegramMessage({ chatId, text: "SKU обновлен." });
-        await renderAdminProductDetails(chatId, state.productId);
+        await renderAdminProducts(chatId);
         return true;
       }
 
@@ -843,7 +1050,7 @@ export function startTelegramBot() {
         await updateProduct(state.productId, { defaultPrice });
         conversationState.delete(chatId);
         await sendTelegramMessage({ chatId, text: "Цена обновлена." });
-        await renderAdminProductDetails(chatId, state.productId);
+        await renderAdminProducts(chatId);
         return true;
       }
 
@@ -902,9 +1109,123 @@ export function startTelegramBot() {
       await renderAdminDashboard(chatId, messageId);
       return;
     }
+    if (data === "admin:reports") {
+      conversationState.delete(chatId);
+      await renderAdminReportsMenu(chatId, messageId);
+      return;
+    }
+    if (data === "admin:reports:today") {
+      conversationState.delete(chatId);
+      await renderAdminReportPeriod(chatId, "today", messageId);
+      return;
+    }
+    if (data === "admin:reports:week") {
+      conversationState.delete(chatId);
+      await renderAdminReportPeriod(chatId, "week", messageId);
+      return;
+    }
+    if (data === "admin:reports:month") {
+      conversationState.delete(chatId);
+      await renderAdminReportPeriod(chatId, "month", messageId);
+      return;
+    }
     if (data === "admin:sellers") {
       conversationState.delete(chatId);
       await renderAdminSellers(chatId, messageId);
+      return;
+    }
+    if (data === "admin:sellers:new") {
+      conversationState.set(chatId, { kind: "seller.create.telegram", adminUserId: user.id });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Новый продавец</b>\n\nОтправь Telegram ID нового продавца.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:sellers" }]] },
+      });
+      return;
+    }
+    if (data === "admin:sellers:pick:rename") {
+      conversationState.delete(chatId);
+      await renderAdminSellerActionPicker(chatId, "rename", messageId);
+      return;
+    }
+    if (data === "admin:sellers:pick:assign") {
+      conversationState.delete(chatId);
+      await renderAdminSellerActionPicker(chatId, "assign", messageId);
+      return;
+    }
+    if (data === "admin:sellers:pick:toggle") {
+      conversationState.delete(chatId);
+      await renderAdminSellerActionPicker(chatId, "toggle", messageId);
+      return;
+    }
+    if (data === "admin:sellers:pick:delete") {
+      conversationState.delete(chatId);
+      await renderAdminSellerActionPicker(chatId, "delete", messageId);
+      return;
+    }
+    if (data.startsWith("admin:sellers:rename:")) {
+      const sellerId = data.slice("admin:sellers:rename:".length);
+      conversationState.set(chatId, { kind: "seller.rename", sellerId });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Переименование продавца</b>\n\nОтправь новое имя.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:sellers" }]] },
+      });
+      return;
+    }
+    if (data.startsWith("admin:sellers:assign:")) {
+      const sellerId = data.slice("admin:sellers:assign:".length);
+      conversationState.set(chatId, { kind: "seller.assign.store", adminUserId: user.id, sellerId });
+      await renderAssignStorePicker(chatId, sellerId, messageId, "admin:sellers");
+      return;
+    }
+    if (data.startsWith("admin:sellers:toggle:confirm:")) {
+      const sellerId = data.slice("admin:sellers:toggle:confirm:".length);
+      const staff = await getAdminStaff();
+      const seller = staff.sellers.find((item) => item.id === sellerId);
+      if (!seller) {
+        throw new HttpError(404, "Seller not found");
+      }
+      await updateSeller(sellerId, { isActive: !seller.isActive });
+      await sendTelegramMessage({ chatId, text: seller.isActive ? "Продавец выключен." : "Продавец включен." });
+      await renderAdminSellers(chatId);
+      return;
+    }
+    if (data.startsWith("admin:sellers:toggle:")) {
+      const sellerId = data.slice("admin:sellers:toggle:".length);
+      const staff = await getAdminStaff();
+      const seller = staff.sellers.find((item) => item.id === sellerId);
+      if (!seller) {
+        throw new HttpError(404, "Seller not found");
+      }
+      await renderAdminToggleConfirm(
+        chatId,
+        {
+          title: "Статус продавца",
+          itemName: seller.fullName,
+          enabled: seller.isActive,
+          confirmCallback: `admin:sellers:toggle:confirm:${sellerId}`,
+          backCallback: "admin:sellers",
+        },
+        messageId
+      );
+      return;
+    }
+    if (data.startsWith("admin:sellers:delete:confirm:")) {
+      const sellerId = data.slice("admin:sellers:delete:confirm:".length);
+      await deleteSeller(sellerId);
+      await sendTelegramMessage({ chatId, text: "Продавец удален." });
+      await renderAdminSellers(chatId);
+      return;
+    }
+    if (data.startsWith("admin:sellers:delete:")) {
+      const sellerId = data.slice("admin:sellers:delete:".length);
+      await renderAdminSellerDeleteConfirm(chatId, sellerId, messageId, {
+        confirmCallback: `admin:sellers:delete:confirm:${sellerId}`,
+        backCallback: "admin:sellers",
+      });
       return;
     }
     if (data === "admin:seller:new") {
@@ -964,6 +1285,105 @@ export function startTelegramBot() {
     if (data === "admin:stores") {
       conversationState.delete(chatId);
       await renderAdminStores(chatId, messageId);
+      return;
+    }
+    if (data === "admin:stores:new") {
+      conversationState.set(chatId, { kind: "store.create.name" });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Новый магазин</b>\n\nОтправь название магазина.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
+      });
+      return;
+    }
+    if (data === "admin:stores:pick:rename") {
+      conversationState.delete(chatId);
+      await renderAdminStoreActionPicker(chatId, "rename", messageId);
+      return;
+    }
+    if (data === "admin:stores:pick:address") {
+      conversationState.delete(chatId);
+      await renderAdminStoreActionPicker(chatId, "address", messageId);
+      return;
+    }
+    if (data === "admin:stores:pick:toggle") {
+      conversationState.delete(chatId);
+      await renderAdminStoreActionPicker(chatId, "toggle", messageId);
+      return;
+    }
+    if (data === "admin:stores:pick:delete") {
+      conversationState.delete(chatId);
+      await renderAdminStoreActionPicker(chatId, "delete", messageId);
+      return;
+    }
+    if (data.startsWith("admin:stores:rename:")) {
+      const storeId = data.slice("admin:stores:rename:".length);
+      conversationState.set(chatId, { kind: "store.rename", storeId });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Переименование магазина</b>\n\nОтправь новое название.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
+      });
+      return;
+    }
+    if (data.startsWith("admin:stores:address:")) {
+      const storeId = data.slice("admin:stores:address:".length);
+      conversationState.set(chatId, { kind: "store.address", storeId });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Адрес магазина</b>\n\nОтправь новый адрес или '-' чтобы очистить.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:stores" }]] },
+      });
+      return;
+    }
+    if (data.startsWith("admin:stores:toggle:confirm:")) {
+      const storeId = data.slice("admin:stores:toggle:confirm:".length);
+      const stores = await getAdminStores();
+      const store = stores.stores.find((item) => item.id === storeId);
+      if (!store) {
+        throw new HttpError(404, "Store not found");
+      }
+      await updateStore(storeId, { isActive: !store.isActive });
+      await sendTelegramMessage({ chatId, text: store.isActive ? "Магазин выключен." : "Магазин включен." });
+      await renderAdminStores(chatId);
+      return;
+    }
+    if (data.startsWith("admin:stores:toggle:")) {
+      const storeId = data.slice("admin:stores:toggle:".length);
+      const stores = await getAdminStores();
+      const store = stores.stores.find((item) => item.id === storeId);
+      if (!store) {
+        throw new HttpError(404, "Store not found");
+      }
+      await renderAdminToggleConfirm(
+        chatId,
+        {
+          title: "Статус магазина",
+          itemName: store.name,
+          enabled: store.isActive,
+          confirmCallback: `admin:stores:toggle:confirm:${storeId}`,
+          backCallback: "admin:stores",
+        },
+        messageId
+      );
+      return;
+    }
+    if (data.startsWith("admin:stores:delete:confirm:")) {
+      const storeId = data.slice("admin:stores:delete:confirm:".length);
+      await deleteStore(storeId);
+      await sendTelegramMessage({ chatId, text: "Магазин удален." });
+      await renderAdminStores(chatId);
+      return;
+    }
+    if (data.startsWith("admin:stores:delete:")) {
+      const storeId = data.slice("admin:stores:delete:".length);
+      await renderAdminStoreDeleteConfirm(chatId, storeId, messageId, {
+        confirmCallback: `admin:stores:delete:confirm:${storeId}`,
+        backCallback: "admin:stores",
+      });
       return;
     }
     if (data === "admin:store:new") {
@@ -1028,6 +1448,143 @@ export function startTelegramBot() {
     if (data === "admin:products") {
       conversationState.delete(chatId);
       await renderAdminProducts(chatId, messageId);
+      return;
+    }
+    if (data === "admin:products:new") {
+      conversationState.set(chatId, { kind: "product.create.name" });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Новый товар</b>\n\nОтправь название товара.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
+      });
+      return;
+    }
+    if (data === "admin:products:pick:rename") {
+      conversationState.delete(chatId);
+      await renderAdminProductActionPicker(chatId, "rename", messageId);
+      return;
+    }
+    if (data === "admin:products:pick:sku") {
+      conversationState.delete(chatId);
+      await renderAdminProductActionPicker(chatId, "sku", messageId);
+      return;
+    }
+    if (data === "admin:products:pick:price") {
+      conversationState.delete(chatId);
+      await renderAdminProductActionPicker(chatId, "price", messageId);
+      return;
+    }
+    if (data === "admin:products:pick:toggle") {
+      conversationState.delete(chatId);
+      await renderAdminProductActionPicker(chatId, "toggle", messageId);
+      return;
+    }
+    if (data === "admin:products:pick:archive") {
+      conversationState.delete(chatId);
+      await renderAdminProductActionPicker(chatId, "archive", messageId);
+      return;
+    }
+    if (data === "admin:products:pick:delete") {
+      conversationState.delete(chatId);
+      await renderAdminProductActionPicker(chatId, "delete", messageId);
+      return;
+    }
+    if (data.startsWith("admin:products:rename:")) {
+      const productId = data.slice("admin:products:rename:".length);
+      conversationState.set(chatId, { kind: "product.rename", productId });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Переименование товара</b>\n\nОтправь новое название.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
+      });
+      return;
+    }
+    if (data.startsWith("admin:products:sku:")) {
+      const productId = data.slice("admin:products:sku:".length);
+      conversationState.set(chatId, { kind: "product.sku", productId });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Изменение SKU</b>\n\nОтправь новый SKU.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
+      });
+      return;
+    }
+    if (data.startsWith("admin:products:price:")) {
+      const productId = data.slice("admin:products:price:".length);
+      conversationState.set(chatId, { kind: "product.price", productId });
+      await sendOrEditMessage({
+        chatId,
+        messageId,
+        text: `<b>Изменение цены</b>\n\nОтправь новую цену, например 29.90.\nДля отмены напиши /cancel.`,
+        replyMarkup: { inline_keyboard: [[{ text: "Назад", callback_data: "admin:products" }]] },
+      });
+      return;
+    }
+    if (data.startsWith("admin:products:toggle:confirm:")) {
+      const productId = data.slice("admin:products:toggle:confirm:".length);
+      const products = await getAdminProducts({ archived: true });
+      const product = products.products.find((item) => item.id === productId);
+      if (!product) {
+        throw new HttpError(404, "Product not found");
+      }
+      await updateProduct(productId, { isActive: !product.isActive });
+      await sendTelegramMessage({ chatId, text: product.isActive ? "Товар выключен." : "Товар включен." });
+      await renderAdminProducts(chatId);
+      return;
+    }
+    if (data.startsWith("admin:products:toggle:")) {
+      const productId = data.slice("admin:products:toggle:".length);
+      const products = await getAdminProducts({ archived: true });
+      const product = products.products.find((item) => item.id === productId);
+      if (!product) {
+        throw new HttpError(404, "Product not found");
+      }
+      await renderAdminToggleConfirm(
+        chatId,
+        {
+          title: "Статус товара",
+          itemName: product.name,
+          enabled: product.isActive,
+          confirmCallback: `admin:products:toggle:confirm:${productId}`,
+          backCallback: "admin:products",
+        },
+        messageId
+      );
+      return;
+    }
+    if (data.startsWith("admin:products:archive:")) {
+      const productId = data.slice("admin:products:archive:".length);
+      const products = await getAdminProducts({ archived: true });
+      const product = products.products.find((item) => item.id === productId);
+      if (!product) {
+        throw new HttpError(404, "Product not found");
+      }
+      if (product.isArchived) {
+        await restoreProduct(productId);
+        await sendTelegramMessage({ chatId, text: "Товар восстановлен из архива." });
+      } else {
+        await archiveProduct(productId);
+        await sendTelegramMessage({ chatId, text: "Товар отправлен в архив." });
+      }
+      await renderAdminProducts(chatId);
+      return;
+    }
+    if (data.startsWith("admin:products:delete:confirm:")) {
+      const productId = data.slice("admin:products:delete:confirm:".length);
+      await deleteProduct(productId);
+      await sendTelegramMessage({ chatId, text: "Товар удален." });
+      await renderAdminProducts(chatId);
+      return;
+    }
+    if (data.startsWith("admin:products:delete:")) {
+      const productId = data.slice("admin:products:delete:".length);
+      await renderAdminProductDeleteConfirm(chatId, productId, messageId, {
+        confirmCallback: `admin:products:delete:confirm:${productId}`,
+        backCallback: "admin:products",
+      });
       return;
     }
     if (data === "admin:product:new") {
