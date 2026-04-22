@@ -73,6 +73,10 @@ type SellerHomeState = {
 const TOKEN_KEY = "telegram-retail-token";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function isStartupCacheFresh(cachedAt?: number) {
+  return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
+}
 let draftMutationVersion = 0;
 let shiftMutationVersion = 0;
 let shiftBootstrapRetryTimer: number | null = null;
@@ -236,7 +240,7 @@ function readSellerStartupCache(token: string) {
     }
 
     const cached = JSON.parse(raw) as SellerStartupCache;
-    return cached.token === token && cached.cachedAt && Date.now() - cached.cachedAt <= STARTUP_CACHE_TTL_MS
+    return cached.token === token && isStartupCacheFresh(cached.cachedAt)
       ? cached.startup
       : null;
   } catch {

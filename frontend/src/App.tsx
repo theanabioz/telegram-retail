@@ -32,6 +32,10 @@ const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 
+function isStartupCacheFresh(cachedAt?: number) {
+  return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
+}
+
 function writeStartupCache(cacheKey: string, token: string, startup: unknown) {
   try {
     window.localStorage.setItem(cacheKey, JSON.stringify({ token, startup, cachedAt: Date.now() }));
@@ -64,7 +68,7 @@ function readCachedOperator(panel: DevPanel, token: string | null) {
       };
     };
 
-    if (cached.token !== token || !cached.cachedAt || Date.now() - cached.cachedAt > STARTUP_CACHE_TTL_MS) {
+    if (cached.token !== token || !isStartupCacheFresh(cached.cachedAt)) {
       return null;
     }
 

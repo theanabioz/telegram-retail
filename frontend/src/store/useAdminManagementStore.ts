@@ -21,6 +21,10 @@ const TOKEN_KEY = "telegram-retail-token";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 
+function isStartupCacheFresh(cachedAt?: number) {
+  return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
+}
+
 type AdminStoreItem = AdminStoresResponse["stores"][number];
 type AdminInventoryStore = AdminInventoryResponse["stores"][number];
 type AdminInventoryItem = AdminInventoryResponse["items"][number];
@@ -41,7 +45,7 @@ function readCachedAdminStartup() {
     }
 
     const cached = JSON.parse(raw) as { token: string; startup: AdminStartupResponse; cachedAt?: number };
-    return cached.token === token && cached.cachedAt && Date.now() - cached.cachedAt <= STARTUP_CACHE_TTL_MS
+    return cached.token === token && isStartupCacheFresh(cached.cachedAt)
       ? cached.startup
       : null;
   } catch {
