@@ -701,6 +701,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           ? t("stock.confirmRestock", { count: quantity, unit: formatStockUnit(quantity, locale) })
           : t("stock.confirmWriteoff", { count: quantity, unit: formatStockUnit(quantity, locale) }),
       confirmLabel: operation === "restock" ? t("stock.restock") : t("stock.writeoff"),
+      icon: operation === "restock" ? "restock" : "writeoff",
       tone: operation === "writeoff" ? "danger" : "primary",
       onConfirm: () => {
         if (operation === "restock") {
@@ -1864,6 +1865,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       title: t("shift.end"),
                       description: t("shift.confirmStop"),
                       confirmLabel: t("shift.end"),
+                      icon: "power",
                       tone: "danger",
                       onConfirm: () => void stopShift(),
                     })

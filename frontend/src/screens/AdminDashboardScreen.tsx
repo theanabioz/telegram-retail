@@ -1411,6 +1411,7 @@ export function AdminDashboardScreen({
       title: t("admin.inventory.deleteProduct"),
       description: t("admin.inventory.confirmDelete", { name: productName }),
       confirmLabel: t("admin.inventory.deleteProduct"),
+      icon: "delete",
       tone: "danger",
       onConfirm: async () => {
         try {
@@ -1437,6 +1438,7 @@ export function AdminDashboardScreen({
       title: t("admin.inventory.archiveProduct"),
       description: t("admin.inventory.confirmArchive", { name: productName }),
       confirmLabel: t("admin.inventory.archiveProduct"),
+      icon: "archive",
       tone: "danger",
       onConfirm: async () => {
         try {
@@ -1459,6 +1461,7 @@ export function AdminDashboardScreen({
       title: t("admin.inventory.restoreProduct"),
       description: t("admin.inventory.confirmRestore", { name: productName }),
       confirmLabel: t("admin.inventory.restoreProduct"),
+      icon: "restore",
       tone: "primary",
       onConfirm: async () => {
         try {

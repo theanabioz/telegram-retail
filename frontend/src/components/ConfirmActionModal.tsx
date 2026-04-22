@@ -1,9 +1,11 @@
 import { Box, Button, HStack, Modal, ModalBody, ModalContent, ModalOverlay, Text, VStack } from "@chakra-ui/react";
+import { LuArchiveRestore, LuBox, LuPackageMinus, LuPackagePlus, LuPower, LuTrash2 } from "react-icons/lu";
 
 export type ConfirmActionModalState = {
   title: string;
   description: string;
   confirmLabel: string;
+  icon?: "archive" | "delete" | "power" | "restore" | "restock" | "writeoff";
   tone?: "danger" | "primary";
   onConfirm: () => void;
 };
@@ -16,6 +18,18 @@ type ConfirmActionModalProps = {
 
 export function ConfirmActionModal({ action, cancelLabel, onClose }: ConfirmActionModalProps) {
   const isDanger = action?.tone === "danger";
+  const Icon =
+    action?.icon === "delete"
+      ? LuTrash2
+      : action?.icon === "archive"
+        ? LuBox
+        : action?.icon === "restore"
+          ? LuArchiveRestore
+          : action?.icon === "power"
+            ? LuPower
+            : action?.icon === "writeoff"
+              ? LuPackageMinus
+              : LuPackagePlus;
 
   return (
     <Modal isOpen={Boolean(action)} onClose={onClose} isCentered motionPreset="slideInBottom">
@@ -32,9 +46,9 @@ export function ConfirmActionModal({ action, cancelLabel, onClose }: ConfirmActi
                 color={isDanger ? "red.500" : "brand.500"}
                 display="grid"
                 placeItems="center"
-                fontWeight="900"
+                boxShadow={isDanger ? "0 10px 24px rgba(248,113,113,0.14)" : "0 10px 24px rgba(74,132,244,0.14)"}
               >
-                !
+                <Box as={Icon} boxSize={5} strokeWidth={2.4} />
               </Box>
               <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
                 {action?.title}
