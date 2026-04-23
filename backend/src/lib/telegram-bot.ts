@@ -2638,53 +2638,19 @@ export function startTelegramBot() {
       await handleDenied(chatId);
       return;
     }
-
-    const command = text.match(/^\/[a-z_]+/)?.[0].toLowerCase();
-
-    if (user.role === "admin" && command && command !== "/cancel") {
-      conversationState.delete(chatId);
-      const renderedMessageId = await startAdminCommand(chatId, user, command);
-      if (renderedMessageId) {
-        lastUiMessageByChat.set(chatId, renderedMessageId);
-        return;
-      }
-    }
-
-    const handledByState = await handleTextState(chatId, user, text);
-    if (handledByState) {
-      return;
-    }
-
-    if (text === "/start" || text === "/menu" || text === "/admin" || text === "⚙️ Админ") {
-      conversationState.delete(chatId);
-      await syncPersistentKeyboard(chatId, user);
-      const renderedMessageId =
-        text === "/admin" || text === ADMIN_ENTRY_BUTTON
-          ? user.role === "admin"
-            ? await renderAdminMenu(chatId, user, lastUiMessageByChat.get(chatId))
-            : await showHome(chatId, user, lastUiMessageByChat.get(chatId))
-          : await showHome(chatId, user, lastUiMessageByChat.get(chatId));
-      if (renderedMessageId) {
-        lastUiMessageByChat.set(chatId, renderedMessageId);
-      }
-      return;
-    }
-
+    conversationState.delete(chatId);
     await sendTelegramMessage({
       chatId,
       text:
-        user.role === "admin"
-          ? "Используй /admin для списка команд или сразу /addshop, /editshop, /reports."
-          : "Напиши /menu, чтобы открыть меню.",
+        text === "/start"
+          ? "Этот бот используется только для уведомлений."
+          : "Управление в боте отключено. Здесь приходят только уведомления.",
+      replyMarkup: { remove_keyboard: true },
+      disableNotification: true,
     });
   }
 
   async function processUpdate(update: TelegramUpdate) {
-    if (update.callback_query) {
-      await handleCallback(update.callback_query);
-      return;
-    }
-
     if (update.message) {
       await handleMessage(update.message);
     }
@@ -2698,7 +2664,7 @@ export function startTelegramBot() {
         const updates = await telegramRequest<TelegramUpdate[]>("getUpdates", {
           offset,
           timeout: 25,
-          allowed_updates: ["message", "callback_query"],
+          allowed_updates: ["message"],
         });
 
         for (const update of updates) {

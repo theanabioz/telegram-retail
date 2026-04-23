@@ -26,15 +26,11 @@ if [[ -z "${BOT_TOKEN:-}" || -z "${APP_DOMAIN:-}" ]]; then
   exit 0
 fi
 
-app_url="https://${APP_DOMAIN}/"
-
 curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" \
-  -d "menu_button={\"type\":\"web_app\",\"text\":\"Open\",\"web_app\":{\"url\":\"${app_url}\"}}" \
+  -d 'menu_button={"type":"default"}' \
   >/dev/null
 
-curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
-  -d 'commands=[{"command":"menu","description":"Open the app menu"},{"command":"admin","description":"Show hidden admin commands"},{"command":"reports","description":"Request workday reports"},{"command":"addshop","description":"Add a shop"},{"command":"addseller","description":"Add a seller"},{"command":"addproduct","description":"Add a product"},{"command":"editshop","description":"Edit a shop"},{"command":"editseller","description":"Edit a seller"},{"command":"editproduct","description":"Edit a product"},{"command":"deleteshop","description":"Delete a shop"},{"command":"deleteseller","description":"Delete a seller"},{"command":"deleteproduct","description":"Delete a product"}]' \
-  >/dev/null
+curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/deleteMyCommands" >/dev/null
 
-echo "Telegram menu button URL set to ${app_url}"
-echo "Telegram bot commands updated for hidden admin command mode"
+echo "Telegram bot menu button reset to default"
+echo "Telegram bot commands removed"
