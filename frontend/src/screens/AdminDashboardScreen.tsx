@@ -116,7 +116,7 @@ type SellerCreateStep = "name" | "telegramId" | "store" | "status";
 type ProductCreateStep = "name" | "price" | "sku" | "status";
 type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
 type AdminReportPeriod = "week" | "month";
-type AdminSettingsView = "root" | "reports";
+type AdminSettingsView = "root" | "reports-menu" | "report-detail";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -655,7 +655,7 @@ export function AdminDashboardScreen({
         ? t("admin.team.sellerDetails")
         : activeTab === "team" && selectedTeamStore
           ? t("admin.team.storeDetails")
-        : activeTab === "settings" && settingsView === "reports"
+        : activeTab === "settings" && settingsView !== "root"
           ? "Отчеты"
       : ({
           overview: t("nav.overview"),
@@ -676,15 +676,23 @@ export function AdminDashboardScreen({
         ? productCatalogMode === "archive"
           ? t("admin.inventory.productArchiveLabel")
           : t("admin.inventory.productCatalogLabel")
-      : activeTab === "settings" && settingsView === "reports"
-        ? "PDF-отчеты и рабочие графики"
+      : activeTab === "settings" && settingsView === "reports-menu"
+        ? "Выберите нужный сценарий"
+      : activeTab === "settings" && settingsView === "report-detail"
+        ? reportType === "daily_summary"
+          ? "Общий итог по магазинам, продавцам и кассе за выбранный день"
+          : reportType === "store"
+            ? "Продажи, возвраты и ключевые показатели конкретного магазина"
+            : reportType === "seller"
+              ? "Личная выручка, смены и активность выбранного продавца"
+              : "Смены, часы и нагрузка команды за неделю или месяц"
       : null;
 
   useTelegramBackButton(
     activeTab === "sales"
       ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
       : activeTab === "settings"
-        ? settingsView === "reports"
+        ? settingsView !== "root"
       : activeTab === "inventory"
         ? Boolean(selectedInventoryItemId || selectedProductId)
         : activeTab === "team"
@@ -701,7 +709,12 @@ export function AdminDashboardScreen({
         return;
       }
 
-      if (activeTab === "settings" && settingsView === "reports") {
+      if (activeTab === "settings" && settingsView === "report-detail") {
+        setSettingsView("reports-menu");
+        return;
+      }
+
+      if (activeTab === "settings" && settingsView === "reports-menu") {
         setSettingsView("root");
         return;
       }
@@ -5374,32 +5387,39 @@ export function AdminDashboardScreen({
       {
         type: "daily_summary",
         title: "Сводный отчет за день",
-        description: "Все магазины, продавцы, продажи, возвраты и топ товаров за день.",
+        description: "Полная картина дня по всем магазинам: выручка, продавцы, возвраты, способы оплаты и самые востребованные товары.",
       },
       {
         type: "store",
         title: "Отчет по магазину",
-        description: "Продажи, возвраты и показатели выбранного магазина.",
+        description: "Отдельный срез по конкретной точке: продажи, возвраты, касса, средний чек и динамика магазина за выбранную дату.",
       },
       {
         type: "seller",
         title: "Отчет по продавцу",
-        description: "Смены, продажи и выручка конкретного сотрудника.",
+        description: "Персональный отчет по сотруднику: смены, продажи, выручка, возвраты и рабочая эффективность за день.",
       },
       {
         type: "schedule",
         title: "Рабочий график",
-        description: "Смены и отработанные часы за неделю или месяц.",
+        description: "График команды с отработанными часами, сменами и нагрузкой за неделю или месяц для контроля расписания.",
       },
     ];
 
-    return (
-      <VStack align="stretch" spacing={4}>
+    const reportDetailDescription =
+      reportType === "daily_summary"
+        ? "Выберите дату, и мы подготовим единый PDF с итогами дня по всем магазинам и команде."
+        : reportType === "store"
+          ? "Укажите магазин и дату, чтобы получить детальный PDF именно по выбранной торговой точке."
+          : reportType === "seller"
+            ? "Выберите продавца и дату, чтобы собрать персональный отчет с продажами и рабочими показателями."
+            : "Выберите период и опорную дату, чтобы получить PDF по сменам и часам всей команды.";
+
+    if (settingsView === "reports-menu") {
+      return (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
           <VStack align="stretch" spacing={3}>
             {reportMenuItems.map((item) => {
-              const active = reportType === item.type;
-
               return (
                 <Button
                   key={item.type}
@@ -5407,17 +5427,18 @@ export function AdminDashboardScreen({
                   minH="72px"
                   justifyContent="space-between"
                   borderRadius="20px"
-                  bg={active ? "rgba(89,125,242,0.12)" : "rgba(241,240,236,0.9)"}
+                  bg="rgba(241,240,236,0.9)"
                   borderWidth="1px"
-                  borderColor={active ? "rgba(89,125,242,0.34)" : "transparent"}
+                  borderColor="transparent"
                   px={4}
                   py={4}
                   _hover={{
-                    bg: active ? "rgba(89,125,242,0.16)" : "rgba(225,223,218,0.95)",
+                    bg: "rgba(225,223,218,0.95)",
                   }}
                   onClick={() => {
                     setReportType(item.type);
                     setReportStatus(null);
+                    setSettingsView("report-detail");
                   }}
                 >
                   <VStack align="start" spacing={1} minW={0}>
@@ -5428,16 +5449,19 @@ export function AdminDashboardScreen({
                       {item.description}
                     </Text>
                   </VStack>
-                  <Text fontWeight="900" color={active ? "brand.500" : "surface.400"}>
-                    {active ? "Выбрано" : "Открыть"}
+                  <Text fontWeight="900" color="surface.400">
+                    Открыть
                   </Text>
                 </Button>
               );
             })}
           </VStack>
         </Box>
+      );
+    }
 
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+    return (
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
           <VStack align="start" spacing={1}>
             <Text fontWeight="900" fontSize="lg">
@@ -5450,7 +5474,7 @@ export function AdminDashboardScreen({
                     : "Рабочий график"}
             </Text>
             <Text color="surface.500" fontSize="sm">
-              Настройте параметры и получите PDF в Telegram-боте.
+              {reportDetailDescription}
             </Text>
           </VStack>
 
@@ -5527,8 +5551,7 @@ export function AdminDashboardScreen({
             </Text>
           ) : null}
         </VStack>
-        </Box>
-      </VStack>
+      </Box>
     );
   };
 
@@ -5541,7 +5564,7 @@ export function AdminDashboardScreen({
       case "team":
         return renderTeam();
       case "settings":
-        if (settingsView === "reports") {
+        if (settingsView === "reports-menu" || settingsView === "report-detail") {
           return renderReportsSettings();
         }
 
@@ -5560,7 +5583,7 @@ export function AdminDashboardScreen({
               boxShadow={panelShadow}
               _hover={{ bg: "rgba(255,255,255,0.96)" }}
               onClick={() => {
-                setSettingsView("reports");
+                setSettingsView("reports-menu");
                 setReportStatus(null);
               }}
             >
