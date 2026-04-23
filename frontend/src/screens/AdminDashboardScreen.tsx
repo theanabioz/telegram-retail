@@ -15,7 +15,20 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { LuActivity, LuCheck, LuChevronDown, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
+import {
+  LuActivity,
+  LuCalendarDays,
+  LuCheck,
+  LuChevronDown,
+  LuChevronRight,
+  LuClock3,
+  LuMinus,
+  LuPlus,
+  LuReceiptText,
+  LuStore,
+  LuUserRound,
+  LuUsersRound,
+} from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { AdminFormScreen } from "../components/AdminFormScreen";
@@ -5383,166 +5396,400 @@ export function AdminDashboardScreen({
   const renderReportsSettings = () => {
     const selectedStoreId = reportStoreId || stores[0]?.id || "";
     const selectedSellerId = reportSellerId || staff[0]?.id || "";
-    const reportMenuItems: Array<{ type: AdminReportType; title: string; description: string }> = [
+    const reportMenuItems: Array<{
+      type: AdminReportType;
+      title: string;
+      eyebrow: string;
+      description: string;
+      icon: IconType;
+      highlights: string[];
+    }> = [
       {
         type: "daily_summary",
         title: "Сводный отчет за день",
-        description: "Все магазины и продажи за день.",
+        eyebrow: "Общий итог",
+        description: "День по всем магазинам: выручка, касса, возвраты и главные товары.",
+        icon: LuReceiptText,
+        highlights: ["Все магазины", "Касса", "Топ товары"],
       },
       {
         type: "store",
         title: "Отчет по магазину",
-        description: "Показатели выбранного магазина.",
+        eyebrow: "По точке",
+        description: "Одна точка: продажи, средний чек, возвраты и остатки за выбранную дату.",
+        icon: LuStore,
+        highlights: ["1 магазин", "Продажи", "Возвраты"],
       },
       {
         type: "seller",
         title: "Отчет по продавцу",
-        description: "Смены и продажи сотрудника.",
+        eyebrow: "По сотруднику",
+        description: "Один сотрудник: смена, выручка, продажи и личные показатели за день.",
+        icon: LuUserRound,
+        highlights: ["1 продавец", "Смена", "Выручка"],
       },
       {
         type: "schedule",
         title: "Рабочий график",
-        description: "Смены и часы за период.",
+        eyebrow: "Команда",
+        description: "Команда за период: смены, часы и загрузка за неделю или месяц.",
+        icon: LuUsersRound,
+        highlights: ["Неделя/месяц", "Часы", "Нагрузка"],
       },
     ];
 
     const reportDetailDescription =
       reportType === "daily_summary"
-        ? "Итоги дня по всем магазинам."
+        ? "Итоги дня по всем магазинам и всей команде."
         : reportType === "store"
-          ? "Отчет по одной точке за дату."
+          ? "Показатели одной точки за выбранную дату."
           : reportType === "seller"
-            ? "Отчет по одному продавцу за дату."
-            : "График команды за неделю или месяц.";
+            ? "Личный отчет сотрудника за выбранную дату."
+            : "График команды по неделе или месяцу.";
+
+    const activeReportMeta =
+      reportMenuItems.find((item) => item.type === reportType) ?? reportMenuItems[0];
+    const ActiveReportIcon = activeReportMeta.icon;
+    const reportDetailHighlights =
+      reportType === "daily_summary"
+        ? ["PDF в Telegram", "Все магазины", "Один день"]
+        : reportType === "store"
+          ? ["PDF в Telegram", "Один магазин", "Одна дата"]
+          : reportType === "seller"
+            ? ["PDF в Telegram", "Один продавец", "Одна дата"]
+            : ["PDF в Telegram", "Неделя/месяц", "Вся команда"];
+
+    const quickDateOptions =
+      reportType === "schedule"
+        ? [
+            { label: "Сегодня", value: getTodayInputValue() },
+            {
+              label: "Неделя",
+              value: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            },
+            {
+              label: "Месяц",
+              value: new Date(new Date().setDate(1)).toISOString().slice(0, 10),
+            },
+          ]
+        : [
+            { label: "Сегодня", value: getTodayInputValue() },
+            {
+              label: "Вчера",
+              value: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            },
+            {
+              label: "Неделя",
+              value: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            },
+          ];
 
     if (settingsView === "reports-menu") {
       return (
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <Box
+            bg="linear-gradient(135deg, rgba(89,125,242,0.12), rgba(255,255,255,0.96))"
+            borderRadius={panelRadius}
+            px={4}
+            py={4}
+            boxShadow={panelShadow}
+            border="1px solid rgba(89,125,242,0.12)"
+          >
+            <HStack align="start" spacing={3}>
+              <Box
+                w="52px"
+                h="52px"
+                borderRadius="18px"
+                bg="rgba(89,125,242,0.14)"
+                color="brand.600"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+              >
+                <LuReceiptText size={24} />
+              </Box>
+              <VStack align="start" spacing={1} minW={0}>
+                <Text fontWeight="900" fontSize="lg" color="surface.900">
+                  Центр отчетов
+                </Text>
+                <Text color="surface.600" fontSize="sm">
+                  Выбери нужный сценарий и получи готовый PDF в Telegram.
+                </Text>
+              </VStack>
+            </HStack>
+          </Box>
+
+          <HStack spacing={2} flexWrap="wrap">
+            <StatusPill label="PDF в Telegram" tone="blue" />
+            <StatusPill label="По магазинам" tone="gray" />
+            <StatusPill label="По продавцам" tone="gray" />
+            <StatusPill label="График команды" tone="gray" />
+          </HStack>
+
           <VStack align="stretch" spacing={3}>
             {reportMenuItems.map((item) => {
+              const Icon = item.icon;
+
               return (
-                <Button
+                <Box
                   key={item.type}
-                  h="auto"
-                  minH="72px"
-                  justifyContent="space-between"
-                  borderRadius="20px"
-                  bg="rgba(241,240,236,0.9)"
-                  borderWidth="1px"
-                  borderColor="transparent"
+                  role="button"
+                  tabIndex={0}
+                  borderRadius="28px"
+                  bg="linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,245,241,0.92))"
+                  boxShadow={panelShadow}
                   px={4}
                   py={4}
-                  _hover={{
-                    bg: "rgba(225,223,218,0.95)",
-                  }}
+                  border="1px solid rgba(214,218,225,0.55)"
                   onClick={() => {
                     setReportType(item.type);
                     setReportStatus(null);
                     setSettingsView("report-detail");
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setReportType(item.type);
+                      setReportStatus(null);
+                      setSettingsView("report-detail");
+                    }
+                  }}
+                  cursor="pointer"
                 >
-                  <VStack align="start" spacing={1} minW={0}>
-                    <Text fontWeight="900" color="surface.900" whiteSpace="normal" textAlign="left">
-                      {item.title}
-                    </Text>
-                    <Text color="surface.500" fontSize="sm" whiteSpace="normal" textAlign="left">
-                      {item.description}
-                    </Text>
+                  <VStack align="stretch" spacing={4}>
+                    <HStack align="start" justify="space-between" spacing={3}>
+                      <HStack align="start" spacing={3} minW={0}>
+                        <Box
+                          w="52px"
+                          h="52px"
+                          borderRadius="18px"
+                          bg="rgba(89,125,242,0.14)"
+                          color="brand.600"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          flexShrink={0}
+                        >
+                          <Icon size={22} />
+                        </Box>
+                        <VStack align="start" spacing={1} minW={0}>
+                          <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
+                            {item.eyebrow}
+                          </Text>
+                          <Text fontWeight="900" color="surface.900" fontSize="xl" lineHeight="1.05">
+                            {item.title}
+                          </Text>
+                          <Text color="surface.600" fontSize="sm" lineHeight="1.4">
+                            {item.description}
+                          </Text>
+                        </VStack>
+                      </HStack>
+                      <VStack align="end" spacing={2} flexShrink={0}>
+                        <Text fontSize="xs" fontWeight="800" color="brand.600" textTransform="uppercase">
+                          Открыть
+                        </Text>
+                        <Box
+                          w="40px"
+                          h="40px"
+                          borderRadius="16px"
+                          bg="rgba(89,125,242,0.12)"
+                          color="brand.600"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                        >
+                          <LuChevronRight size={18} />
+                        </Box>
+                      </VStack>
+                    </HStack>
+
+                    <HStack spacing={2} flexWrap="wrap">
+                      {item.highlights.map((highlight) => (
+                        <StatusPill key={highlight} label={highlight} tone="blue" />
+                      ))}
+                    </HStack>
                   </VStack>
-                  <Text fontWeight="900" color="surface.400">
-                    Открыть
-                  </Text>
-                </Button>
+                </Box>
               );
             })}
           </VStack>
-        </Box>
+        </VStack>
       );
     }
 
     return (
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+      <VStack align="stretch" spacing={4}>
+        <Box
+          bg="linear-gradient(135deg, rgba(89,125,242,0.12), rgba(255,255,255,0.96))"
+          borderRadius={panelRadius}
+          px={4}
+          py={4}
+          boxShadow={panelShadow}
+          border="1px solid rgba(89,125,242,0.12)"
+        >
+          <HStack align="start" spacing={3}>
+            <Box
+              w="52px"
+              h="52px"
+              borderRadius="18px"
+              bg="rgba(89,125,242,0.14)"
+              color="brand.600"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              <ActiveReportIcon size={22} />
+            </Box>
+            <VStack align="start" spacing={1} minW={0}>
+              <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
+                {activeReportMeta.eyebrow}
+              </Text>
+              <Text fontWeight="900" fontSize="2xl" color="surface.900" lineHeight="1.05">
+                {activeReportMeta.title}
+              </Text>
+              <Text color="surface.600" fontSize="sm">
+                {reportDetailDescription}
+              </Text>
+              <HStack spacing={2} pt={2} flexWrap="wrap">
+                {reportDetailHighlights.map((highlight) => (
+                  <StatusPill key={highlight} label={highlight} tone="blue" />
+                ))}
+              </HStack>
+            </VStack>
+          </HStack>
+        </Box>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
           <VStack align="start" spacing={1}>
             <Text fontWeight="900" fontSize="lg">
-              {reportType === "daily_summary"
-                ? "Сводный отчет за день"
-                : reportType === "store"
-                  ? "Отчет по магазину"
-                  : reportType === "seller"
-                    ? "Отчет по продавцу"
-                    : "Рабочий график"}
+              Параметры отчета
             </Text>
             <Text color="surface.500" fontSize="sm">
-              {reportDetailDescription}
+              Настрой параметры и отправь PDF в Telegram.
             </Text>
           </VStack>
 
-          <Input
-            type="date"
-            value={reportDate}
-            onChange={(event) => setReportDate(event.target.value)}
-            {...adminFormInputStyles}
-          />
+          <HStack spacing={2} flexWrap="wrap">
+            {quickDateOptions.map((option) => (
+              <Button
+                key={option.label}
+                size="sm"
+                borderRadius="999px"
+                bg={reportDate === option.value ? "brand.500" : panelMutedSurface}
+                color={reportDate === option.value ? "white" : "surface.700"}
+                _hover={{
+                  bg: reportDate === option.value ? "brand.600" : "rgba(225,223,218,0.95)",
+                }}
+                onClick={() => setReportDate(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </HStack>
+
+          <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontWeight="800" color="surface.700">
+                  {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
+                </Text>
+                <StatusPill label="PDF" tone="gray" />
+              </HStack>
+              <Input
+                type="date"
+                value={reportDate}
+                onChange={(event) => setReportDate(event.target.value)}
+                {...adminFormInputStyles}
+                bg="rgba(255,255,255,0.96)"
+              />
+            </VStack>
+          </Box>
 
           {reportType === "store" ? (
-            <Select
-              value={selectedStoreId}
-              onChange={(event) => setReportStoreId(event.target.value)}
-              {...adminFormInputStyles}
-            >
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </Select>
+            <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+              <VStack align="stretch" spacing={3}>
+                <Text fontWeight="800" color="surface.700">
+                  Магазин
+                </Text>
+                <Select
+                  value={selectedStoreId}
+                  onChange={(event) => setReportStoreId(event.target.value)}
+                  {...adminFormInputStyles}
+                  bg="rgba(255,255,255,0.96)"
+                >
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </Select>
+              </VStack>
+            </Box>
           ) : null}
 
           {reportType === "seller" ? (
-            <Select
-              value={selectedSellerId}
-              onChange={(event) => setReportSellerId(event.target.value)}
-              {...adminFormInputStyles}
-            >
-              {staff.map((seller) => (
-                <option key={seller.id} value={seller.id}>
-                  {seller.fullName}
-                </option>
-              ))}
-            </Select>
+            <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+              <VStack align="stretch" spacing={3}>
+                <Text fontWeight="800" color="surface.700">
+                  Продавец
+                </Text>
+                <Select
+                  value={selectedSellerId}
+                  onChange={(event) => setReportSellerId(event.target.value)}
+                  {...adminFormInputStyles}
+                  bg="rgba(255,255,255,0.96)"
+                >
+                  {staff.map((seller) => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.fullName}
+                    </option>
+                  ))}
+                </Select>
+              </VStack>
+            </Box>
           ) : null}
 
           {reportType === "schedule" ? (
-            <HStack spacing={3}>
-              {(["week", "month"] as AdminReportPeriod[]).map((period) => (
-                <Button
-                  key={period}
-                  flex="1"
-                  borderRadius="16px"
-                  bg={reportPeriod === period ? "brand.500" : "rgba(241,240,236,0.95)"}
-                  color={reportPeriod === period ? "white" : "surface.800"}
-                  _hover={{
-                    bg: reportPeriod === period ? "brand.600" : "rgba(225,223,218,0.95)",
-                  }}
-                  onClick={() => setReportPeriod(period)}
-                >
-                  {period === "week" ? "Неделя" : "Месяц"}
-                </Button>
-              ))}
-            </HStack>
+            <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+              <VStack align="stretch" spacing={3}>
+                <Text fontWeight="800" color="surface.700">
+                  Период
+                </Text>
+                <HStack spacing={3}>
+                  {(["week", "month"] as AdminReportPeriod[]).map((period) => (
+                    <Button
+                      key={period}
+                      flex="1"
+                      borderRadius="18px"
+                      bg={reportPeriod === period ? "brand.500" : "rgba(255,255,255,0.96)"}
+                      color={reportPeriod === period ? "white" : "surface.800"}
+                      _hover={{
+                        bg: reportPeriod === period ? "brand.600" : "rgba(255,255,255,1)",
+                      }}
+                      onClick={() => setReportPeriod(period)}
+                    >
+                      {period === "week" ? "Неделя" : "Месяц"}
+                    </Button>
+                  ))}
+                </HStack>
+              </VStack>
+            </Box>
           ) : null}
 
           <Button
-            h="56px"
-            borderRadius="20px"
+            h="60px"
+            borderRadius="22px"
             bg="surface.900"
             color="white"
             isLoading={reportSubmitting}
             _hover={{ bg: "surface.700" }}
             onClick={handleRequestReport}
+            leftIcon={<LuCalendarDays />}
           >
-            Сформировать PDF
+            Заказать отчет
           </Button>
 
           {reportStatus ? (
@@ -5551,7 +5798,8 @@ export function AdminDashboardScreen({
             </Text>
           ) : null}
         </VStack>
-      </Box>
+        </Box>
+      </VStack>
     );
   };
 
