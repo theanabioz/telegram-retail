@@ -6,6 +6,10 @@ import {
   Container,
   HStack,
   Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalOverlay,
   Select,
   SimpleGrid,
   Text,
@@ -5103,96 +5107,159 @@ export function AdminDashboardScreen({
 
   const renderInventoryStoreSelector = () =>
     showInventoryStoreSelector ? (
-      <AdminTaskScreen
-        title={t("admin.inventory.selectStoreTitle")}
-        description={t("admin.inventory.selectStoreDescription")}
-        topLabel={t("nav.inventory")}
-        onClose={() => setShowInventoryStoreSelector(false)}
-        primaryAction={
-          <Button
-            w="full"
-            h="54px"
-            borderRadius="20px"
-            bg="surface.100"
-            color="surface.700"
-            fontWeight="900"
-            onClick={() => setShowInventoryStoreSelector(false)}
-          >
-            {t("common.cancel")}
-          </Button>
-        }
-      >
-        <VStack align="stretch" spacing={3}>
-          {inventoryStores.map((store) => {
-            const isActive = selectedInventoryStoreId === store.id;
-
-            return (
-              <Button
-                key={store.id}
-                justifyContent="space-between"
-                h="72px"
+      <Modal isOpen onClose={() => setShowInventoryStoreSelector(false)} isCentered motionPreset="slideInBottom">
+        <ModalOverlay bg="rgba(14, 12, 10, 0.32)" backdropFilter="blur(10px)" />
+        <ModalContent
+          mx={4}
+          borderRadius="30px"
+          bg="rgba(255,255,255,0.96)"
+          boxShadow="0 24px 60px rgba(18, 18, 18, 0.18)"
+          overflow="hidden"
+        >
+          <ModalBody px={4} py={4}>
+            <VStack align="stretch" spacing={4}>
+              <Box
+                borderRadius="24px"
                 px={4}
-                borderRadius="22px"
-                bg={isActive ? "rgba(74,132,244,0.12)" : panelSurface}
-                color="surface.900"
-                border="1px solid"
-                borderColor={isActive ? "rgba(74,132,244,0.24)" : "rgba(226,224,218,0.9)"}
-                boxShadow={isActive ? "0 12px 28px rgba(74,132,244,0.12)" : panelShadow}
-                _hover={{ bg: isActive ? "rgba(74,132,244,0.14)" : "rgba(255,255,255,0.96)" }}
-                onClick={() => {
-                  const cachedSnapshot = inventoryCache[store.id];
-                  if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
-                    setInventoryView(cachedSnapshot);
-                    setInventorySoftRefreshing(false);
-                    setSelectedInventoryItemId(null);
-                    setSelectedInventoryStoreId(store.id);
-                    setShowInventoryStoreSelector(false);
-                    return;
-                  }
-
-                  setInventorySoftRefreshing(true);
-                  setSelectedInventoryItemId(null);
-                  setShowInventoryStoreSelector(false);
-                  void loadInventory(store.id, { silent: true }).then(() => {
-                    setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
-                    setSelectedInventoryStoreId(store.id);
-                  }).finally(() => {
-                    setInventorySoftRefreshing(false);
-                  });
-                }}
+                py={4}
+                bg="linear-gradient(180deg, rgba(247,246,242,0.98) 0%, rgba(240,238,231,0.92) 100%)"
+                border="1px solid rgba(228,225,218,0.9)"
               >
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" noOfLines={1}>
-                    {store.name}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700">
-                    {getStoreAddressLabel(
-                      stores.find((entry) => entry.id === store.id) ?? { name: store.name },
-                      t("admin.overview.addressMissing")
-                    )}
-                  </Text>
-                </VStack>
-                {isActive ? (
-                  <Box
-                    w="32px"
-                    h="32px"
+                <HStack align="start" justify="space-between" gap={3}>
+                  <VStack align="start" spacing={1}>
+                    <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.12em" fontWeight="900">
+                      {t("nav.inventory")}
+                    </Text>
+                    <Text fontSize="2xl" fontWeight="900" lineHeight="1.05">
+                      {t("admin.inventory.selectStoreTitle")}
+                    </Text>
+                    <Text color="surface.500" fontSize="sm" fontWeight="700">
+                      {t("admin.inventory.selectStoreDescription")}
+                    </Text>
+                  </VStack>
+                  <Button
+                    minW="44px"
+                    w="44px"
+                    h="44px"
                     borderRadius="999px"
-                    bg="brand.500"
-                    color="white"
-                    display="grid"
-                    placeItems="center"
-                    flexShrink={0}
+                    bg="rgba(255,255,255,0.84)"
+                    color="surface.700"
+                    _hover={{ bg: "white" }}
+                    onClick={() => setShowInventoryStoreSelector(false)}
                   >
-                    <LuCheck size={18} />
-                  </Box>
-                ) : (
-                  <LuChevronDown size={18} />
-                )}
+                    ×
+                  </Button>
+                </HStack>
+              </Box>
+
+              <VStack align="stretch" spacing={3} maxH="52vh" overflowY="auto" pr={1}>
+                {inventoryStores.map((store) => {
+                  const isActive = selectedInventoryStoreId === store.id;
+
+                  return (
+                    <Button
+                      key={store.id}
+                      justifyContent="space-between"
+                      minH="80px"
+                      h="auto"
+                      px={4}
+                      py={4}
+                      borderRadius="24px"
+                      bg={
+                        isActive
+                          ? "linear-gradient(180deg, rgba(74,132,244,0.18) 0%, rgba(74,132,244,0.10) 100%)"
+                          : "rgba(247,246,242,0.98)"
+                      }
+                      color="surface.900"
+                      border="1px solid"
+                      borderColor={isActive ? "rgba(74,132,244,0.28)" : "rgba(226,224,218,0.92)"}
+                      boxShadow={
+                        isActive
+                          ? "0 16px 32px rgba(74,132,244,0.14)"
+                          : "0 12px 28px rgba(18, 18, 18, 0.05)"
+                      }
+                      _hover={{
+                        bg: isActive
+                          ? "linear-gradient(180deg, rgba(74,132,244,0.22) 0%, rgba(74,132,244,0.12) 100%)"
+                          : "rgba(255,255,255,1)",
+                      }}
+                      onClick={() => {
+                        const cachedSnapshot = inventoryCache[store.id];
+                        if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
+                          setInventoryView(cachedSnapshot);
+                          setInventorySoftRefreshing(false);
+                          setSelectedInventoryItemId(null);
+                          setSelectedInventoryStoreId(store.id);
+                          setShowInventoryStoreSelector(false);
+                          return;
+                        }
+
+                        setInventorySoftRefreshing(true);
+                        setSelectedInventoryItemId(null);
+                        setShowInventoryStoreSelector(false);
+                        void loadInventory(store.id, { silent: true })
+                          .then(() => {
+                            setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
+                            setSelectedInventoryStoreId(store.id);
+                          })
+                          .finally(() => {
+                            setInventorySoftRefreshing(false);
+                          });
+                      }}
+                    >
+                      <HStack justify="space-between" align="center" w="full" gap={3}>
+                        <VStack align="start" spacing={1} minW={0}>
+                          <Text fontWeight="900" noOfLines={1}>
+                            {store.name}
+                          </Text>
+                          <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={2}>
+                            {getStoreAddressLabel(
+                              stores.find((entry) => entry.id === store.id) ?? { name: store.name },
+                              t("admin.overview.addressMissing")
+                            )}
+                          </Text>
+                        </VStack>
+                        {isActive ? (
+                          <Box
+                            w="34px"
+                            h="34px"
+                            borderRadius="999px"
+                            bg="brand.500"
+                            color="white"
+                            display="grid"
+                            placeItems="center"
+                            flexShrink={0}
+                            boxShadow="0 10px 20px rgba(74,132,244,0.22)"
+                          >
+                            <LuCheck size={18} />
+                          </Box>
+                        ) : (
+                          <Box color="surface.400" flexShrink={0}>
+                            <LuChevronDown size={18} />
+                          </Box>
+                        )}
+                      </HStack>
+                    </Button>
+                  );
+                })}
+              </VStack>
+
+              <Button
+                w="full"
+                h="54px"
+                borderRadius="20px"
+                bg="surface.100"
+                color="surface.700"
+                fontWeight="900"
+                _hover={{ bg: "surface.200" }}
+                onClick={() => setShowInventoryStoreSelector(false)}
+              >
+                {t("common.cancel")}
               </Button>
-            );
-          })}
-        </VStack>
-      </AdminTaskScreen>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     ) : null;
 
   const renderTeam = () => {
