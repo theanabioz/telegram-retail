@@ -130,6 +130,7 @@ type ProductCreateStep = "name" | "price" | "sku" | "status";
 type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
 type AdminReportPeriod = "week" | "month";
 type AdminSettingsView = "root" | "reports-menu" | "report-detail";
+type ReportQuickPreset = "today" | "yesterday" | "week" | "month" | "custom";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -541,6 +542,7 @@ export function AdminDashboardScreen({
   const [settingsView, setSettingsView] = useState<AdminSettingsView>("root");
   const [reportType, setReportType] = useState<AdminReportType>("daily_summary");
   const [reportDate, setReportDate] = useState(getTodayInputValue);
+  const [reportQuickPreset, setReportQuickPreset] = useState<ReportQuickPreset>("today");
   const [reportStoreId, setReportStoreId] = useState("");
   const [reportSellerId, setReportSellerId] = useState("");
   const [reportPeriod, setReportPeriod] = useState<AdminReportPeriod>("week");
@@ -5396,45 +5398,43 @@ export function AdminDashboardScreen({
   const renderReportsSettings = () => {
     const selectedStoreId = reportStoreId || stores[0]?.id || "";
     const selectedSellerId = reportSellerId || staff[0]?.id || "";
+    const yesterdayInputValue = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const weekAnchorInputValue = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const monthAnchorInputValue = toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const reportMenuItems: Array<{
       type: AdminReportType;
       title: string;
       eyebrow: string;
       description: string;
       icon: IconType;
-      highlights: string[];
     }> = [
       {
         type: "daily_summary",
         title: "Сводный отчет за день",
         eyebrow: "Общий итог",
-        description: "День по всем магазинам: выручка, касса, возвраты и главные товары.",
+        description: "Выручка, возвраты и касса по всем магазинам за выбранный день.",
         icon: LuReceiptText,
-        highlights: ["Все магазины", "Касса", "Топ товары"],
       },
       {
         type: "store",
         title: "Отчет по магазину",
         eyebrow: "По точке",
-        description: "Одна точка: продажи, средний чек, возвраты и остатки за выбранную дату.",
+        description: "Продажи, возвраты и остатки выбранного магазина за нужный день.",
         icon: LuStore,
-        highlights: ["1 магазин", "Продажи", "Возвраты"],
       },
       {
         type: "seller",
         title: "Отчет по продавцу",
         eyebrow: "По сотруднику",
-        description: "Один сотрудник: смена, выручка, продажи и личные показатели за день.",
+        description: "Смена, выручка и продажи выбранного сотрудника за нужный день.",
         icon: LuUserRound,
-        highlights: ["1 продавец", "Смена", "Выручка"],
       },
       {
         type: "schedule",
         title: "Рабочий график",
         eyebrow: "Команда",
-        description: "Команда за период: смены, часы и загрузка за неделю или месяц.",
+        description: "Смены, часы и загрузка команды за выбранный период.",
         icon: LuUsersRound,
-        highlights: ["Неделя/месяц", "Часы", "Нагрузка"],
       },
     ];
 
@@ -5450,39 +5450,42 @@ export function AdminDashboardScreen({
     const activeReportMeta =
       reportMenuItems.find((item) => item.type === reportType) ?? reportMenuItems[0];
     const ActiveReportIcon = activeReportMeta.icon;
-    const reportDetailHighlights =
-      reportType === "daily_summary"
-        ? ["PDF в Telegram", "Все магазины", "Один день"]
-        : reportType === "store"
-          ? ["PDF в Telegram", "Один магазин", "Одна дата"]
-          : reportType === "seller"
-            ? ["PDF в Telegram", "Один продавец", "Одна дата"]
-            : ["PDF в Telegram", "Неделя/месяц", "Вся команда"];
+    const quickDateOptions: Array<{ label: string; value: ReportQuickPreset }> = [
+      { label: "Сегодня", value: "today" },
+      { label: "Вчера", value: "yesterday" },
+      { label: "Неделя", value: "week" },
+      { label: "Месяц", value: "month" },
+      { label: "Свой период", value: "custom" },
+    ];
 
-    const quickDateOptions =
-      reportType === "schedule"
-        ? [
-            { label: "Сегодня", value: getTodayInputValue() },
-            {
-              label: "Неделя",
-              value: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            },
-            {
-              label: "Месяц",
-              value: new Date(new Date().setDate(1)).toISOString().slice(0, 10),
-            },
-          ]
-        : [
-            { label: "Сегодня", value: getTodayInputValue() },
-            {
-              label: "Вчера",
-              value: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            },
-            {
-              label: "Неделя",
-              value: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            },
-          ];
+    const handleSelectReportQuickPreset = (preset: ReportQuickPreset) => {
+      setReportQuickPreset(preset);
+
+      if (preset === "today") {
+        setReportDate(getTodayInputValue());
+        return;
+      }
+
+      if (preset === "yesterday") {
+        setReportDate(yesterdayInputValue);
+        return;
+      }
+
+      if (preset === "week") {
+        setReportDate(weekAnchorInputValue);
+        if (reportType === "schedule") {
+          setReportPeriod("week");
+        }
+        return;
+      }
+
+      if (preset === "month") {
+        setReportDate(monthAnchorInputValue);
+        if (reportType === "schedule") {
+          setReportPeriod("month");
+        }
+      }
+    };
 
     if (settingsView === "reports-menu") {
       return (
@@ -5510,10 +5513,12 @@ export function AdminDashboardScreen({
                   borderRadius="18px"
                   px={3}
                   py={3}
+                  minH="132px"
                   border={0}
                   onClick={() => {
                     setReportType(item.type);
                     setReportStatus(null);
+                    setReportQuickPreset("today");
                     setSettingsView("report-detail");
                   }}
                 >
@@ -5536,14 +5541,9 @@ export function AdminDashboardScreen({
                         <Text fontWeight="900" color="surface.900">
                           {item.title}
                         </Text>
-                        <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.35">
+                        <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.35" minH="58px">
                           {item.description}
                         </Text>
-                        <HStack spacing={2} flexWrap="wrap" pt={1}>
-                          {item.highlights.slice(0, 2).map((highlight) => (
-                            <StatusPill key={highlight} label={highlight} tone="gray" />
-                          ))}
-                        </HStack>
                       </VStack>
                     </HStack>
                     <Box
@@ -5596,13 +5596,6 @@ export function AdminDashboardScreen({
                 </Text>
               </VStack>
             </HStack>
-            <StatusPill label="PDF" tone="blue" />
-          </HStack>
-
-          <HStack spacing={2} flexWrap="wrap">
-            {reportDetailHighlights.map((highlight) => (
-              <StatusPill key={highlight} label={highlight} tone="gray" />
-            ))}
           </HStack>
         </VStack>
         </Box>
@@ -5621,15 +5614,15 @@ export function AdminDashboardScreen({
           <HStack spacing={2} flexWrap="wrap">
             {quickDateOptions.map((option) => (
               <Button
-                key={option.label}
+                key={option.value}
                 size="sm"
                 borderRadius="999px"
-                bg={reportDate === option.value ? "brand.500" : panelMutedSurface}
-                color={reportDate === option.value ? "white" : "surface.700"}
+                bg={reportQuickPreset === option.value ? "brand.500" : panelMutedSurface}
+                color={reportQuickPreset === option.value ? "white" : "surface.700"}
                 _hover={{
-                  bg: reportDate === option.value ? "brand.600" : "rgba(225,223,218,0.95)",
+                  bg: reportQuickPreset === option.value ? "brand.600" : "rgba(225,223,218,0.95)",
                 }}
-                onClick={() => setReportDate(option.value)}
+                onClick={() => handleSelectReportQuickPreset(option.value)}
               >
                 {option.label}
               </Button>
@@ -5642,12 +5635,14 @@ export function AdminDashboardScreen({
                 <Text fontWeight="800" color="surface.700">
                   {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
                 </Text>
-                <StatusPill label="PDF" tone="gray" />
               </HStack>
               <Input
                 type="date"
                 value={reportDate}
-                onChange={(event) => setReportDate(event.target.value)}
+                onChange={(event) => {
+                  setReportDate(event.target.value);
+                  setReportQuickPreset("custom");
+                }}
                 {...adminFormInputStyles}
                 bg="rgba(255,255,255,0.96)"
               />
