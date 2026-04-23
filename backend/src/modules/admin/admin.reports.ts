@@ -173,6 +173,10 @@ function formatDisplayDate(value: string) {
   }).format(date);
 }
 
+function formatFilenameDate(value: string) {
+  return formatDisplayDate(value).replaceAll("/", ".");
+}
+
 function formatDateTime(value: string) {
   return new Date(value).toISOString().slice(0, 16).replace("T", " ");
 }
@@ -221,6 +225,13 @@ function formatGeneratedAtDisplay() {
 
 function buildPeriodLabel(range: ReportRange) {
   return `${formatDisplayDateTime(range.dateFrom)} – ${formatDisplayDateTime(range.dateTo)}`;
+}
+
+function buildReportFilename(title: string, rangeLabel: string) {
+  const dateLabel = rangeLabel.includes(" - ")
+    ? `${formatFilenameDate(rangeLabel.slice(0, 10))} - ${formatFilenameDate(rangeLabel.slice(-10))}`
+    : formatFilenameDate(rangeLabel);
+  return `${title} ${dateLabel}.pdf`;
 }
 
 function formatBestHourLabel(hour: number | null) {
@@ -584,7 +595,7 @@ async function resolveReport(input: ReportRequestInput) {
     const document = await buildScheduleReportDocument(range);
     return {
       title: document.title,
-      filename: `schedule-${input.period ?? "week"}-${range.label.replaceAll(" ", "")}.pdf`,
+      filename: buildReportFilename("График работы", range.label),
       html: renderReportHtml(document),
       lines: renderReportPlainText(document),
     };
@@ -613,7 +624,7 @@ async function resolveReport(input: ReportRequestInput) {
     const document = buildDailySummaryReportDocument(range, data);
     return {
       title: "Daily Summary Report",
-      filename: `${input.type}-${range.label}.pdf`,
+      filename: buildReportFilename("Сводный отчет", range.label),
       html: renderDailySummaryReportHtml(document),
       lines: renderDailySummaryReportPlainText(document),
     };
@@ -637,7 +648,7 @@ async function resolveReport(input: ReportRequestInput) {
 
   return {
     title: document.title,
-    filename: `${input.type}-${range.label}.pdf`,
+    filename: buildReportFilename(input.type === "store" ? "Отчет по магазину" : "Отчет по продавцу", range.label),
     html: renderReportHtml(document),
     lines: renderReportPlainText(document),
   };
