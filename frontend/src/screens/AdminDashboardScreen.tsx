@@ -5404,6 +5404,7 @@ export function AdminDashboardScreen({
   const renderReportsSettings = () => {
     const selectedStoreId = reportStoreId || stores[0]?.id || "";
     const selectedSellerId = reportSellerId || staff[0]?.id || "";
+    const isEntityReport = reportType === "store" || reportType === "seller";
     const yesterdayInputValue = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const weekAnchorInputValue = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const monthAnchorInputValue = toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -5691,11 +5692,11 @@ export function AdminDashboardScreen({
         boxShadow={panelShadow}
         border="1px solid rgba(255,255,255,0.72)"
       >
-        <VStack align="stretch" gap={4}>
-          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
-            <VStack align="stretch" gap={3}>
+        <VStack align="stretch" gap={isEntityReport ? 3 : 4}>
+          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={isEntityReport ? 2.5 : 3.5}>
+            <VStack align="stretch" gap={isEntityReport ? 2 : 3}>
               <VStack align="start" gap={1}>
-                <Text fontWeight="800" color="surface.700">
+                <Text fontWeight="800" color="surface.700" fontSize={isEntityReport ? "md" : "lg"}>
                   {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
                 </Text>
                 <Text color="surface.500" fontSize="xs" fontWeight="700">
@@ -5712,12 +5713,13 @@ export function AdminDashboardScreen({
                 {...adminFormInputStyles}
                 bg="rgba(255,255,255,0.96)"
                 borderRadius="18px"
+                h={isEntityReport ? "50px" : adminFormInputStyles.h}
               />
             </VStack>
           </Box>
 
-          <VStack align="stretch" gap={3}>
-            <Text fontWeight="800" color="surface.700" px={1}>
+          <VStack align="stretch" gap={isEntityReport ? 2 : 3}>
+            <Text fontWeight="800" color="surface.700" px={1} fontSize={isEntityReport ? "md" : "lg"}>
               Период
             </Text>
             <HStack gap={2} w="100%">
@@ -5726,7 +5728,7 @@ export function AdminDashboardScreen({
                 key={option.value}
                 size="sm"
                 borderRadius="999px"
-                h="40px"
+                h={isEntityReport ? "38px" : "40px"}
                 px={0}
                 flex="1"
                 minW={0}
@@ -5747,9 +5749,9 @@ export function AdminDashboardScreen({
           </VStack>
 
           {reportType === "store" ? (
-            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
-              <VStack align="stretch" gap={3}>
-                <Text fontWeight="800" color="surface.700">
+            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={2.5}>
+              <VStack align="stretch" gap={2}>
+                <Text fontWeight="800" color="surface.700" fontSize="md">
                   Магазин
                 </Text>
                 <NativeSelect.Root>
@@ -5758,6 +5760,7 @@ export function AdminDashboardScreen({
                     onChange={(event) => setReportStoreId(event.target.value)}
                     {...adminFormInputStyles}
                     bg="rgba(255,255,255,0.96)"
+                    h="50px"
                     borderRadius="18px">
                     {stores.map((store) => (
                       <option key={store.id} value={store.id}>
@@ -5772,9 +5775,9 @@ export function AdminDashboardScreen({
           ) : null}
 
           {reportType === "seller" ? (
-            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
-              <VStack align="stretch" gap={3}>
-                <Text fontWeight="800" color="surface.700">
+            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={2.5}>
+              <VStack align="stretch" gap={2}>
+                <Text fontWeight="800" color="surface.700" fontSize="md">
                   Продавец
                 </Text>
                 <NativeSelect.Root>
@@ -5783,6 +5786,7 @@ export function AdminDashboardScreen({
                     onChange={(event) => setReportSellerId(event.target.value)}
                     {...adminFormInputStyles}
                     bg="rgba(255,255,255,0.96)"
+                    h="50px"
                     borderRadius="18px">
                     {staff.map((seller) => (
                       <option key={seller.id} value={seller.id}>
@@ -5826,9 +5830,9 @@ export function AdminDashboardScreen({
             </Box>
           ) : null}
 
-          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
-            <VStack align="stretch" gap={3}>
-              <Text fontWeight="800" color="surface.700">
+          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={isEntityReport ? 2.5 : 3.5}>
+            <VStack align="stretch" gap={isEntityReport ? 2 : 3}>
+              <Text fontWeight="800" color="surface.700" fontSize={isEntityReport ? "md" : "lg"}>
                 Формат
               </Text>
               <HStack
@@ -5836,12 +5840,12 @@ export function AdminDashboardScreen({
                 borderRadius="22px"
                 border="1px solid rgba(214,218,225,0.96)"
                 bg="rgba(255,255,255,0.96)"
-                px={3.5}
-                py={3}
+                px={isEntityReport ? 3 : 3.5}
+                py={isEntityReport ? 2.5 : 3}
               >
                 <Box
-                  w="44px"
-                  h="44px"
+                  w={isEntityReport ? "40px" : "44px"}
+                  h={isEntityReport ? "40px" : "44px"}
                   borderRadius="15px"
                   bg="rgba(74,132,244,0.1)"
                   color="brand.600"
@@ -5850,14 +5854,14 @@ export function AdminDashboardScreen({
                   justifyContent="center"
                   flexShrink={0}
                 >
-                  <LuReceiptText size={20} />
+                  <LuReceiptText size={isEntityReport ? 18 : 20} />
                 </Box>
                 <VStack align="start" gap={0.5} minW={0} flex="1">
                   <Text fontWeight="900" color="surface.900">
                     PDF
                   </Text>
                   <Text color="surface.500" fontSize="xs" fontWeight="700" lineHeight="1.35">
-                    Формируется отчет в формате PDF.
+                    {isEntityReport ? "Отчет в формате PDF." : "Формируется отчет в формате PDF."}
                   </Text>
                 </VStack>
                 <Box color="brand.600" flexShrink={0}>
