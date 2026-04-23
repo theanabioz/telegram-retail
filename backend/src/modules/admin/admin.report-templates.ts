@@ -664,18 +664,20 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       align-items: end;
       gap: 16px;
       margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--line);
+      padding: 10px 12px 11px;
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-soft) 0%, #f6f7f8 58%, var(--paper) 100%);
     }
 
     .section-heading {
-      padding-left: 12px;
-      border-left: 4px solid var(--accent);
+      padding-left: 0;
+      border-left: 0;
     }
 
     .section-kicker {
       margin: 0 0 4px;
-      color: var(--muted);
+      color: var(--accent);
       font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.14em;
@@ -684,7 +686,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .section-title {
       margin: 0;
-      color: var(--text);
+      color: var(--accent);
       font-size: 15px;
       line-height: 1.2;
       letter-spacing: -0.02em;
@@ -692,10 +694,13 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .section-note {
-      color: var(--muted);
+      color: var(--muted-strong);
       font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
+      padding: 5px 8px;
+      border: 1px solid rgba(34, 63, 120, 0.12);
+      background: rgba(255, 255, 255, 0.72);
     }
 
     .metric-band {
@@ -833,13 +838,14 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .panel-title {
       padding: 10px 12px;
-      background: var(--paper-soft);
+      background: linear-gradient(90deg, var(--accent-soft) 0%, var(--paper-soft) 100%);
       border-bottom: 1px solid var(--line);
       color: var(--accent);
       font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
+      border-left: 4px solid var(--accent);
     }
 
     .ledger-table td:first-child,
@@ -1048,7 +1054,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
       .section-header {
         margin-bottom: 7px;
-        padding-bottom: 5px;
+        padding: 8px 9px;
         page-break-after: avoid;
         break-after: avoid-page;
       }
@@ -1098,7 +1104,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       }
 
       .panel-title {
-        padding: 7px;
+        padding: 6px 7px;
       }
 
       .network-overview {
