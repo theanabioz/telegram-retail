@@ -26,11 +26,13 @@ if [[ -z "${BOT_TOKEN:-}" || -z "${APP_DOMAIN:-}" ]]; then
   exit 0
 fi
 
+app_url="https://${APP_DOMAIN}/"
+
 curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" \
-  -d 'menu_button={"type":"default"}' \
+  -d "menu_button={\"type\":\"web_app\",\"text\":\"Open\",\"web_app\":{\"url\":\"${app_url}\"}}" \
   >/dev/null
 
 curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/deleteMyCommands" >/dev/null
 
-echo "Telegram bot menu button reset to default"
+echo "Telegram bot menu button URL set to ${app_url}"
 echo "Telegram bot commands removed"
