@@ -5155,20 +5155,20 @@ export function AdminDashboardScreen({
                       borderRadius="24px"
                       bg={
                         isActive
-                          ? "linear-gradient(180deg, rgba(74,132,244,0.18) 0%, rgba(74,132,244,0.10) 100%)"
+                          ? "rgba(241,240,236,0.98)"
                           : "rgba(247,246,242,0.98)"
                       }
                       color="surface.900"
                       border="1px solid"
-                      borderColor={isActive ? "rgba(74,132,244,0.28)" : "rgba(226,224,218,0.92)"}
+                      borderColor={isActive ? "rgba(214,210,201,0.96)" : "rgba(226,224,218,0.92)"}
                       boxShadow={
                         isActive
-                          ? "0 16px 32px rgba(74,132,244,0.14)"
+                          ? "0 14px 28px rgba(18, 18, 18, 0.07)"
                           : "0 12px 28px rgba(18, 18, 18, 0.05)"
                       }
                       _hover={{
                         bg: isActive
-                          ? "linear-gradient(180deg, rgba(74,132,244,0.22) 0%, rgba(74,132,244,0.12) 100%)"
+                          ? "rgba(238,236,231,1)"
                           : "rgba(255,255,255,1)",
                       }}
                       onClick={() => {
@@ -5212,12 +5212,12 @@ export function AdminDashboardScreen({
                             w="34px"
                             h="34px"
                             borderRadius="999px"
-                            bg="brand.500"
-                            color="white"
+                            bg="surface.900"
+                            color="rgba(255,255,255,0.96)"
                             display="grid"
                             placeItems="center"
                             flexShrink={0}
-                            boxShadow="0 10px 20px rgba(74,132,244,0.22)"
+                            boxShadow="0 8px 18px rgba(18, 18, 18, 0.14)"
                           >
                             <LuCheck size={18} />
                           </Box>
