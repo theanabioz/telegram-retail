@@ -5431,6 +5431,26 @@ export function AdminDashboardScreen({
     const activeReportMeta =
       reportMenuItems.find((item) => item.type === reportType) ?? reportMenuItems[0];
     const ActiveReportIcon = activeReportMeta.icon;
+    const detailMetaPills: Array<{ label: string; icon: IconType }> =
+      reportType === "daily_summary"
+        ? [
+            { label: "Магазины", icon: LuStore },
+            { label: "Telegram", icon: LuSend },
+          ]
+        : reportType === "store"
+          ? [
+              { label: "Магазин", icon: LuStore },
+              { label: "Продажи", icon: LuReceiptText },
+            ]
+          : reportType === "seller"
+            ? [
+                { label: "Продавец", icon: LuUserRound },
+                { label: "Смены", icon: LuClock3 },
+              ]
+            : [
+                { label: "Команда", icon: LuUsersRound },
+                { label: "Все дни", icon: LuCalendarDays },
+              ];
     const quickDateOptions: Array<{ label: string; value: ReportQuickPreset }> = [
       { label: "Сегодня", value: "today" },
       { label: "Вчера", value: "yesterday" },
@@ -5675,13 +5695,20 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" gap={4}>
+      <Box
+        bg={panelSurface}
+        borderRadius="30px"
+        px={4}
+        py={4}
+        boxShadow={panelShadow}
+        border="1px solid rgba(255,255,255,0.72)"
+      >
+        <VStack align="stretch" gap={5}>
           <HStack align="start" gap={3} minW={0}>
             <Box
-              w="44px"
-              h="44px"
-              borderRadius="16px"
+              w="56px"
+              h="56px"
+              borderRadius="20px"
               bg="rgba(74,132,244,0.1)"
               color="brand.600"
               display="flex"
@@ -5689,29 +5716,61 @@ export function AdminDashboardScreen({
               justifyContent="center"
               flexShrink={0}
             >
-              <ActiveReportIcon size={20} />
+              <ActiveReportIcon size={24} />
             </Box>
-            <VStack align="start" gap={0} minW={0}>
-              <Text fontWeight="900" fontSize="xl">
-                {activeReportMeta.title}
-              </Text>
-              <Text color="surface.500" fontSize="sm" fontWeight="700">
-                {reportDetailDescription}
-              </Text>
+            <VStack align="start" gap={2} minW={0} flex="1">
+              <VStack align="start" gap={0.5} minW={0}>
+                <Text fontWeight="900" fontSize={{ base: "xl", sm: "2xl" }} lineHeight="1.12">
+                  {activeReportMeta.title}
+                </Text>
+                <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.4">
+                  {reportDetailDescription}
+                </Text>
+              </VStack>
+              <HStack gap={2} flexWrap="nowrap" overflowX="auto" pb={0.5}>
+                {detailMetaPills.map((pill) => {
+                  const PillIcon = pill.icon;
+
+                  return (
+                    <HStack
+                      key={pill.label}
+                      gap={1.5}
+                      borderRadius="999px"
+                      bg={panelMutedSurface}
+                      color="surface.600"
+                      px={2.5}
+                      py={2}
+                      fontWeight="800"
+                      fontSize="11px"
+                      lineHeight="1"
+                      whiteSpace="nowrap"
+                      flexShrink={0}
+                    >
+                      <PillIcon size={13} />
+                      <Text>{pill.label}</Text>
+                    </HStack>
+                  );
+                })}
+              </HStack>
             </VStack>
           </HStack>
 
-          <HStack gap={2} flexWrap="wrap">
+          <HStack gap={2} flexWrap="nowrap" overflowX="auto" pb={0.5}>
             {quickDateOptions.map((option) => (
               <Button
                 key={option.value}
                 size="sm"
                 borderRadius="999px"
+                h="40px"
+                px={4}
+                flexShrink={0}
+                fontWeight="900"
                 bg={reportQuickPreset === option.value ? "brand.500" : panelMutedSurface}
                 color={reportQuickPreset === option.value ? "white" : "surface.700"}
                 _hover={{
                   bg: reportQuickPreset === option.value ? "brand.600" : "rgba(225,223,218,0.95)",
                 }}
+                _active={{ transform: "scale(0.98)" }}
                 onClick={() => handleSelectReportQuickPreset(option.value)}
               >
                 {option.label}
@@ -5719,13 +5778,16 @@ export function AdminDashboardScreen({
             ))}
           </HStack>
 
-          <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-            <VStack align="stretch" gap={3}>
-              <HStack justify="space-between">
+          <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
+            <VStack align="stretch" gap={4}>
+              <VStack align="start" gap={1}>
                 <Text fontWeight="800" color="surface.700">
                   {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
                 </Text>
-              </HStack>
+                <Text color="surface.500" fontSize="xs" fontWeight="700">
+                  {reportType === "schedule" ? "Выберите дату внутри нужного периода." : "Выберите день, за который нужен PDF."}
+                </Text>
+              </VStack>
               <Input
                 type="date"
                 value={reportDate}
@@ -5735,12 +5797,13 @@ export function AdminDashboardScreen({
                 }}
                 {...adminFormInputStyles}
                 bg="rgba(255,255,255,0.96)"
+                borderRadius="18px"
               />
             </VStack>
           </Box>
 
           {reportType === "store" ? (
-            <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+            <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Магазин
@@ -5750,7 +5813,8 @@ export function AdminDashboardScreen({
                     value={selectedStoreId}
                     onChange={(event) => setReportStoreId(event.target.value)}
                     {...adminFormInputStyles}
-                    bg="rgba(255,255,255,0.96)">
+                    bg="rgba(255,255,255,0.96)"
+                    borderRadius="18px">
                     {stores.map((store) => (
                       <option key={store.id} value={store.id}>
                         {store.name}
@@ -5764,7 +5828,7 @@ export function AdminDashboardScreen({
           ) : null}
 
           {reportType === "seller" ? (
-            <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+            <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Продавец
@@ -5774,7 +5838,8 @@ export function AdminDashboardScreen({
                     value={selectedSellerId}
                     onChange={(event) => setReportSellerId(event.target.value)}
                     {...adminFormInputStyles}
-                    bg="rgba(255,255,255,0.96)">
+                    bg="rgba(255,255,255,0.96)"
+                    borderRadius="18px">
                     {staff.map((seller) => (
                       <option key={seller.id} value={seller.id}>
                         {seller.fullName}
@@ -5788,7 +5853,7 @@ export function AdminDashboardScreen({
           ) : null}
 
           {reportType === "schedule" ? (
-            <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
+            <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Период
@@ -5799,11 +5864,14 @@ export function AdminDashboardScreen({
                       key={period}
                       flex="1"
                       borderRadius="18px"
+                      h="48px"
+                      fontWeight="900"
                       bg={reportPeriod === period ? "brand.500" : "rgba(255,255,255,0.96)"}
                       color={reportPeriod === period ? "white" : "surface.800"}
                       _hover={{
                         bg: reportPeriod === period ? "brand.600" : "rgba(255,255,255,1)",
                       }}
+                      _active={{ transform: "scale(0.98)" }}
                       onClick={() => setReportPeriod(period)}
                     >
                       {period === "week" ? "Неделя" : "Месяц"}
@@ -5819,13 +5887,18 @@ export function AdminDashboardScreen({
             borderRadius="22px"
             bg="surface.900"
             color="white"
+            fontWeight="900"
             loading={reportSubmitting}
             _hover={{ bg: "surface.700" }}
-            onClick={handleRequestReport}><LuCalendarDays />Заказать отчет
-                      </Button>
+            _active={{ transform: "scale(0.99)" }}
+            onClick={handleRequestReport}
+          >
+            <LuCalendarDays />
+            Заказать отчет
+          </Button>
 
           {reportStatus ? (
-            <Text color="surface.500" fontSize="sm" fontWeight="700">
+            <Text color="surface.500" fontSize="sm" fontWeight="800" textAlign="center">
               {reportStatus}
             </Text>
           ) : null}
