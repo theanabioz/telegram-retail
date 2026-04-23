@@ -130,7 +130,7 @@ type ProductCreateStep = "name" | "price" | "sku" | "status";
 type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
 type AdminReportPeriod = "week" | "month";
 type AdminSettingsView = "root" | "reports-menu" | "report-detail";
-type ReportQuickPreset = "today" | "yesterday" | "week" | "month" | "custom";
+type ReportQuickPreset = "today" | "yesterday" | "week" | "month";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -542,7 +542,7 @@ export function AdminDashboardScreen({
   const [settingsView, setSettingsView] = useState<AdminSettingsView>("root");
   const [reportType, setReportType] = useState<AdminReportType>("daily_summary");
   const [reportDate, setReportDate] = useState(getTodayInputValue);
-  const [reportQuickPreset, setReportQuickPreset] = useState<ReportQuickPreset>("today");
+  const [reportQuickPreset, setReportQuickPreset] = useState<ReportQuickPreset | null>("today");
   const [reportStoreId, setReportStoreId] = useState("");
   const [reportSellerId, setReportSellerId] = useState("");
   const [reportPeriod, setReportPeriod] = useState<AdminReportPeriod>("week");
@@ -694,13 +694,7 @@ export function AdminDashboardScreen({
       : activeTab === "settings" && settingsView === "reports-menu"
         ? "Выберите нужный сценарий"
       : activeTab === "settings" && settingsView === "report-detail"
-        ? reportType === "daily_summary"
-          ? "Общий итог по магазинам, продавцам и кассе за выбранный день"
-          : reportType === "store"
-            ? "Продажи, возвраты и ключевые показатели конкретного магазина"
-            : reportType === "seller"
-              ? "Личная выручка, смены и активность выбранного продавца"
-              : "Смены, часы и нагрузка команды за неделю или месяц"
+        ? null
       : null;
 
   useTelegramBackButton(
@@ -5404,36 +5398,26 @@ export function AdminDashboardScreen({
     const reportMenuItems: Array<{
       type: AdminReportType;
       title: string;
-      eyebrow: string;
-      description: string;
       icon: IconType;
     }> = [
       {
         type: "daily_summary",
         title: "Сводный отчет за день",
-        eyebrow: "Общий итог",
-        description: "Выручка, возвраты и касса по всем магазинам за выбранный день.",
         icon: LuReceiptText,
       },
       {
         type: "store",
         title: "Отчет по магазину",
-        eyebrow: "По точке",
-        description: "Продажи, возвраты и остатки выбранного магазина за нужный день.",
         icon: LuStore,
       },
       {
         type: "seller",
         title: "Отчет по продавцу",
-        eyebrow: "По сотруднику",
-        description: "Смена, выручка и продажи выбранного сотрудника за нужный день.",
         icon: LuUserRound,
       },
       {
         type: "schedule",
         title: "Рабочий график",
-        eyebrow: "Команда",
-        description: "Смены, часы и загрузка команды за выбранный период.",
         icon: LuUsersRound,
       },
     ];
@@ -5455,7 +5439,6 @@ export function AdminDashboardScreen({
       { label: "Вчера", value: "yesterday" },
       { label: "Неделя", value: "week" },
       { label: "Месяц", value: "month" },
-      { label: "Свой период", value: "custom" },
     ];
 
     const handleSelectReportQuickPreset = (preset: ReportQuickPreset) => {
@@ -5513,7 +5496,7 @@ export function AdminDashboardScreen({
                   borderRadius="18px"
                   px={3}
                   py={3}
-                  minH="132px"
+                  minH="84px"
                   border={0}
                   onClick={() => {
                     setReportType(item.type);
@@ -5537,12 +5520,9 @@ export function AdminDashboardScreen({
                       >
                         <Icon size={18} />
                       </Box>
-                      <VStack align="start" spacing={1} minW={0}>
+                      <VStack align="start" spacing={0} minW={0} justify="center" flex="1">
                         <Text fontWeight="900" color="surface.900">
                           {item.title}
-                        </Text>
-                        <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.35" minH="58px">
-                          {item.description}
                         </Text>
                       </VStack>
                     </HStack>
@@ -5569,47 +5549,31 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack align="stretch" spacing={4}>
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-          <HStack justify="space-between" align="start" spacing={3}>
-            <HStack align="start" spacing={3} minW={0}>
-              <Box
-                w="40px"
-                h="40px"
-                borderRadius="14px"
-                bg="rgba(74,132,244,0.1)"
-                color="brand.600"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                flexShrink={0}
-              >
-                <ActiveReportIcon size={18} />
-              </Box>
-              <VStack align="start" spacing={0} minW={0}>
-                <Text fontWeight="900" fontSize="lg">
-                  {activeReportMeta.title}
-                </Text>
-                <Text color="surface.500" fontSize="sm" fontWeight="700">
-                  {reportDetailDescription}
-                </Text>
-              </VStack>
-            </HStack>
-          </HStack>
-        </VStack>
-        </Box>
-
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
-          <VStack align="start" spacing={1}>
-            <Text fontWeight="900" fontSize="lg">
-              Параметры отчета
-            </Text>
-            <Text color="surface.500" fontSize="sm">
-              Настрой параметры и отправь PDF в Telegram.
-            </Text>
-          </VStack>
+          <HStack align="start" spacing={3} minW={0}>
+            <Box
+              w="44px"
+              h="44px"
+              borderRadius="16px"
+              bg="rgba(74,132,244,0.1)"
+              color="brand.600"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              <ActiveReportIcon size={20} />
+            </Box>
+            <VStack align="start" spacing={0} minW={0}>
+              <Text fontWeight="900" fontSize="xl">
+                {activeReportMeta.title}
+              </Text>
+              <Text color="surface.500" fontSize="sm" fontWeight="700">
+                {reportDetailDescription}
+              </Text>
+            </VStack>
+          </HStack>
 
           <HStack spacing={2} flexWrap="wrap">
             {quickDateOptions.map((option) => (
@@ -5641,7 +5605,7 @@ export function AdminDashboardScreen({
                 value={reportDate}
                 onChange={(event) => {
                   setReportDate(event.target.value);
-                  setReportQuickPreset("custom");
+                  setReportQuickPreset(null);
                 }}
                 {...adminFormInputStyles}
                 bg="rgba(255,255,255,0.96)"
@@ -5739,8 +5703,7 @@ export function AdminDashboardScreen({
             </Text>
           ) : null}
         </VStack>
-        </Box>
-      </VStack>
+      </Box>
     );
   };
 
