@@ -1,4 +1,4 @@
-import { getBusinessDayRange } from "../../lib/business-time.js";
+import { getBusinessDateInput, getBusinessDayRange } from "../../lib/business-time.js";
 import { maybeOne, queryDb } from "../../lib/db.js";
 import { HttpError } from "../../lib/http-error.js";
 import { createSimplePdf } from "../../lib/simple-pdf.js";
@@ -18,6 +18,7 @@ type ReportRequestInput = {
   date?: string;
   dateFrom?: string;
   dateTo?: string;
+  rangeMode?: "to_date" | "full_days";
   storeId?: string;
   sellerId?: string;
   period?: "week" | "month";
@@ -71,7 +72,7 @@ function buildDayRange(date?: string): ReportRange {
   };
 }
 
-function buildDateRange(input: Pick<ReportRequestInput, "date" | "dateFrom" | "dateTo">): ReportRange {
+function buildDateRange(input: Pick<ReportRequestInput, "date" | "dateFrom" | "dateTo" | "rangeMode">): ReportRange {
   if (input.dateFrom || input.dateTo) {
     if (!input.dateFrom || !input.dateTo) {
       throw new HttpError(400, "Report date range requires dateFrom and dateTo");
@@ -87,14 +88,25 @@ function buildDateRange(input: Pick<ReportRequestInput, "date" | "dateFrom" | "d
     return {
       label: start === end ? start : `${start} - ${end}`,
       dateFrom: startRange.dateFrom,
-      dateTo: endRange.dateTo,
+      dateTo:
+        input.rangeMode === "to_date" && end === getBusinessDateInput()
+          ? new Date().toISOString()
+          : endRange.dateTo,
     };
   }
 
-  return buildDayRange(input.date);
+  const dayRange = buildDayRange(input.date);
+
+  return {
+    ...dayRange,
+    dateTo:
+      input.rangeMode === "to_date" && formatDateInput(input.date) === getBusinessDateInput()
+        ? new Date().toISOString()
+        : dayRange.dateTo,
+  };
 }
 
-function buildScheduleRange(input: Pick<ReportRequestInput, "period" | "periodAnchorDate" | "dateFrom" | "dateTo">): ReportRange {
+function buildScheduleRange(input: Pick<ReportRequestInput, "period" | "periodAnchorDate" | "dateFrom" | "dateTo" | "rangeMode">): ReportRange {
   if (input.dateFrom || input.dateTo) {
     return buildDateRange(input);
   }

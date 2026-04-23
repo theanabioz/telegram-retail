@@ -109,6 +109,7 @@ export const adminSalesQuerySchema = z.object({
 });
 
 const reportDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const reportRangeModeSchema = z.enum(["to_date", "full_days"]);
 
 export const adminReportRequestBodySchema = z.discriminatedUnion("type", [
   z.object({
@@ -116,12 +117,14 @@ export const adminReportRequestBodySchema = z.discriminatedUnion("type", [
     date: reportDateSchema.optional(),
     dateFrom: reportDateSchema.optional(),
     dateTo: reportDateSchema.optional(),
+    rangeMode: reportRangeModeSchema.optional(),
   }),
   z.object({
     type: z.literal("store"),
     date: reportDateSchema.optional(),
     dateFrom: reportDateSchema.optional(),
     dateTo: reportDateSchema.optional(),
+    rangeMode: reportRangeModeSchema.optional(),
     storeId: z.string().uuid(),
   }),
   z.object({
@@ -129,6 +132,7 @@ export const adminReportRequestBodySchema = z.discriminatedUnion("type", [
     date: reportDateSchema.optional(),
     dateFrom: reportDateSchema.optional(),
     dateTo: reportDateSchema.optional(),
+    rangeMode: reportRangeModeSchema.optional(),
     sellerId: z.string().uuid(),
   }),
   z.object({
@@ -137,5 +141,6 @@ export const adminReportRequestBodySchema = z.discriminatedUnion("type", [
     periodAnchorDate: reportDateSchema.optional(),
     dateFrom: reportDateSchema.optional(),
     dateTo: reportDateSchema.optional(),
+    rangeMode: reportRangeModeSchema.optional(),
   }),
 ]);

@@ -130,7 +130,6 @@ type StoreCreateStep = "name" | "address";
 type SellerCreateStep = "name" | "telegramId" | "store" | "status";
 type ProductCreateStep = "name" | "price" | "sku" | "status";
 type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
-type AdminReportPeriod = "week" | "month";
 type AdminSettingsView = "root" | "reports-menu" | "report-detail";
 type ReportQuickPreset = "today" | "week" | "month" | "custom";
 
@@ -349,6 +348,18 @@ function formatHeaderDate(value: Date) {
   });
 }
 
+function formatReportRangeLabel(dateFrom: string, dateTo: string) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const formatOne = (value: string) =>
+    formatter.format(new Date(`${value}T12:00:00`)).replace(/^(\d{2}) /, "$1. ");
+
+  return dateFrom === dateTo ? formatOne(dateFrom) : `${formatOne(dateFrom)} - ${formatOne(dateTo)}`;
+}
+
 function getRussianPlural(count: number, one: string, few: string, many: string) {
   const mod10 = count % 10;
   const mod100 = count % 100;
@@ -548,7 +559,6 @@ export function AdminDashboardScreen({
   const [reportQuickPreset, setReportQuickPreset] = useState<ReportQuickPreset | null>("today");
   const [reportStoreId, setReportStoreId] = useState("");
   const [reportSellerId, setReportSellerId] = useState("");
-  const [reportPeriod, setReportPeriod] = useState<AdminReportPeriod>("week");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [storeCreateStep, setStoreCreateStep] = useState<StoreCreateStep>("name");
@@ -5379,29 +5389,32 @@ export function AdminDashboardScreen({
     const normalizedReportDateFrom = reportDate <= reportDateTo ? reportDate : reportDateTo;
     const normalizedReportDateTo = reportDate <= reportDateTo ? reportDateTo : reportDate;
     const reportDatePayload =
-      reportQuickPreset === "today"
-        ? { date: reportDate }
+      reportQuickPreset === "custom"
+        ? {
+            dateFrom: normalizedReportDateFrom,
+            dateTo: normalizedReportDateTo,
+            rangeMode: "full_days" as const,
+          }
         : {
             dateFrom: normalizedReportDateFrom,
             dateTo: normalizedReportDateTo,
+            rangeMode: "to_date" as const,
           };
 
     type AdminReportRequestBody =
       | ({ type: "daily_summary" } & typeof reportDatePayload)
       | ({ type: "store"; storeId?: string } & typeof reportDatePayload)
       | ({ type: "seller"; sellerId?: string } & typeof reportDatePayload)
-      | ({ type: "schedule"; period?: AdminReportPeriod; periodAnchorDate?: string } & Partial<typeof reportDatePayload>);
+      | ({ type: "schedule" } & typeof reportDatePayload);
 
     const body: AdminReportRequestBody =
       reportType === "daily_summary"
         ? { type: reportType, ...reportDatePayload }
         : reportType === "store"
-          ? { type: reportType, ...reportDatePayload, storeId: reportStoreId || stores[0]?.id }
+        ? { type: reportType, ...reportDatePayload, storeId: reportStoreId || stores[0]?.id }
           : reportType === "seller"
             ? { type: reportType, ...reportDatePayload, sellerId: reportSellerId || staff[0]?.id }
-            : reportQuickPreset === "custom"
-              ? { type: reportType, ...reportDatePayload }
-              : { type: reportType, period: reportPeriod, periodAnchorDate: reportDate };
+            : { type: reportType, ...reportDatePayload };
 
     if (
       (reportType === "store" && !(reportStoreId || stores[0]?.id)) ||
@@ -5429,6 +5442,7 @@ export function AdminDashboardScreen({
     const todayInputValue = getTodayInputValue();
     const weekAnchorInputValue = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const monthAnchorInputValue = toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    const presetRangeLabel = formatReportRangeLabel(reportDate, reportDateTo);
     const reportMenuItems: Array<{
       type: AdminReportType;
       title: string;
@@ -5480,18 +5494,12 @@ export function AdminDashboardScreen({
       if (preset === "week") {
         setReportDate(weekAnchorInputValue);
         setReportDateTo(todayInputValue);
-        if (reportType === "schedule") {
-          setReportPeriod("week");
-        }
         return;
       }
 
       if (preset === "month") {
         setReportDate(monthAnchorInputValue);
         setReportDateTo(todayInputValue);
-        if (reportType === "schedule") {
-          setReportPeriod("month");
-        }
         return;
       }
 
@@ -5761,18 +5769,20 @@ export function AdminDashboardScreen({
                   />
                 </HStack>
               ) : (
-                <Input
-                  type="date"
-                  value={reportDate}
-                  onChange={(event) => {
-                    setReportDate(event.target.value);
-                    setReportDateTo(event.target.value);
-                  }}
-                  {...adminFormInputStyles}
-                  bg="rgba(255,255,255,0.96)"
-                  borderRadius="18px"
+                <Box
                   h="50px"
-                />
+                  borderRadius="18px"
+                  bg="rgba(255,255,255,0.96)"
+                  border="1px solid rgba(214,218,225,0.96)"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  px={4}
+                >
+                  <Text fontWeight="900" color="surface.900" fontSize="md" textAlign="center">
+                    {presetRangeLabel}
+                  </Text>
+                </Box>
               )}
             </VStack>
           </Box>
@@ -5855,36 +5865,6 @@ export function AdminDashboardScreen({
                   </NativeSelect.Field>
                   <NativeSelect.Indicator />
                 </NativeSelect.Root>
-              </VStack>
-            </Box>
-          ) : null}
-
-          {reportType === "schedule" ? (
-            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
-              <VStack align="stretch" gap={3}>
-                <Text fontWeight="800" color="surface.700">
-                  Период
-                </Text>
-                <HStack gap={3}>
-                  {(["week", "month"] as AdminReportPeriod[]).map((period) => (
-                    <Button
-                      key={period}
-                      flex="1"
-                      borderRadius="18px"
-                      h="44px"
-                      fontWeight="900"
-                      bg={reportPeriod === period ? "brand.500" : "rgba(255,255,255,0.96)"}
-                      color={reportPeriod === period ? "white" : "surface.800"}
-                      _hover={{
-                        bg: reportPeriod === period ? "brand.600" : "rgba(255,255,255,1)",
-                      }}
-                      _active={{ transform: "scale(0.98)" }}
-                      onClick={() => setReportPeriod(period)}
-                    >
-                      {period === "week" ? "Неделя" : "Месяц"}
-                    </Button>
-                  ))}
-                </HStack>
               </VStack>
             </Box>
           ) : null}

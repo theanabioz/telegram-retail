@@ -78,6 +78,11 @@ export function getBusinessDayRange(now = new Date(), timeZone = env.APP_TIME_ZO
   };
 }
 
+export function getBusinessDateInput(now = new Date(), timeZone = env.APP_TIME_ZONE) {
+  const today = getZonedDateTimeParts(now, timeZone);
+  return `${today.year}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`;
+}
+
 export function getBusinessPeriodStarts(now = new Date(), timeZone = env.APP_TIME_ZONE) {
   const today = getZonedDateTimeParts(now, timeZone);
   const todayLocalDate = new Date(Date.UTC(today.year, today.month - 1, today.day));
