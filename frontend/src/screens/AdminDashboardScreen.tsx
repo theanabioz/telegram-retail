@@ -14,10 +14,12 @@ import {
 import { LuActivity, LuCheck, LuChevronDown, LuClock3, LuMinus, LuPlus, LuReceiptText } from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { AdminNav, type AdminTab } from "../components/AdminNav";
+import { AdminFormScreen } from "../components/AdminFormScreen";
 import { AdminTaskScreen } from "../components/AdminTaskScreen";
 import { ConfirmActionModal, type ConfirmActionModalState } from "../components/ConfirmActionModal";
 import { apiGet } from "../lib/api";
 import { formatEur } from "../lib/currency";
+import { useScrollToInput } from "../hooks/useScrollToInput";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
 import { addRealtimeEventListener, type RetailRealtimeEvent } from "../lib/realtime";
 import { canUseTelegramBackButton, useTelegramBackButton } from "../lib/telegramBackButton";
@@ -101,39 +103,21 @@ type StaffDetailMode = "overview" | "profile" | "worklog" | "activity";
 type StaffSeller = AdminStaffResponse["sellers"][number];
 type StoreDetailMode = "overview" | "profile" | "staff" | "activity";
 type TeamStore = AdminStoresResponse["stores"][number];
-type TeamVirtualKeyboardField = "storeName" | "storeAddress" | "sellerName" | "sellerTelegramId";
-type ProductVirtualKeyboardField = "productName" | "productPrice";
-type VirtualKeyboardKeyTone = "default" | "muted" | "accent";
 
-function getVirtualKeyboardButtonStyles(tone: VirtualKeyboardKeyTone = "default") {
-  if (tone === "accent") {
-    return {
-      bg: "linear-gradient(180deg, rgba(244,247,251,0.98) 0%, rgba(224,230,239,0.98) 100%)",
-      color: "surface.900",
-      borderColor: "rgba(179,186,196,0.72)",
-      boxShadow:
-        "0 1px 0 rgba(255,255,255,0.9) inset, 0 6px 12px rgba(15,23,42,0.12)",
-    } as const;
-  }
-
-  if (tone === "muted") {
-    return {
-      bg: "linear-gradient(180deg, rgba(220,225,232,0.98) 0%, rgba(203,210,220,0.98) 100%)",
-      color: "surface.800",
-      borderColor: "rgba(175,182,192,0.68)",
-      boxShadow:
-        "0 1px 0 rgba(255,255,255,0.55) inset, 0 6px 12px rgba(15,23,42,0.1)",
-    } as const;
-  }
-
-  return {
-    bg: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(242,245,249,0.98) 100%)",
-    color: "surface.900",
-    borderColor: "rgba(187,193,201,0.56)",
-    boxShadow:
-      "0 1px 0 rgba(255,255,255,0.96) inset, 0 7px 14px rgba(15,23,42,0.12)",
-  } as const;
-}
+const adminFormInputStyles = {
+  h: "56px",
+  borderRadius: "20px",
+  bg: "rgba(255,255,255,0.94)",
+  borderColor: "rgba(214,218,225,0.96)",
+  fontWeight: "800",
+  px: 4,
+  boxShadow: "0 10px 22px rgba(18,18,18,0.04)",
+  _hover: { borderColor: "rgba(201,206,214,0.98)" },
+  _focusVisible: {
+    borderColor: "brand.400",
+    boxShadow: "0 0 0 3px rgba(74,132,244,0.12), 0 10px 22px rgba(74,132,244,0.08)",
+  },
+} as const;
 
 function compareInventoryItems(left: InventoryItem, right: InventoryItem) {
   const nameComparison = left.productName.localeCompare(right.productName, undefined, {
@@ -527,8 +511,6 @@ export function AdminDashboardScreen({
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [showNewSellerModal, setShowNewSellerModal] = useState(false);
-  const [teamKeyboardField, setTeamKeyboardField] = useState<TeamVirtualKeyboardField>("storeName");
-  const [teamKeyboardCapsLock, setTeamKeyboardCapsLock] = useState(false);
   const [newSeller, setNewSeller] = useState({
     fullName: "",
     telegramId: "",
@@ -542,8 +524,6 @@ export function AdminDashboardScreen({
   });
   const [newProductIsActive, setNewProductIsActive] = useState(true);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
-  const [productKeyboardField, setProductKeyboardField] = useState<ProductVirtualKeyboardField>("productName");
-  const [productKeyboardCapsLock, setProductKeyboardCapsLock] = useState(false);
   const [showInventoryStoreSelector, setShowInventoryStoreSelector] = useState(false);
   const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState(
     () => getCachedAdminStartup()?.inventory.selectedStoreId ?? ""
@@ -577,6 +557,7 @@ export function AdminDashboardScreen({
   const selectedTeamStore = selectedTeamStoreId
     ? stores.find((store) => store.id === selectedTeamStoreId) ?? null
     : null;
+  const scrollFocusedInputIntoView = useScrollToInput();
   const headerContextLabel =
     activeTab === "overview"
       ? t("admin.context.liveDashboard")
@@ -1212,6 +1193,12 @@ export function AdminDashboardScreen({
     setShowNewStoreModal(false);
   };
 
+  const openNewStoreForm = () => {
+    setNewStoreName("");
+    setNewStoreAddress("");
+    setShowNewStoreModal(true);
+  };
+
   const handleCreateSeller = async () => {
     const fullName = newSeller.fullName.trim();
     const telegramId = Number(newSeller.telegramId.trim());
@@ -1233,6 +1220,16 @@ export function AdminDashboardScreen({
       isActive: true,
     });
     setShowNewSellerModal(false);
+  };
+
+  const openNewSellerForm = () => {
+    setNewSeller({
+      fullName: "",
+      telegramId: "",
+      storeId: "",
+      isActive: true,
+    });
+    setShowNewSellerModal(true);
   };
 
   const handleSaveStore = async (storeId: string) => {
@@ -1452,6 +1449,12 @@ export function AdminDashboardScreen({
     setNewProduct({ name: "", sku: "", defaultPrice: "" });
     setNewProductIsActive(true);
     setShowNewProductModal(false);
+  };
+
+  const openNewProductForm = () => {
+    setNewProduct({ name: "", sku: "", defaultPrice: "" });
+    setNewProductIsActive(true);
+    setShowNewProductModal(true);
   };
 
   const handleSaveProduct = async (productId: string) => {
@@ -1970,11 +1973,7 @@ export function AdminDashboardScreen({
             bg="surface.900"
             color="white"
             _hover={{ bg: "surface.700" }}
-            onClick={() => {
-              setTeamKeyboardField("storeName");
-              setTeamKeyboardCapsLock(false);
-              setShowNewStoreModal(true);
-            }}
+            onClick={openNewStoreForm}
         >
           {t("admin.team.newStore")}
         </Button>
@@ -3509,11 +3508,7 @@ export function AdminDashboardScreen({
                       bg="surface.900"
                       color="white"
                       _hover={{ bg: "surface.700" }}
-                      onClick={() => {
-                        setProductKeyboardField("productName");
-                        setProductKeyboardCapsLock(false);
-                        setShowNewProductModal(true);
-                      }}
+                      onClick={openNewProductForm}
                     >
                       {t("admin.inventory.newProduct")}
                     </Button>
@@ -4115,11 +4110,7 @@ export function AdminDashboardScreen({
           bg="surface.900"
           color="white"
           _hover={{ bg: "surface.700" }}
-          onClick={() => {
-            setTeamKeyboardField("sellerName");
-            setTeamKeyboardCapsLock(false);
-            setShowNewSellerModal(true);
-          }}
+          onClick={openNewSellerForm}
         >
           {t("admin.team.newSeller")}
         </Button>
@@ -4639,357 +4630,98 @@ export function AdminDashboardScreen({
     );
   };
 
-  const getTeamKeyboardValue = (field: TeamVirtualKeyboardField) => {
-    if (field === "storeName") {
-      return newStoreName;
-    }
-
-    if (field === "storeAddress") {
-      return newStoreAddress;
-    }
-
-    if (field === "sellerName") {
-      return newSeller.fullName;
-    }
-
-    return newSeller.telegramId;
-  };
-
-  const setTeamKeyboardValue = (field: TeamVirtualKeyboardField, value: string) => {
-    if (field === "storeName") {
-      setNewStoreName(value);
-      return;
-    }
-
-    if (field === "storeAddress") {
-      setNewStoreAddress(value);
-      return;
-    }
-
-    if (field === "sellerName") {
-      setNewSeller((current) => ({ ...current, fullName: value }));
-      return;
-    }
-
-    setNewSeller((current) => ({ ...current, telegramId: value.replace(/\D/g, "") }));
-  };
-
-  const pressTeamKeyboardKey = (key: string) => {
-    const value = getTeamKeyboardValue(teamKeyboardField);
-
-    if (key === "delete") {
-      setTeamKeyboardValue(teamKeyboardField, value.slice(0, -1));
-      return;
-    }
-
-    if (key === "clear") {
-      setTeamKeyboardValue(teamKeyboardField, "");
-      return;
-    }
-
-    if (key === "space") {
-      if (teamKeyboardField !== "sellerTelegramId" && value && !value.endsWith(" ")) {
-        setTeamKeyboardValue(teamKeyboardField, `${value} `);
-      }
-      return;
-    }
-
-    if (key === "caps") {
-      setTeamKeyboardCapsLock((current) => !current);
-      return;
-    }
-
-    if (teamKeyboardField === "sellerTelegramId") {
-      if (/^\d$/.test(key) && value.length < 16) {
-        setTeamKeyboardValue(teamKeyboardField, `${value}${key}`);
-      }
-      return;
-    }
-
-    const shouldUppercase = teamKeyboardCapsLock || !value || value.endsWith(" ");
-    const nextChar = key.length === 1 && /[a-z]/i.test(key)
-      ? shouldUppercase
-        ? key.toUpperCase()
-        : key.toLowerCase()
-      : key;
-
-    if (value.length < 80) {
-      setTeamKeyboardValue(teamKeyboardField, `${value}${nextChar}`);
-      if (teamKeyboardCapsLock && key.length === 1 && /[a-z]/i.test(key)) {
-        setTeamKeyboardCapsLock(false);
-      }
-    }
-  };
-
-  const renderTeamVirtualField = (input: {
-    field: TeamVirtualKeyboardField;
-    label: string;
-    value: string;
-    placeholder: string;
-  }) => {
-    const isActive = teamKeyboardField === input.field;
-
-    return (
-      <VStack align="stretch" spacing={2}>
-        <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-          {input.label}
-        </Text>
-        <Button
-          h="52px"
-          justifyContent="flex-start"
-          borderRadius="20px"
-          bg="rgba(255,255,255,0.94)"
-          border="1px solid"
-          borderColor={isActive ? "brand.400" : "rgba(214,218,225,0.96)"}
-          color={input.value ? "surface.900" : "surface.400"}
-          fontWeight="800"
-          boxShadow={
-            isActive
-              ? "0 0 0 3px rgba(74,132,244,0.12), 0 10px 22px rgba(74,132,244,0.08)"
-              : "0 10px 22px rgba(18,18,18,0.04)"
-          }
-          _hover={{ bg: "rgba(255,255,255,0.94)" }}
-          _active={{ transform: "scale(0.99)" }}
-          onClick={() => setTeamKeyboardField(input.field)}
-        >
-          <Text noOfLines={1}>{input.value || input.placeholder}</Text>
-        </Button>
-      </VStack>
-    );
-  };
-
-  const renderTeamVirtualKeyboard = () => {
-    const isNumeric = teamKeyboardField === "sellerTelegramId";
-    const numericKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "delete"];
-    const alphaRows = [
-      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-      ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
-      ["z", "x", "c", "v", "b", "n", "m"],
-    ];
-
-    if (isNumeric) {
-      return (
-        <Box
-          bg="rgba(246,248,251,0.9)"
-          borderRadius="30px"
-          px={3}
-          pt={3}
-          pb={2.5}
-          border="1px solid"
-          borderColor="rgba(188,194,202,0.58)"
-          boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
-        >
-          <SimpleGrid columns={3} spacing={2.5} h="full" alignContent="stretch">
-            {numericKeys.map((key) => (
-              <Button
-                key={key}
-                h="50px"
-                borderRadius="16px"
-                {...getVirtualKeyboardButtonStyles(key === "delete" || key === "clear" ? "muted" : "default")}
-                fontSize={key === "delete" || key === "clear" ? "sm" : "xl"}
-                fontWeight="800"
-                border="1px solid"
-                _hover={{ transform: "translateY(0.5px)" }}
-                _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-                onClick={() => pressTeamKeyboardKey(key)}
-              >
-                {key === "delete" ? t("admin.inventory.deleteShort") : key === "clear" ? t("admin.inventory.clear") : key}
-              </Button>
-            ))}
-          </SimpleGrid>
-        </Box>
-      );
-    }
-
-    return (
-      <Box
-        bg="rgba(246,248,251,0.9)"
-        borderRadius="30px"
-        px={3}
-        pt={3}
-        pb={2.5}
-        border="1px solid"
-        borderColor="rgba(188,194,202,0.58)"
-        boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
-      >
-        <VStack align="stretch" spacing={2} w="full" h="full">
-          {alphaRows.map((row, index) => (
-            <HStack
-              key={index}
-              spacing={1.5}
-              justify="center"
-              w="full"
-              px={index === 1 ? 0 : index === 2 ? 5 : index === 3 ? 10 : 1}
-            >
-              {row.map((key) => (
-                <Button
-                  key={key}
-                  h="44px"
-                  flex="1"
-                  minW={0}
-                  px={0}
-                  borderRadius="16px"
-                  {...getVirtualKeyboardButtonStyles("default")}
-                  fontSize="md"
-                  fontWeight="900"
-                  border="1px solid"
-                  _hover={{ transform: "translateY(0.5px)" }}
-                  _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-                  onClick={() => pressTeamKeyboardKey(key)}
-                >
-                  {key.toUpperCase()}
-                </Button>
-              ))}
-            </HStack>
-          ))}
-          <HStack spacing={1.5}>
-            <Button
-              flex="1.15"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles(teamKeyboardCapsLock ? "accent" : "muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressTeamKeyboardKey("caps")}
-            >
-              {t("admin.inventory.caps")}
-            </Button>
-            <Button
-              flex="1.1"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressTeamKeyboardKey("clear")}
-            >
-              {t("admin.inventory.clear")}
-            </Button>
-            <Button
-              flex="2.3"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("default")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressTeamKeyboardKey("space")}
-            >
-              {t("admin.inventory.space")}
-            </Button>
-            <Button
-              flex="1.15"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressTeamKeyboardKey("delete")}
-            >
-              {t("admin.inventory.deleteShort")}
-            </Button>
-          </HStack>
-        </VStack>
-      </Box>
-    );
-  };
-
   const renderTeamCreationModals = () => (
     <>
       {showNewStoreModal ? (
-        <AdminTaskScreen
+        <AdminFormScreen
           title={t("admin.team.newStore")}
           description={t("admin.team.newStoreDescription")}
           topLabel={t("admin.team.storesTab")}
           onClose={() => setShowNewStoreModal(false)}
-          inputPanel={renderTeamVirtualKeyboard()}
-          primaryAction={
-            <Button
-              w="full"
-              h="54px"
-              borderRadius="20px"
-              bg="surface.900"
-              color="white"
-              _hover={{ bg: "surface.700" }}
-              isLoading={creatingStore}
-              isDisabled={!newStoreName.trim()}
-              onClick={() => void handleCreateStore()}
-            >
-              {t("admin.team.createStore")}
-            </Button>
-          }
+          primaryActionLabel={t("admin.team.createStore")}
+          primaryActionLoading={creatingStore}
+          primaryActionDisabled={!newStoreName.trim()}
+          onPrimaryAction={() => void handleCreateStore()}
         >
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={4}>
-              {renderTeamVirtualField({
-                field: "storeName",
-                label: t("admin.team.storeName"),
-                value: newStoreName,
-                placeholder: t("admin.team.storeNamePlaceholder"),
-              })}
-
-              {renderTeamVirtualField({
-                field: "storeAddress",
-                label: t("admin.team.address"),
-                value: newStoreAddress,
-                placeholder: t("admin.team.addressPlaceholder"),
-              })}
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  {t("admin.team.storeName")}
+                </Text>
+                <Input
+                  value={newStoreName}
+                  onChange={(event) => setNewStoreName(event.target.value)}
+                  onFocus={scrollFocusedInputIntoView}
+                  placeholder={t("admin.team.storeNamePlaceholder")}
+                  autoFocus
+                  {...adminFormInputStyles}
+                />
+              </VStack>
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  {t("admin.team.address")}
+                </Text>
+                <Input
+                  value={newStoreAddress}
+                  onChange={(event) => setNewStoreAddress(event.target.value)}
+                  onFocus={scrollFocusedInputIntoView}
+                  placeholder={t("admin.team.addressPlaceholder")}
+                  {...adminFormInputStyles}
+                />
+              </VStack>
             </VStack>
           </Box>
-
-        </AdminTaskScreen>
+        </AdminFormScreen>
       ) : null}
 
       {showNewSellerModal ? (
-        <AdminTaskScreen
+        <AdminFormScreen
           title={t("admin.team.newSeller")}
           description={t("admin.team.newSellerDescription")}
           topLabel={t("admin.team.staffTab")}
           onClose={() => setShowNewSellerModal(false)}
-          inputPanel={renderTeamVirtualKeyboard()}
-          primaryAction={
-            <Button
-              w="full"
-              h="54px"
-              borderRadius="20px"
-              bg="surface.900"
-              color="white"
-              _hover={{ bg: "surface.700" }}
-              isLoading={creatingSeller}
-              isDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
-              onClick={() => void handleCreateSeller()}
-            >
-              {t("admin.team.createSeller")}
-            </Button>
-          }
+          primaryActionLabel={t("admin.team.createSeller")}
+          primaryActionLoading={creatingSeller}
+          primaryActionDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
+          onPrimaryAction={() => void handleCreateSeller()}
         >
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
             <VStack align="stretch" spacing={4}>
-              {renderTeamVirtualField({
-                field: "sellerName",
-                label: t("admin.team.fullName"),
-                value: newSeller.fullName,
-                placeholder: t("admin.team.fullNamePlaceholder"),
-              })}
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  {t("admin.team.fullName")}
+                </Text>
+                <Input
+                  value={newSeller.fullName}
+                  onChange={(event) =>
+                    setNewSeller((current) => ({ ...current, fullName: event.target.value }))
+                  }
+                  onFocus={scrollFocusedInputIntoView}
+                  placeholder={t("admin.team.fullNamePlaceholder")}
+                  autoFocus
+                  {...adminFormInputStyles}
+                />
+              </VStack>
 
-              {renderTeamVirtualField({
-                field: "sellerTelegramId",
-                label: t("admin.team.telegramId"),
-                value: newSeller.telegramId,
-                placeholder: "123456789",
-              })}
+              <VStack align="stretch" spacing={2}>
+                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                  {t("admin.team.telegramId")}
+                </Text>
+                <Input
+                  value={newSeller.telegramId}
+                  onChange={(event) =>
+                    setNewSeller((current) => ({
+                      ...current,
+                      telegramId: event.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  onFocus={scrollFocusedInputIntoView}
+                  placeholder="123456789"
+                  inputMode="numeric"
+                  {...adminFormInputStyles}
+                />
+              </VStack>
 
               <VStack align="stretch" spacing={2}>
                 <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
@@ -5000,11 +4732,8 @@ export function AdminDashboardScreen({
                   onChange={(event) =>
                     setNewSeller((current) => ({ ...current, storeId: event.target.value }))
                   }
-                  borderRadius="18px"
-                  bg="surface.50"
-                  borderColor="rgba(226,224,218,0.95)"
-                  fontWeight="800"
-                  h="44px"
+                  onFocus={scrollFocusedInputIntoView}
+                  {...adminFormInputStyles}
                 >
                   <option value="">{t("admin.team.noStoreYet")}</option>
                   {stores
@@ -5042,51 +4771,70 @@ export function AdminDashboardScreen({
               </SimpleGrid>
             </VStack>
           </Box>
-
-        </AdminTaskScreen>
+        </AdminFormScreen>
       ) : null}
     </>
   );
 
   const renderProductCreationModal = () =>
     showNewProductModal ? (
-      <AdminTaskScreen
+      <AdminFormScreen
         title={t("admin.inventory.newProduct")}
         description={t("admin.inventory.newProductDescription")}
         topLabel={t("admin.inventory.productCatalogLabel")}
         onClose={() => setShowNewProductModal(false)}
-        inputPanel={renderProductVirtualKeyboard()}
-        primaryAction={
-          <Button
-            w="full"
-            h="54px"
-            borderRadius="20px"
-            bg="surface.900"
-            color="white"
-            _hover={{ bg: "surface.700" }}
-            isLoading={creatingProduct}
-            isDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
-            onClick={() => void handleCreateProduct()}
-          >
-            {t("admin.inventory.createProduct")}
-          </Button>
-        }
+        primaryActionLabel={t("admin.inventory.createProduct")}
+        primaryActionLoading={creatingProduct}
+        primaryActionDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
+        onPrimaryAction={() => void handleCreateProduct()}
       >
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
           <VStack align="stretch" spacing={4}>
-            {renderProductVirtualField({
-              field: "productName",
-              label: t("admin.inventory.productName"),
-              value: newProduct.name,
-              placeholder: t("admin.inventory.productName"),
-            })}
+            <VStack align="stretch" spacing={2}>
+              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                {t("admin.inventory.productName")}
+              </Text>
+              <Input
+                value={newProduct.name}
+                onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
+                onFocus={scrollFocusedInputIntoView}
+                placeholder={t("admin.inventory.productName")}
+                autoFocus
+                {...adminFormInputStyles}
+              />
+            </VStack>
 
-            {renderProductVirtualField({
-              field: "productPrice",
-              label: t("admin.inventory.defaultPrice"),
-              value: newProduct.defaultPrice,
-              placeholder: "24,90",
-            })}
+            <VStack align="stretch" spacing={2}>
+              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                SKU
+              </Text>
+              <Input
+                value={newProduct.sku}
+                onChange={(event) => setNewProduct((current) => ({ ...current, sku: event.target.value }))}
+                onFocus={scrollFocusedInputIntoView}
+                placeholder="AUTO"
+                {...adminFormInputStyles}
+              />
+            </VStack>
+
+            <VStack align="stretch" spacing={2}>
+              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+                {t("admin.inventory.defaultPrice")}
+              </Text>
+              <Input
+                value={newProduct.defaultPrice}
+                onChange={(event) =>
+                  setNewProduct((current) => ({
+                    ...current,
+                    defaultPrice: event.target.value.replace(/[^\d,.\s]/g, ""),
+                  }))
+                }
+                onFocus={scrollFocusedInputIntoView}
+                placeholder="24,90"
+                inputMode="decimal"
+                {...adminFormInputStyles}
+              />
+            </VStack>
 
             <SimpleGrid columns={2} spacing={2}>
               <Button
@@ -5110,8 +4858,7 @@ export function AdminDashboardScreen({
             </SimpleGrid>
           </VStack>
         </Box>
-
-      </AdminTaskScreen>
+      </AdminFormScreen>
     ) : null;
 
   const renderInventoryStoreSelector = () =>
@@ -5207,270 +4954,6 @@ export function AdminDashboardScreen({
         </VStack>
       </AdminTaskScreen>
     ) : null;
-
-  const getProductKeyboardValue = (field: ProductVirtualKeyboardField) =>
-    field === "productName" ? newProduct.name : newProduct.defaultPrice;
-
-  const setProductKeyboardValue = (field: ProductVirtualKeyboardField, value: string) => {
-    if (field === "productName") {
-      setNewProduct((current) => ({ ...current, name: value }));
-      return;
-    }
-
-    const normalized = value.replace(/[^\d,.\s]/g, "");
-    setNewProduct((current) => ({ ...current, defaultPrice: normalized }));
-  };
-
-  const pressProductKeyboardKey = (key: string) => {
-    const value = getProductKeyboardValue(productKeyboardField);
-
-    if (key === "delete") {
-      setProductKeyboardValue(productKeyboardField, value.slice(0, -1));
-      return;
-    }
-
-    if (key === "clear") {
-      setProductKeyboardValue(productKeyboardField, "");
-      return;
-    }
-
-    if (key === "space") {
-      if (productKeyboardField === "productName" && value && !value.endsWith(" ")) {
-        setProductKeyboardValue(productKeyboardField, `${value} `);
-      }
-      return;
-    }
-
-    if (key === "caps") {
-      setProductKeyboardCapsLock((current) => !current);
-      return;
-    }
-
-    if (productKeyboardField === "productPrice") {
-      if (/^\d$/.test(key)) {
-        setProductKeyboardValue(productKeyboardField, `${value}${key}`);
-        return;
-      }
-
-      if ((key === "," || key === ".") && !value.includes(",") && !value.includes(".")) {
-        setProductKeyboardValue(productKeyboardField, `${value}${key}`);
-      }
-      return;
-    }
-
-    const shouldUppercase = productKeyboardCapsLock || !value || value.endsWith(" ");
-    const nextChar = key.length === 1 && /[a-z]/i.test(key)
-      ? shouldUppercase
-        ? key.toUpperCase()
-        : key.toLowerCase()
-      : key;
-
-    if (value.length < 80) {
-      setProductKeyboardValue(productKeyboardField, `${value}${nextChar}`);
-      if (productKeyboardCapsLock && key.length === 1 && /[a-z]/i.test(key)) {
-        setProductKeyboardCapsLock(false);
-      }
-    }
-  };
-
-  const renderProductVirtualField = (input: {
-    field: ProductVirtualKeyboardField;
-    label: string;
-    value: string;
-    placeholder: string;
-  }) => {
-    const isActive = productKeyboardField === input.field;
-
-    return (
-      <VStack align="stretch" spacing={2}>
-        <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-          {input.label}
-        </Text>
-        <Button
-          h="52px"
-          justifyContent="flex-start"
-          borderRadius="20px"
-          bg="rgba(255,255,255,0.94)"
-          border="1px solid"
-          borderColor={isActive ? "brand.400" : "rgba(214,218,225,0.96)"}
-          color={input.value ? "surface.900" : "surface.400"}
-          fontWeight="800"
-          boxShadow={
-            isActive
-              ? "0 0 0 3px rgba(74,132,244,0.12), 0 10px 22px rgba(74,132,244,0.08)"
-              : "0 10px 22px rgba(18,18,18,0.04)"
-          }
-          _hover={{ bg: "rgba(255,255,255,0.94)" }}
-          _active={{ transform: "scale(0.99)" }}
-          onClick={() => setProductKeyboardField(input.field)}
-        >
-          <Text noOfLines={1}>{input.value || input.placeholder}</Text>
-        </Button>
-      </VStack>
-    );
-  };
-
-  const renderProductVirtualKeyboard = () => {
-    const isNumeric = productKeyboardField === "productPrice";
-    const numericKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", ","];
-    const alphaRows = [
-      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-      ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
-      ["z", "x", "c", "v", "b", "n", "m"],
-    ];
-
-    if (isNumeric) {
-      return (
-        <Box
-          bg="rgba(246,248,251,0.9)"
-          borderRadius="30px"
-          px={3}
-          pt={3}
-          pb={2.5}
-          border="1px solid"
-          borderColor="rgba(188,194,202,0.58)"
-          boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
-        >
-          <SimpleGrid columns={3} spacing={2.5} h="full" alignContent="stretch">
-            {numericKeys.map((key) => (
-              <Button
-                key={key}
-                h="50px"
-                borderRadius="16px"
-                {...getVirtualKeyboardButtonStyles(key === "clear" ? "muted" : "default")}
-                fontSize={key === "clear" ? "sm" : "xl"}
-                fontWeight="800"
-                border="1px solid"
-                _hover={{ transform: "translateY(0.5px)" }}
-                _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-                onClick={() => pressProductKeyboardKey(key)}
-              >
-                {key === "clear" ? t("admin.inventory.clear") : key}
-              </Button>
-            ))}
-            <Button
-              gridColumn="1 / -1"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressProductKeyboardKey("delete")}
-            >
-              {t("admin.inventory.deleteShort")}
-            </Button>
-          </SimpleGrid>
-        </Box>
-      );
-    }
-
-    return (
-      <Box
-        bg="rgba(246,248,251,0.9)"
-        borderRadius="30px"
-        px={3}
-        pt={3}
-        pb={2.5}
-        border="1px solid"
-        borderColor="rgba(188,194,202,0.58)"
-        boxShadow="0 14px 28px rgba(15,23,42,0.08), 0 1px 0 rgba(255,255,255,0.5) inset"
-      >
-        <VStack align="stretch" spacing={2} w="full" h="full">
-          {alphaRows.map((row, index) => (
-            <HStack
-              key={index}
-              spacing={1.5}
-              justify="center"
-              w="full"
-              px={index === 1 ? 0 : index === 2 ? 5 : index === 3 ? 10 : 1}
-            >
-              {row.map((key) => (
-                <Button
-                  key={key}
-                  h="44px"
-                  flex="1"
-                  minW={0}
-                  px={0}
-                  borderRadius="16px"
-                  {...getVirtualKeyboardButtonStyles("default")}
-                  fontSize="md"
-                  fontWeight="900"
-                  border="1px solid"
-                  _hover={{ transform: "translateY(0.5px)" }}
-                  _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-                  onClick={() => pressProductKeyboardKey(key)}
-                >
-                  {key.toUpperCase()}
-                </Button>
-              ))}
-            </HStack>
-          ))}
-          <HStack spacing={1.5}>
-            <Button
-              flex="1.15"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles(productKeyboardCapsLock ? "accent" : "muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressProductKeyboardKey("caps")}
-            >
-              {t("admin.inventory.caps")}
-            </Button>
-            <Button
-              flex="1.1"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressProductKeyboardKey("clear")}
-            >
-              {t("admin.inventory.clear")}
-            </Button>
-            <Button
-              flex="2.3"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("default")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressProductKeyboardKey("space")}
-            >
-              {t("admin.inventory.space")}
-            </Button>
-            <Button
-              flex="1.15"
-              h="46px"
-              borderRadius="18px"
-              {...getVirtualKeyboardButtonStyles("muted")}
-              fontWeight="800"
-              border="1px solid"
-              fontSize="sm"
-              _hover={{ transform: "translateY(0.5px)" }}
-              _active={{ transform: "translateY(1.5px) scale(0.99)", boxShadow: "0 0 0 rgba(0,0,0,0)" }}
-              onClick={() => pressProductKeyboardKey("delete")}
-            >
-              {t("admin.inventory.deleteShort")}
-            </Button>
-          </HStack>
-        </VStack>
-      </Box>
-    );
-  };
 
   const renderTeam = () => {
     if (selectedStaffSeller) {

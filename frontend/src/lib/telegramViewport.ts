@@ -77,6 +77,8 @@ function applyTelegramViewportSafety() {
   if (!webApp) {
     document.documentElement.style.setProperty("--telegram-safe-area-top", "0px");
     document.documentElement.style.setProperty("--app-viewport-height", `${effectiveViewportHeight}px`);
+    document.documentElement.style.setProperty("--app-stable-viewport-height", `${effectiveViewportHeight}px`);
+    document.documentElement.style.setProperty("--app-keyboard-offset", "0px");
     document.documentElement.classList.remove("app-fullscreen-like");
     window.dispatchEvent(new CustomEvent("appfullscreenchange"));
     return;
@@ -85,12 +87,19 @@ function applyTelegramViewportSafety() {
   const fullscreenLike = isFullscreenLike(webApp);
   const topInset = readTelegramTopInset(webApp);
   const telegramViewportHeight = webApp.viewportHeight || viewportHeight;
+  const telegramStableViewportHeight = webApp.viewportStableHeight || telegramViewportHeight;
   const resolvedViewportHeight = isForcedPortrait
     ? Math.max(viewportWidth, viewportHeight)
     : telegramViewportHeight;
+  const resolvedStableViewportHeight = isForcedPortrait
+    ? Math.max(viewportWidth, viewportHeight)
+    : telegramStableViewportHeight;
+  const keyboardOffset = Math.max(0, resolvedStableViewportHeight - effectiveViewportHeight);
 
   document.documentElement.style.setProperty("--telegram-safe-area-top", `${topInset}px`);
   document.documentElement.style.setProperty("--app-viewport-height", `${resolvedViewportHeight}px`);
+  document.documentElement.style.setProperty("--app-stable-viewport-height", `${resolvedStableViewportHeight}px`);
+  document.documentElement.style.setProperty("--app-keyboard-offset", `${keyboardOffset}px`);
   document.documentElement.classList.toggle("app-fullscreen-like", fullscreenLike);
   window.dispatchEvent(new CustomEvent("appfullscreenchange"));
 }
