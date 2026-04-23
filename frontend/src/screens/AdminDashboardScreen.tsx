@@ -5700,17 +5700,17 @@ export function AdminDashboardScreen({
       <Box
         bg={panelSurface}
         borderRadius="30px"
-        px={4}
-        py={4}
+        px={3.5}
+        py={3.5}
         boxShadow={panelShadow}
         border="1px solid rgba(255,255,255,0.72)"
       >
-        <VStack align="stretch" gap={5}>
+        <VStack align="stretch" gap={4}>
           <HStack align="start" gap={3} minW={0}>
             <Box
-              w="56px"
-              h="56px"
-              borderRadius="20px"
+              w="52px"
+              h="52px"
+              borderRadius="18px"
               bg="rgba(74,132,244,0.1)"
               color="brand.600"
               display="flex"
@@ -5718,9 +5718,9 @@ export function AdminDashboardScreen({
               justifyContent="center"
               flexShrink={0}
             >
-              <ActiveReportIcon size={24} />
+              <ActiveReportIcon size={23} />
             </Box>
-            <VStack align="start" gap={2} minW={0} flex="1">
+            <VStack align="start" gap={1.5} minW={0} flex="1">
               <VStack align="start" gap={0.5} minW={0}>
                 <Text fontWeight="900" fontSize={{ base: "xl", sm: "2xl" }} lineHeight="1.12">
                   {activeReportMeta.title}
@@ -5741,7 +5741,7 @@ export function AdminDashboardScreen({
                       bg={panelMutedSurface}
                       color="surface.600"
                       px={2.5}
-                      py={2}
+                      py={1.5}
                       fontWeight="800"
                       fontSize="11px"
                       lineHeight="1"
@@ -5757,8 +5757,8 @@ export function AdminDashboardScreen({
             </VStack>
           </HStack>
 
-          <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
-            <VStack align="stretch" gap={4}>
+          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
+            <VStack align="stretch" gap={3}>
               <VStack align="start" gap={1}>
                 <Text fontWeight="800" color="surface.700">
                   {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
@@ -5791,7 +5791,7 @@ export function AdminDashboardScreen({
                 key={option.value}
                 size="sm"
                 borderRadius="999px"
-                h="44px"
+                h="40px"
                 px={0}
                 flex="1"
                 minW={0}
@@ -5812,7 +5812,7 @@ export function AdminDashboardScreen({
           </VStack>
 
           {reportType === "store" ? (
-            <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
+            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Магазин
@@ -5837,7 +5837,7 @@ export function AdminDashboardScreen({
           ) : null}
 
           {reportType === "seller" ? (
-            <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
+            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Продавец
@@ -5862,7 +5862,7 @@ export function AdminDashboardScreen({
           ) : null}
 
           {reportType === "schedule" ? (
-            <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
+            <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
               <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Период
@@ -5873,7 +5873,7 @@ export function AdminDashboardScreen({
                       key={period}
                       flex="1"
                       borderRadius="18px"
-                      h="48px"
+                      h="44px"
                       fontWeight="900"
                       bg={reportPeriod === period ? "brand.500" : "rgba(255,255,255,0.96)"}
                       color={reportPeriod === period ? "white" : "surface.800"}
@@ -5891,7 +5891,7 @@ export function AdminDashboardScreen({
             </Box>
           ) : null}
 
-          <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
+          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
             <VStack align="stretch" gap={3}>
               <Text fontWeight="800" color="surface.700">
                 Формат
@@ -5901,13 +5901,13 @@ export function AdminDashboardScreen({
                 borderRadius="22px"
                 border="1px solid rgba(214,218,225,0.96)"
                 bg="rgba(255,255,255,0.96)"
-                px={4}
-                py={4}
+                px={3.5}
+                py={3}
               >
                 <Box
-                  w="48px"
-                  h="48px"
-                  borderRadius="16px"
+                  w="44px"
+                  h="44px"
+                  borderRadius="15px"
                   bg="rgba(74,132,244,0.1)"
                   color="brand.600"
                   display="flex"
@@ -5915,7 +5915,7 @@ export function AdminDashboardScreen({
                   justifyContent="center"
                   flexShrink={0}
                 >
-                  <LuReceiptText size={22} />
+                  <LuReceiptText size={20} />
                 </Box>
                 <VStack align="start" gap={0.5} minW={0} flex="1">
                   <Text fontWeight="900" color="surface.900">
@@ -5933,12 +5933,12 @@ export function AdminDashboardScreen({
           </Box>
 
           {reportType === "daily_summary" ? (
-            <Box bg="rgba(238,244,255,0.92)" borderRadius="24px" px={4} py={4}>
+            <Box bg="rgba(238,244,255,0.92)" borderRadius="24px" px={3.5} py={3.5}>
               <HStack align="start" gap={3}>
                 <Box
-                  w="44px"
-                  h="44px"
-                  borderRadius="16px"
+                  w="40px"
+                  h="40px"
+                  borderRadius="15px"
                   bg="rgba(255,255,255,0.72)"
                   color="brand.600"
                   display="flex"
@@ -5946,7 +5946,7 @@ export function AdminDashboardScreen({
                   justifyContent="center"
                   flexShrink={0}
                 >
-                  <LuInfo size={20} />
+                  <LuInfo size={18} />
                 </Box>
                 <VStack align="start" gap={1} minW={0} flex="1">
                   <Text fontWeight="900" color="surface.900">
@@ -5961,7 +5961,7 @@ export function AdminDashboardScreen({
           ) : null}
 
           <Button
-            h="60px"
+            h="56px"
             borderRadius="22px"
             bg="surface.900"
             color="white"
