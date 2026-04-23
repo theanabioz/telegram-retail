@@ -5,24 +5,32 @@ type AdminFormScreenProps = {
   title: string;
   description: string;
   topLabel?: string;
+  progressLabel?: string;
   onClose: () => void;
   children: ReactNode;
   primaryActionLabel: string;
   primaryActionDisabled?: boolean;
   primaryActionLoading?: boolean;
   onPrimaryAction: () => void;
+  secondaryActionLabel?: string;
+  secondaryActionDisabled?: boolean;
+  onSecondaryAction?: () => void;
 };
 
 export function AdminFormScreen({
   title,
   description,
   topLabel,
+  progressLabel,
   onClose,
   children,
   primaryActionLabel,
   primaryActionDisabled,
   primaryActionLoading,
   onPrimaryAction,
+  secondaryActionLabel,
+  secondaryActionDisabled,
+  onSecondaryAction,
 }: AdminFormScreenProps) {
   return (
     <Box position="fixed" inset={0} zIndex={1450}>
@@ -71,6 +79,22 @@ export function AdminFormScreen({
                 <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.45">
                   {description}
                 </Text>
+                {progressLabel ? (
+                  <Box
+                    mt={2}
+                    px={3}
+                    py={1.5}
+                    borderRadius="999px"
+                    bg="rgba(241,240,236,0.92)"
+                    color="surface.600"
+                    fontSize="xs"
+                    fontWeight="900"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                  >
+                    {progressLabel}
+                  </Box>
+                ) : null}
               </VStack>
 
               <Button
@@ -119,21 +143,39 @@ export function AdminFormScreen({
             backdropFilter="blur(18px)"
             boxShadow="0 -16px 34px rgba(21,28,38,0.08)"
           >
-            <Button
-              w="full"
-              h="56px"
-              borderRadius="22px"
-              bg="surface.900"
-              color="white"
-              fontWeight="900"
-              fontSize="lg"
-              _hover={{ bg: "surface.700" }}
-              isDisabled={primaryActionDisabled}
-              isLoading={primaryActionLoading}
-              onClick={onPrimaryAction}
-            >
-              {primaryActionLabel}
-            </Button>
+            <HStack spacing={3}>
+              {secondaryActionLabel && onSecondaryAction ? (
+                <Button
+                  flex={secondaryActionLabel ? "0 0 120px" : undefined}
+                  h="56px"
+                  borderRadius="22px"
+                  bg="rgba(234,236,240,0.98)"
+                  color="surface.800"
+                  fontWeight="900"
+                  fontSize="md"
+                  _hover={{ bg: "rgba(224,227,232,1)" }}
+                  isDisabled={secondaryActionDisabled}
+                  onClick={onSecondaryAction}
+                >
+                  {secondaryActionLabel}
+                </Button>
+              ) : null}
+              <Button
+                flex="1"
+                h="56px"
+                borderRadius="22px"
+                bg="surface.900"
+                color="white"
+                fontWeight="900"
+                fontSize="lg"
+                _hover={{ bg: "surface.700" }}
+                isDisabled={primaryActionDisabled}
+                isLoading={primaryActionLoading}
+                onClick={onPrimaryAction}
+              >
+                {primaryActionLabel}
+              </Button>
+            </HStack>
           </Box>
         </Box>
       </Box>

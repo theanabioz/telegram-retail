@@ -103,6 +103,9 @@ type StaffDetailMode = "overview" | "profile" | "worklog" | "activity";
 type StaffSeller = AdminStaffResponse["sellers"][number];
 type StoreDetailMode = "overview" | "profile" | "staff" | "activity";
 type TeamStore = AdminStoresResponse["stores"][number];
+type StoreCreateStep = "name" | "address";
+type SellerCreateStep = "name" | "telegramId" | "store" | "status";
+type ProductCreateStep = "name" | "price" | "sku" | "status";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -511,12 +514,14 @@ export function AdminDashboardScreen({
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [showNewSellerModal, setShowNewSellerModal] = useState(false);
+  const [storeCreateStep, setStoreCreateStep] = useState<StoreCreateStep>("name");
   const [newSeller, setNewSeller] = useState({
     fullName: "",
     telegramId: "",
     storeId: "",
     isActive: true,
   });
+  const [sellerCreateStep, setSellerCreateStep] = useState<SellerCreateStep>("name");
   const [newProduct, setNewProduct] = useState({
     name: "",
     sku: "",
@@ -524,6 +529,7 @@ export function AdminDashboardScreen({
   });
   const [newProductIsActive, setNewProductIsActive] = useState(true);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
+  const [productCreateStep, setProductCreateStep] = useState<ProductCreateStep>("name");
   const [showInventoryStoreSelector, setShowInventoryStoreSelector] = useState(false);
   const [selectedInventoryStoreId, setSelectedInventoryStoreId] = useState(
     () => getCachedAdminStartup()?.inventory.selectedStoreId ?? ""
@@ -558,6 +564,14 @@ export function AdminDashboardScreen({
     ? stores.find((store) => store.id === selectedTeamStoreId) ?? null
     : null;
   const scrollFocusedInputIntoView = useScrollToInput();
+  const storeNameInputRef = useRef<HTMLInputElement | null>(null);
+  const storeAddressInputRef = useRef<HTMLInputElement | null>(null);
+  const sellerNameInputRef = useRef<HTMLInputElement | null>(null);
+  const sellerTelegramInputRef = useRef<HTMLInputElement | null>(null);
+  const sellerStoreSelectRef = useRef<HTMLSelectElement | null>(null);
+  const productNameInputRef = useRef<HTMLInputElement | null>(null);
+  const productPriceInputRef = useRef<HTMLInputElement | null>(null);
+  const productSkuInputRef = useRef<HTMLInputElement | null>(null);
   const headerContextLabel =
     activeTab === "overview"
       ? t("admin.context.liveDashboard")
@@ -720,6 +734,51 @@ export function AdminDashboardScreen({
       documentElement.style.overscrollBehavior = previousHtmlOverscroll;
     };
   }, [hasFullscreenAdminTask]);
+
+  useEffect(() => {
+    if (!showNewStoreModal) {
+      return;
+    }
+
+    const target =
+      storeCreateStep === "name" ? storeNameInputRef.current : storeAddressInputRef.current;
+
+    window.setTimeout(() => target?.focus(), 60);
+  }, [showNewStoreModal, storeCreateStep]);
+
+  useEffect(() => {
+    if (!showNewSellerModal) {
+      return;
+    }
+
+    const target =
+      sellerCreateStep === "name"
+        ? sellerNameInputRef.current
+        : sellerCreateStep === "telegramId"
+          ? sellerTelegramInputRef.current
+          : sellerCreateStep === "store"
+            ? sellerStoreSelectRef.current
+            : null;
+
+    window.setTimeout(() => target?.focus(), 60);
+  }, [showNewSellerModal, sellerCreateStep]);
+
+  useEffect(() => {
+    if (!showNewProductModal) {
+      return;
+    }
+
+    const target =
+      productCreateStep === "name"
+        ? productNameInputRef.current
+        : productCreateStep === "price"
+          ? productPriceInputRef.current
+          : productCreateStep === "sku"
+            ? productSkuInputRef.current
+            : null;
+
+    window.setTimeout(() => target?.focus(), 60);
+  }, [showNewProductModal, productCreateStep]);
 
   const refreshActiveAdminTab = useCallback(async () => {
     if (typeof document !== "undefined" && document.visibilityState !== "visible") {
@@ -1196,6 +1255,7 @@ export function AdminDashboardScreen({
   const openNewStoreForm = () => {
     setNewStoreName("");
     setNewStoreAddress("");
+    setStoreCreateStep("name");
     setShowNewStoreModal(true);
   };
 
@@ -1229,6 +1289,7 @@ export function AdminDashboardScreen({
       storeId: "",
       isActive: true,
     });
+    setSellerCreateStep("name");
     setShowNewSellerModal(true);
   };
 
@@ -1454,7 +1515,113 @@ export function AdminDashboardScreen({
   const openNewProductForm = () => {
     setNewProduct({ name: "", sku: "", defaultPrice: "" });
     setNewProductIsActive(true);
+    setProductCreateStep("name");
     setShowNewProductModal(true);
+  };
+
+  const handleStoreWizardPrimaryAction = () => {
+    if (storeCreateStep === "name") {
+      if (!newStoreName.trim()) {
+        return;
+      }
+
+      setStoreCreateStep("address");
+      return;
+    }
+
+    void handleCreateStore();
+  };
+
+  const handleStoreWizardSecondaryAction = () => {
+    if (storeCreateStep === "address") {
+      setStoreCreateStep("name");
+    }
+  };
+
+  const handleSellerWizardPrimaryAction = () => {
+    if (sellerCreateStep === "name") {
+      if (!newSeller.fullName.trim()) {
+        return;
+      }
+
+      setSellerCreateStep("telegramId");
+      return;
+    }
+
+    if (sellerCreateStep === "telegramId") {
+      if (!newSeller.telegramId.trim()) {
+        return;
+      }
+
+      setSellerCreateStep("store");
+      return;
+    }
+
+    if (sellerCreateStep === "store") {
+      setSellerCreateStep("status");
+      return;
+    }
+
+    void handleCreateSeller();
+  };
+
+  const handleSellerWizardSecondaryAction = () => {
+    if (sellerCreateStep === "telegramId") {
+      setSellerCreateStep("name");
+      return;
+    }
+
+    if (sellerCreateStep === "store") {
+      setSellerCreateStep("telegramId");
+      return;
+    }
+
+    if (sellerCreateStep === "status") {
+      setSellerCreateStep("store");
+    }
+  };
+
+  const handleProductWizardPrimaryAction = () => {
+    if (productCreateStep === "name") {
+      if (!newProduct.name.trim()) {
+        return;
+      }
+
+      setProductCreateStep("price");
+      return;
+    }
+
+    if (productCreateStep === "price") {
+      if (!newProduct.defaultPrice.trim()) {
+        return;
+      }
+
+      setProductCreateStep("sku");
+      return;
+    }
+
+    if (productCreateStep === "sku") {
+      setProductCreateStep("status");
+      return;
+    }
+
+    void handleCreateProduct();
+  };
+
+  const handleProductWizardSecondaryAction = () => {
+    if (productCreateStep === "price") {
+      setProductCreateStep("name");
+      return;
+    }
+
+    if (productCreateStep === "sku") {
+      setProductCreateStep("price");
+      return;
+    }
+
+    if (productCreateStep === "status") {
+      setProductCreateStep("sku");
+    }
   };
 
   const handleSaveProduct = async (productId: string) => {
@@ -4630,6 +4797,59 @@ export function AdminDashboardScreen({
     );
   };
 
+  const getStoreWizardProgressLabel = () => (storeCreateStep === "name" ? "1 / 2" : "2 / 2");
+  const getSellerWizardProgressLabel = () => (
+    sellerCreateStep === "name"
+      ? "1 / 4"
+      : sellerCreateStep === "telegramId"
+        ? "2 / 4"
+        : sellerCreateStep === "store"
+          ? "3 / 4"
+          : "4 / 4"
+  );
+  const getProductWizardProgressLabel = () => (
+    productCreateStep === "name"
+      ? "1 / 4"
+      : productCreateStep === "price"
+        ? "2 / 4"
+        : productCreateStep === "sku"
+          ? "3 / 4"
+          : "4 / 4"
+  );
+
+  const handleWizardInputKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    onContinue: () => void
+  ) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    onContinue();
+  };
+
+  const renderWizardPanel = (label: string, title: string, description?: string, content?: React.ReactNode) => (
+    <Box bg={panelSurface} borderRadius="28px" px={5} py={5} boxShadow={panelShadow}>
+      <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" spacing={1}>
+          <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="900">
+            {label}
+          </Text>
+          <Text fontSize="2xl" fontWeight="900" letterSpacing="-0.04em" lineHeight="1.05" color="surface.900">
+            {title}
+          </Text>
+          {description ? (
+            <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.45">
+              {description}
+            </Text>
+          ) : null}
+        </VStack>
+        {content}
+      </VStack>
+    </Box>
+  );
+
   const renderTeamCreationModals = () => (
     <>
       {showNewStoreModal ? (
@@ -4637,41 +4857,47 @@ export function AdminDashboardScreen({
           title={t("admin.team.newStore")}
           description={t("admin.team.newStoreDescription")}
           topLabel={t("admin.team.storesTab")}
+          progressLabel={getStoreWizardProgressLabel()}
           onClose={() => setShowNewStoreModal(false)}
-          primaryActionLabel={t("admin.team.createStore")}
+          primaryActionLabel={storeCreateStep === "name" ? t("admin.team.next") : t("admin.team.createStore")}
           primaryActionLoading={creatingStore}
-          primaryActionDisabled={!newStoreName.trim()}
-          onPrimaryAction={() => void handleCreateStore()}
+          primaryActionDisabled={storeCreateStep === "name" ? !newStoreName.trim() : !newStoreName.trim()}
+          onPrimaryAction={handleStoreWizardPrimaryAction}
+          secondaryActionLabel={storeCreateStep === "address" ? t("admin.team.previous") : undefined}
+          onSecondaryAction={storeCreateStep === "address" ? handleStoreWizardSecondaryAction : undefined}
         >
-          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  {t("admin.team.storeName")}
-                </Text>
+          {storeCreateStep === "name"
+            ? renderWizardPanel(
+                t("admin.team.storeName"),
+                t("admin.team.storeNamePlaceholder"),
+                "Введите понятное название магазина. Оно будет видно в Mini App и отчетах.",
                 <Input
+                  ref={storeNameInputRef}
                   value={newStoreName}
                   onChange={(event) => setNewStoreName(event.target.value)}
                   onFocus={scrollFocusedInputIntoView}
+                  onKeyDown={(event) => handleWizardInputKeyDown(event, handleStoreWizardPrimaryAction)}
                   placeholder={t("admin.team.storeNamePlaceholder")}
                   autoFocus
+                  enterKeyHint="next"
                   {...adminFormInputStyles}
                 />
-              </VStack>
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  {t("admin.team.address")}
-                </Text>
+              )
+            : renderWizardPanel(
+                t("admin.team.address"),
+                newStoreName.trim() || t("admin.team.newStore"),
+                "Добавьте адрес или короткую заметку. Этот шаг можно оставить пустым.",
                 <Input
+                  ref={storeAddressInputRef}
                   value={newStoreAddress}
                   onChange={(event) => setNewStoreAddress(event.target.value)}
                   onFocus={scrollFocusedInputIntoView}
+                  onKeyDown={(event) => handleWizardInputKeyDown(event, handleStoreWizardPrimaryAction)}
                   placeholder={t("admin.team.addressPlaceholder")}
+                  enterKeyHint="done"
                   {...adminFormInputStyles}
                 />
-              </VStack>
-            </VStack>
-          </Box>
+              )}
         </AdminFormScreen>
       ) : null}
 
@@ -4680,97 +4906,118 @@ export function AdminDashboardScreen({
           title={t("admin.team.newSeller")}
           description={t("admin.team.newSellerDescription")}
           topLabel={t("admin.team.staffTab")}
+          progressLabel={getSellerWizardProgressLabel()}
           onClose={() => setShowNewSellerModal(false)}
-          primaryActionLabel={t("admin.team.createSeller")}
+          primaryActionLabel={sellerCreateStep === "status" ? t("admin.team.createSeller") : t("admin.team.next")}
           primaryActionLoading={creatingSeller}
-          primaryActionDisabled={!newSeller.fullName.trim() || !newSeller.telegramId.trim()}
-          onPrimaryAction={() => void handleCreateSeller()}
+          primaryActionDisabled={
+            sellerCreateStep === "name"
+              ? !newSeller.fullName.trim()
+              : sellerCreateStep === "telegramId"
+                ? !newSeller.telegramId.trim()
+                : false
+          }
+          onPrimaryAction={handleSellerWizardPrimaryAction}
+          secondaryActionLabel={sellerCreateStep !== "name" ? t("admin.team.previous") : undefined}
+          onSecondaryAction={sellerCreateStep !== "name" ? handleSellerWizardSecondaryAction : undefined}
         >
-          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  {t("admin.team.fullName")}
-                </Text>
+          {sellerCreateStep === "name"
+            ? renderWizardPanel(
+                t("admin.team.fullName"),
+                t("admin.team.fullNamePlaceholder"),
+                "Укажите имя продавца так, как оно должно отображаться в системе.",
                 <Input
+                  ref={sellerNameInputRef}
                   value={newSeller.fullName}
                   onChange={(event) =>
                     setNewSeller((current) => ({ ...current, fullName: event.target.value }))
                   }
                   onFocus={scrollFocusedInputIntoView}
+                  onKeyDown={(event) => handleWizardInputKeyDown(event, handleSellerWizardPrimaryAction)}
                   placeholder={t("admin.team.fullNamePlaceholder")}
                   autoFocus
+                  enterKeyHint="next"
                   {...adminFormInputStyles}
                 />
-              </VStack>
-
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  {t("admin.team.telegramId")}
-                </Text>
-                <Input
-                  value={newSeller.telegramId}
-                  onChange={(event) =>
-                    setNewSeller((current) => ({
-                      ...current,
-                      telegramId: event.target.value.replace(/\D/g, ""),
-                    }))
-                  }
-                  onFocus={scrollFocusedInputIntoView}
-                  placeholder="123456789"
-                  inputMode="numeric"
-                  {...adminFormInputStyles}
-                />
-              </VStack>
-
-              <VStack align="stretch" spacing={2}>
-                <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                  {t("admin.team.assignedStore")}
-                </Text>
-                <Select
-                  value={newSeller.storeId}
-                  onChange={(event) =>
-                    setNewSeller((current) => ({ ...current, storeId: event.target.value }))
-                  }
-                  onFocus={scrollFocusedInputIntoView}
-                  {...adminFormInputStyles}
-                >
-                  <option value="">{t("admin.team.noStoreYet")}</option>
-                  {stores
-                    .filter((store) => store.isActive)
-                    .map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name}
-                      </option>
-                    ))}
-                </Select>
-              </VStack>
-
-              <SimpleGrid columns={2} spacing={2}>
-                {[
-                  { label: t("admin.team.active"), value: true },
-                  { label: t("admin.team.inactive"), value: false },
-                ].map((option) => {
-                  const isActive = newSeller.isActive === option.value;
-
-                  return (
-                    <Button
-                      key={option.label}
-                      borderRadius="16px"
-                      bg={isActive ? "brand.500" : panelMutedSurface}
-                      color={isActive ? "white" : "surface.700"}
-                      _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.95)" }}
-                      onClick={() =>
-                        setNewSeller((current) => ({ ...current, isActive: option.value }))
+              )
+            : sellerCreateStep === "telegramId"
+              ? renderWizardPanel(
+                  t("admin.team.telegramId"),
+                  "Telegram ID",
+                  "Введите цифровой Telegram ID продавца. Только цифры.",
+                  <Input
+                    ref={sellerTelegramInputRef}
+                    value={newSeller.telegramId}
+                    onChange={(event) =>
+                      setNewSeller((current) => ({
+                        ...current,
+                        telegramId: event.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    onFocus={scrollFocusedInputIntoView}
+                    onKeyDown={(event) => handleWizardInputKeyDown(event, handleSellerWizardPrimaryAction)}
+                    placeholder="123456789"
+                    inputMode="numeric"
+                    enterKeyHint="next"
+                    {...adminFormInputStyles}
+                  />
+                )
+              : sellerCreateStep === "store"
+                ? renderWizardPanel(
+                    t("admin.team.assignedStore"),
+                    stores.find((store) => store.id === newSeller.storeId)?.name ?? t("admin.team.noStoreYet"),
+                    "Выберите магазин сейчас или оставьте продавца без привязки на этом шаге.",
+                    <Select
+                      ref={sellerStoreSelectRef}
+                      value={newSeller.storeId}
+                      onChange={(event) =>
+                        setNewSeller((current) => ({ ...current, storeId: event.target.value }))
                       }
+                      onFocus={scrollFocusedInputIntoView}
+                      {...adminFormInputStyles}
                     >
-                      {option.label}
-                    </Button>
-                  );
-                })}
-              </SimpleGrid>
-            </VStack>
-          </Box>
+                      <option value="">{t("admin.team.noStoreYet")}</option>
+                      {stores
+                        .filter((store) => store.isActive)
+                        .map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                    </Select>
+                  )
+                : renderWizardPanel(
+                    t("admin.inventory.status"),
+                    newSeller.isActive ? t("admin.team.active") : t("admin.team.inactive"),
+                    "Определите, должен ли продавец сразу получить доступ к работе.",
+                    <SimpleGrid columns={2} spacing={3}>
+                      {[
+                        { label: t("admin.team.active"), value: true },
+                        { label: t("admin.team.inactive"), value: false },
+                      ].map((option) => {
+                        const isActive = newSeller.isActive === option.value;
+
+                        return (
+                          <Button
+                            key={option.label}
+                            h="56px"
+                            borderRadius="20px"
+                            bg={isActive ? "surface.900" : "rgba(255,255,255,0.94)"}
+                            color={isActive ? "white" : "surface.800"}
+                            border="1px solid"
+                            borderColor={isActive ? "surface.900" : "rgba(214,218,225,0.96)"}
+                            boxShadow={isActive ? "0 12px 24px rgba(18,18,18,0.12)" : "0 10px 22px rgba(18,18,18,0.04)"}
+                            _hover={{ bg: isActive ? "surface.800" : "rgba(255,255,255,1)" }}
+                            onClick={() =>
+                              setNewSeller((current) => ({ ...current, isActive: option.value }))
+                            }
+                          >
+                            {option.label}
+                          </Button>
+                        );
+                      })}
+                    </SimpleGrid>
+                  )}
         </AdminFormScreen>
       ) : null}
     </>
@@ -4782,82 +5029,109 @@ export function AdminDashboardScreen({
         title={t("admin.inventory.newProduct")}
         description={t("admin.inventory.newProductDescription")}
         topLabel={t("admin.inventory.productCatalogLabel")}
+        progressLabel={getProductWizardProgressLabel()}
         onClose={() => setShowNewProductModal(false)}
-        primaryActionLabel={t("admin.inventory.createProduct")}
+        primaryActionLabel={productCreateStep === "status" ? t("admin.inventory.createProduct") : t("admin.team.next")}
         primaryActionLoading={creatingProduct}
-        primaryActionDisabled={!newProduct.name.trim() || !newProduct.defaultPrice.trim()}
-        onPrimaryAction={() => void handleCreateProduct()}
+        primaryActionDisabled={
+          productCreateStep === "name"
+            ? !newProduct.name.trim()
+            : productCreateStep === "price"
+              ? !newProduct.defaultPrice.trim()
+              : false
+        }
+        onPrimaryAction={handleProductWizardPrimaryAction}
+        secondaryActionLabel={productCreateStep !== "name" ? t("admin.team.previous") : undefined}
+        onSecondaryAction={productCreateStep !== "name" ? handleProductWizardSecondaryAction : undefined}
       >
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={4}>
-            <VStack align="stretch" spacing={2}>
-              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                {t("admin.inventory.productName")}
-              </Text>
+        {productCreateStep === "name"
+          ? renderWizardPanel(
+              t("admin.inventory.productName"),
+              t("admin.inventory.productName"),
+              "Сначала задайте понятное название товара, чтобы его легко было найти в каталоге.",
               <Input
+                ref={productNameInputRef}
                 value={newProduct.name}
                 onChange={(event) => setNewProduct((current) => ({ ...current, name: event.target.value }))}
                 onFocus={scrollFocusedInputIntoView}
+                onKeyDown={(event) => handleWizardInputKeyDown(event, handleProductWizardPrimaryAction)}
                 placeholder={t("admin.inventory.productName")}
                 autoFocus
+                enterKeyHint="next"
                 {...adminFormInputStyles}
               />
-            </VStack>
-
-            <VStack align="stretch" spacing={2}>
-              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                SKU
-              </Text>
-              <Input
-                value={newProduct.sku}
-                onChange={(event) => setNewProduct((current) => ({ ...current, sku: event.target.value }))}
-                onFocus={scrollFocusedInputIntoView}
-                placeholder="AUTO"
-                {...adminFormInputStyles}
-              />
-            </VStack>
-
-            <VStack align="stretch" spacing={2}>
-              <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                {t("admin.inventory.defaultPrice")}
-              </Text>
-              <Input
-                value={newProduct.defaultPrice}
-                onChange={(event) =>
-                  setNewProduct((current) => ({
-                    ...current,
-                    defaultPrice: event.target.value.replace(/[^\d,.\s]/g, ""),
-                  }))
-                }
-                onFocus={scrollFocusedInputIntoView}
-                placeholder="24,90"
-                inputMode="decimal"
-                {...adminFormInputStyles}
-              />
-            </VStack>
-
-            <SimpleGrid columns={2} spacing={2}>
-              <Button
-                borderRadius="16px"
-                bg={newProductIsActive ? "brand.500" : "rgba(241,240,236,0.95)"}
-                color={newProductIsActive ? "white" : "surface.800"}
-                _hover={{ bg: newProductIsActive ? "brand.600" : "rgba(225,223,218,0.95)" }}
-                onClick={() => setNewProductIsActive(true)}
-              >
-                {t("admin.inventory.active")}
-              </Button>
-              <Button
-                borderRadius="16px"
-                bg={!newProductIsActive ? "rgba(248,113,113,0.14)" : "rgba(241,240,236,0.95)"}
-                color={!newProductIsActive ? "red.500" : "surface.800"}
-                _hover={{ bg: !newProductIsActive ? "rgba(248,113,113,0.2)" : "rgba(225,223,218,0.95)" }}
-                onClick={() => setNewProductIsActive(false)}
-              >
-                {t("admin.inventory.inactive")}
-              </Button>
-            </SimpleGrid>
-          </VStack>
-        </Box>
+            )
+          : productCreateStep === "price"
+            ? renderWizardPanel(
+                t("admin.inventory.defaultPrice"),
+                newProduct.name.trim() || t("admin.inventory.newProduct"),
+                "Введите базовую цену. Поддерживаются форматы 12.50 и 12,50.",
+                <Input
+                  ref={productPriceInputRef}
+                  value={newProduct.defaultPrice}
+                  onChange={(event) =>
+                    setNewProduct((current) => ({
+                      ...current,
+                      defaultPrice: event.target.value.replace(/[^\d,.\s]/g, ""),
+                    }))
+                  }
+                  onFocus={scrollFocusedInputIntoView}
+                  onKeyDown={(event) => handleWizardInputKeyDown(event, handleProductWizardPrimaryAction)}
+                  placeholder="24,90"
+                  inputMode="decimal"
+                  enterKeyHint="next"
+                  {...adminFormInputStyles}
+                />
+              )
+            : productCreateStep === "sku"
+              ? renderWizardPanel(
+                  "SKU",
+                  newProduct.sku.trim() || "AUTO",
+                  "SKU можно задать вручную или оставить пустым, тогда мы сгенерируем его автоматически.",
+                  <Input
+                    ref={productSkuInputRef}
+                    value={newProduct.sku}
+                    onChange={(event) => setNewProduct((current) => ({ ...current, sku: event.target.value }))}
+                    onFocus={scrollFocusedInputIntoView}
+                    onKeyDown={(event) => handleWizardInputKeyDown(event, handleProductWizardPrimaryAction)}
+                    placeholder="AUTO"
+                    enterKeyHint="next"
+                    {...adminFormInputStyles}
+                  />
+                )
+              : renderWizardPanel(
+                  t("admin.inventory.status"),
+                  newProductIsActive ? t("admin.inventory.active") : t("admin.inventory.inactive"),
+                  "Определите, должен ли товар сразу появиться в активном каталоге.",
+                  <SimpleGrid columns={2} spacing={3}>
+                    <Button
+                      h="56px"
+                      borderRadius="20px"
+                      bg={newProductIsActive ? "surface.900" : "rgba(255,255,255,0.94)"}
+                      color={newProductIsActive ? "white" : "surface.800"}
+                      border="1px solid"
+                      borderColor={newProductIsActive ? "surface.900" : "rgba(214,218,225,0.96)"}
+                      boxShadow={newProductIsActive ? "0 12px 24px rgba(18,18,18,0.12)" : "0 10px 22px rgba(18,18,18,0.04)"}
+                      _hover={{ bg: newProductIsActive ? "surface.800" : "rgba(255,255,255,1)" }}
+                      onClick={() => setNewProductIsActive(true)}
+                    >
+                      {t("admin.inventory.active")}
+                    </Button>
+                    <Button
+                      h="56px"
+                      borderRadius="20px"
+                      bg={!newProductIsActive ? "surface.900" : "rgba(255,255,255,0.94)"}
+                      color={!newProductIsActive ? "white" : "surface.800"}
+                      border="1px solid"
+                      borderColor={!newProductIsActive ? "surface.900" : "rgba(214,218,225,0.96)"}
+                      boxShadow={!newProductIsActive ? "0 12px 24px rgba(18,18,18,0.12)" : "0 10px 22px rgba(18,18,18,0.04)"}
+                      _hover={{ bg: !newProductIsActive ? "surface.800" : "rgba(255,255,255,1)" }}
+                      onClick={() => setNewProductIsActive(false)}
+                    >
+                      {t("admin.inventory.inactive")}
+                    </Button>
+                  </SimpleGrid>
+                )}
       </AdminFormScreen>
     ) : null;
 
