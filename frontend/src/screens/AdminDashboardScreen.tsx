@@ -624,6 +624,22 @@ export function AdminDashboardScreen({
             : t("admin.context.workspaceSettings");
   const hasFullscreenAdminTask =
     showNewStoreModal || showNewSellerModal || showNewProductModal || showInventoryStoreSelector;
+  const activeReportPageTitle =
+    reportType === "daily_summary"
+      ? "Сводный отчет"
+      : reportType === "store"
+        ? "Отчет по магазину"
+        : reportType === "seller"
+          ? "Отчет по продавцу"
+          : "Рабочий график";
+  const activeReportPageSubtitle =
+    reportType === "daily_summary"
+      ? "Итоги магазинов и команды"
+      : reportType === "store"
+        ? "Показатели одной точки"
+        : reportType === "seller"
+          ? "Личные показатели сотрудника"
+          : "Смены и часы команды";
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
     if (tab === "overview") {
@@ -672,6 +688,8 @@ export function AdminDashboardScreen({
         ? t("admin.team.sellerDetails")
         : activeTab === "team" && selectedTeamStore
           ? t("admin.team.storeDetails")
+        : activeTab === "settings" && settingsView === "report-detail"
+          ? activeReportPageTitle
         : activeTab === "settings" && settingsView !== "root"
           ? "Отчеты"
       : ({
@@ -696,7 +714,7 @@ export function AdminDashboardScreen({
       : activeTab === "settings" && settingsView === "reports-menu"
         ? "Выберите нужный сценарий"
       : activeTab === "settings" && settingsView === "report-detail"
-        ? null
+        ? activeReportPageSubtitle
       : null;
 
   useTelegramBackButton(
@@ -5421,38 +5439,6 @@ export function AdminDashboardScreen({
       },
     ];
 
-    const reportDetailDescription =
-      reportType === "daily_summary"
-        ? "Итоги по всем магазинам и всей команде."
-        : reportType === "store"
-          ? "Показатели одной точки за выбранную дату."
-          : reportType === "seller"
-            ? "Личные показатели за выбранную дату."
-            : "Смены и часы сотрудников за период.";
-
-    const activeReportMeta =
-      reportMenuItems.find((item) => item.type === reportType) ?? reportMenuItems[0];
-    const ActiveReportIcon = activeReportMeta.icon;
-    const detailMetaPills: Array<{ label: string; icon: IconType }> =
-      reportType === "daily_summary"
-        ? [
-            { label: "Магазины", icon: LuStore },
-            { label: "Telegram", icon: LuSend },
-          ]
-        : reportType === "store"
-          ? [
-              { label: "Магазин", icon: LuStore },
-              { label: "Продажи", icon: LuReceiptText },
-            ]
-          : reportType === "seller"
-            ? [
-                { label: "Продавец", icon: LuUserRound },
-                { label: "Смены", icon: LuClock3 },
-              ]
-            : [
-                { label: "Команда", icon: LuUsersRound },
-                { label: "Все дни", icon: LuCalendarDays },
-              ];
     const quickDateOptions: Array<{ label: string; value: ReportQuickPreset }> = [
       { label: "Сегодня", value: "today" },
       { label: "Вчера", value: "yesterday" },
@@ -5706,57 +5692,6 @@ export function AdminDashboardScreen({
         border="1px solid rgba(255,255,255,0.72)"
       >
         <VStack align="stretch" gap={4}>
-          <HStack align="start" gap={3} minW={0}>
-            <Box
-              w="52px"
-              h="52px"
-              borderRadius="18px"
-              bg="rgba(74,132,244,0.1)"
-              color="brand.600"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              flexShrink={0}
-            >
-              <ActiveReportIcon size={23} />
-            </Box>
-            <VStack align="start" gap={1.5} minW={0} flex="1">
-              <VStack align="start" gap={0.5} minW={0}>
-                <Text fontWeight="900" fontSize={{ base: "xl", sm: "2xl" }} lineHeight="1.12">
-                  {activeReportMeta.title}
-                </Text>
-                <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.4">
-                  {reportDetailDescription}
-                </Text>
-              </VStack>
-              <HStack gap={2} flexWrap="nowrap" overflowX="auto" pb={0.5}>
-                {detailMetaPills.map((pill) => {
-                  const PillIcon = pill.icon;
-
-                  return (
-                    <HStack
-                      key={pill.label}
-                      gap={1.5}
-                      borderRadius="999px"
-                      bg={panelMutedSurface}
-                      color="surface.600"
-                      px={2.5}
-                      py={1.5}
-                      fontWeight="800"
-                      fontSize="11px"
-                      lineHeight="1"
-                      whiteSpace="nowrap"
-                      flexShrink={0}
-                    >
-                      <PillIcon size={13} />
-                      <Text>{pill.label}</Text>
-                    </HStack>
-                  );
-                })}
-              </HStack>
-            </VStack>
-          </HStack>
-
           <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={3.5}>
             <VStack align="stretch" gap={3}>
               <VStack align="start" gap={1}>
