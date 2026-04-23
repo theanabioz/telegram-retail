@@ -431,61 +431,72 @@ export function renderReportPlainText(document: ReportTemplateDocument) {
 
 export function renderDailySummaryReportHtml(document: DailySummaryReportDocument) {
   const renderStoreStat = (stat: DailySummaryStoreReport["stats"][number]) => `
-    <div class="mini-stat">
-      <div class="label">${escapeHtml(stat.label)}</div>
-      <div class="value ${stat.tone === "danger" ? "danger" : stat.tone === "warning" ? "warning" : ""}">${escapeHtml(stat.value)}</div>
+    <div class="store-stat">
+      <div class="store-stat-label">${escapeHtml(stat.label)}</div>
+      <div class="store-stat-value ${stat.tone === "danger" ? "tone-danger" : stat.tone === "warning" ? "tone-warning" : ""}">${escapeHtml(stat.value)}</div>
     </div>
   `;
 
-  const renderKeyValue = (entry: { name: string; value: string }) => `
-    <div class="kv"><span>${escapeHtml(entry.name)}</span><strong>${escapeHtml(entry.value)}</strong></div>
+  const renderListRow = (entry: { name: string; value: string }) => `
+    <div class="list-row">
+      <span>${escapeHtml(entry.name)}</span>
+      <strong>${escapeHtml(entry.value)}</strong>
+    </div>
   `;
 
   const renderStore = (store: DailySummaryStoreReport) => `
     <section class="store-card">
-      <div class="store-head">
+      <div class="store-header">
         <div>
-          <div class="store-title-row">
-            <h3 class="store-name">${escapeHtml(store.storeName)}</h3>
-          </div>
-          <p class="store-subtitle">${escapeHtml(store.storeSubtitle)}</p>
+          <h3>${escapeHtml(store.storeName)}</h3>
+          <p>${escapeHtml(store.storeSubtitle)}</p>
         </div>
         <div class="store-badge">${escapeHtml(store.salesBadge)}</div>
       </div>
 
-      <div class="store-stats">
+      <div class="store-stats-grid">
         ${store.stats.map(renderStoreStat).join("")}
       </div>
 
-      <div class="content-grid">
-        <div>
-          <table>
-            <thead>
-              <tr>
-                <th>Показатель</th>
-                <th class="align-right">Значение</th>
-              </tr>
-            </thead>
+      <div class="store-layout">
+        <section class="section-card">
+          <div class="section-title-row">
+            <h4>Основные показатели</h4>
+          </div>
+          <table class="compact-table">
             <tbody>
               ${store.metricsTable
                 .map(
-                  (item) =>
-                    `<tr><td>${escapeHtml(item.label)}</td><td class="align-right">${item.emphasized ? "<strong>" : ""}${escapeHtml(item.value)}${item.emphasized ? "</strong>" : ""}</td></tr>`
+                  (item) => `
+                    <tr>
+                      <td>${escapeHtml(item.label)}</td>
+                      <td class="align-right">${item.emphasized ? "<strong>" : ""}${escapeHtml(item.value)}${item.emphasized ? "</strong>" : ""}</td>
+                    </tr>
+                  `
                 )
                 .join("")}
             </tbody>
           </table>
-        </div>
+        </section>
 
-        <div>
-          <div class="panel">
-            <h4>Топ товары</h4>
-            ${store.topProducts.length > 0 ? store.topProducts.map(renderKeyValue).join("") : '<div class="muted">Нет данных по продажам товаров.</div>'}
-          </div>
-          <div class="panel">
-            <h4>Персонал</h4>
-            ${store.sellerTotals.length > 0 ? store.sellerTotals.map(renderKeyValue).join("") : '<div class="muted">Нет данных по продавцам за выбранный период.</div>'}
-          </div>
+        <div class="side-stack">
+          <section class="section-card">
+            <div class="section-title-row">
+              <h4>Топ товары</h4>
+            </div>
+            <div class="list-block">
+              ${store.topProducts.length > 0 ? store.topProducts.map(renderListRow).join("") : '<div class="empty-state">Нет данных по продажам товаров.</div>'}
+            </div>
+          </section>
+
+          <section class="section-card">
+            <div class="section-title-row">
+              <h4>Персонал</h4>
+            </div>
+            <div class="list-block">
+              ${store.sellerTotals.length > 0 ? store.sellerTotals.map(renderListRow).join("") : '<div class="empty-state">Нет данных по продавцам за выбранный период.</div>'}
+            </div>
+          </section>
         </div>
       </div>
     </section>
@@ -499,22 +510,22 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
   <title>${escapeHtml(document.title)}</title>
   <style>
     :root {
-      --bg: #eef2f6;
+      --bg: #eff3f8;
       --surface: #ffffff;
-      --surface-subtle: #f8fafc;
-      --text: #0f172a;
-      --text-soft: #475569;
-      --muted: #64748b;
-      --line: #dbe3ec;
-      --line-strong: #c8d3df;
-      --accent: #1e3a5f;
-      --accent-ghost: #eaf1f8;
-      --success: #166534;
-      --danger: #b91c1c;
-      --warning: #92400e;
-      --radius: 12px;
-      --radius-lg: 16px;
-      --shadow-soft: 0 4px 14px rgba(15, 23, 42, 0.035);
+      --surface-soft: #f7f9fc;
+      --surface-tint: #f1f5f9;
+      --ink: #172033;
+      --muted: #6b778c;
+      --line: #d8e0ea;
+      --line-strong: #c5d0dc;
+      --accent: #1f314d;
+      --accent-soft: #eef3fb;
+      --danger: #bb3a2f;
+      --warning: #9c5c1a;
+      --shadow: 0 10px 28px rgba(17, 28, 45, 0.05);
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 12px;
     }
 
     * {
@@ -526,77 +537,68 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     @page {
       size: A4;
-      margin: 14mm;
+      margin: 12mm;
     }
 
     body {
       margin: 0;
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       background: var(--bg);
-      color: var(--text);
-      line-height: 1.45;
-      font-size: 14px;
-      overflow-wrap: anywhere;
+      color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.35;
+      font-size: 13px;
     }
 
     .page {
-      width: 100%;
-      max-width: 1120px;
+      max-width: 1040px;
       margin: 0 auto;
-      padding: 10px;
+      padding: 14px;
     }
 
-    .header,
-    .stat-card,
-    .store-card,
-    .footer-summary {
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .header {
+    .shell {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      padding: 16px;
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 10px;
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: var(--shadow);
     }
 
-    .header-top {
+    .report-head {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
+      gap: 14px;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
     }
 
-    .brand h1 {
-      margin: 0 0 8px;
-      font-size: clamp(24px, 5vw, 30px);
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      font-weight: 760;
-    }
-
-    .brand p {
+    .report-title {
       margin: 0;
-      color: var(--text-soft);
-      font-size: 13px;
-      max-width: 760px;
+      font-size: 32px;
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+      font-weight: 780;
+      color: var(--accent);
     }
 
-    .meta {
-      width: 100%;
-      background: var(--surface-subtle);
+    .report-subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      max-width: 620px;
+    }
+
+    .meta-card {
+      background: linear-gradient(180deg, #fbfcfe 0%, #f4f7fb 100%);
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 12px 14px;
+      border-radius: var(--radius-lg);
+      padding: 10px 14px;
     }
 
     .meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      gap: 10px;
+      align-items: center;
       padding: 8px 0;
       border-bottom: 1px solid var(--line);
     }
@@ -607,322 +609,350 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .meta-label {
-      color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.08em;
+      color: var(--muted);
     }
 
     .meta-value {
-      font-weight: 700;
       text-align: right;
-    }
-
-    .summary-grid,
-    .footer-grid,
-    .store-stats {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      font-weight: 700;
+      color: var(--ink);
     }
 
     .summary-grid {
-      margin: 10px 0 14px;
-    }
-
-    .stat-card,
-    .mini-stat {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 12px;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .stat-label,
-    .mini-stat .label,
-    .footer-card .label {
-      color: var(--muted);
-      font-size: 11px;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .stat-value,
-    .mini-stat .value,
-    .footer-card .value {
-      font-size: clamp(22px, 5vw, 28px);
-      font-weight: 760;
-      letter-spacing: -0.03em;
-      line-height: 1.05;
-    }
-
-    .section-title {
-      font-size: 17px;
-      margin: 14px 0 8px;
-      text-transform: uppercase;
-      color: var(--accent);
-      font-weight: 800;
-    }
-
-    .store-card {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 10px;
-      page-break-inside: avoid;
-    }
-
-    .store-head {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      margin-top: 14px;
+    }
+
+    .summary-card {
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
       padding: 14px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .summary-value {
+      margin-top: 8px;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-weight: 780;
+      color: var(--accent);
+    }
+
+    .block-title {
+      margin: 18px 0 10px;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+
+    .store-card,
+    .totals-card {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(17, 28, 45, 0.04);
+    }
+
+    .store-card + .store-card {
+      margin-top: 10px;
+    }
+
+    .store-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px 12px;
       border-bottom: 1px solid var(--line);
     }
 
-    .store-title-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .store-name {
-      font-size: clamp(22px, 4.2vw, 28px);
-      font-weight: 780;
-      line-height: 1.05;
+    .store-header h3 {
       margin: 0;
-      letter-spacing: -0.04em;
+      font-size: 18px;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      color: var(--accent);
     }
 
-    .store-subtitle {
-      margin: 4px 0 0;
-      color: var(--text-soft);
+    .store-header p {
+      margin: 6px 0 0;
+      color: var(--muted);
       font-size: 13px;
     }
 
     .store-badge {
-      width: fit-content;
+      display: inline-flex;
+      align-items: center;
       padding: 8px 12px;
       border-radius: 999px;
-      background: var(--accent-ghost);
-      border: 1px solid #d4e0ec;
+      background: var(--accent-soft);
+      border: 1px solid #d8e3f2;
       color: var(--accent);
       font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
-    .store-stats {
-      padding: 12px;
-      border-bottom: 1px solid var(--line);
-      background: var(--surface-subtle);
-    }
-
-    .content-grid {
+    .store-stats-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      padding: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--surface-soft);
+      border-bottom: 1px solid var(--line);
     }
 
-    table {
+    .store-stat {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+
+    .store-stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+
+    .store-stat-value {
+      margin-top: 6px;
+      font-size: 18px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-weight: 780;
+      color: var(--ink);
+    }
+
+    .tone-danger { color: var(--danger); }
+    .tone-warning { color: var(--warning); }
+
+    .store-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+      padding: 12px 16px 16px;
+    }
+
+    .section-card {
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+
+    .section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .section-title-row h4 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--accent);
+    }
+
+    .compact-table,
+    .totals-table {
       width: 100%;
       border-collapse: collapse;
-      background: var(--surface);
+      table-layout: fixed;
     }
 
-    th, td {
-      padding: 10px 12px;
-      text-align: left;
+    .compact-table td,
+    .totals-table th,
+    .totals-table td {
+      padding: 9px 10px;
       border-bottom: 1px solid var(--line);
       vertical-align: top;
     }
 
-    th {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 800;
-      background: var(--surface-subtle);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+    .compact-table tr:last-child td,
+    .totals-table tbody tr:last-child td {
+      border-bottom: 0;
     }
 
-    td strong {
-      font-weight: 800;
+    .compact-table td:first-child {
+      color: var(--muted);
     }
 
     .align-right {
       text-align: right;
     }
 
-    .panel {
-      background: var(--surface-subtle);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 10px;
+    .side-stack {
+      display: grid;
+      gap: 10px;
     }
 
-    .panel h4 {
-      margin: 0 0 10px;
-      font-size: 12px;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .kv {
+    .list-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 6px 0;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 0;
       border-bottom: 1px dashed var(--line-strong);
     }
 
-    .kv:last-child {
+    .list-row:last-child {
       border-bottom: 0;
       padding-bottom: 0;
     }
 
-    .kv span:first-child {
-      color: var(--text-soft);
-    }
-
-    .kv strong {
-      text-align: right;
-      flex: 0 0 auto;
-    }
-
-    .muted {
+    .list-row span {
       color: var(--muted);
     }
 
-    .danger { color: var(--danger); }
-    .warning { color: var(--warning); }
-
-    .footer-summary {
-      margin-top: 12px;
-      background: #13263d;
-      color: white;
-      border-radius: 16px;
-      padding: 14px;
-      page-break-inside: avoid;
+    .list-row strong {
+      color: var(--ink);
     }
 
-    .footer-summary-head {
+    .empty-state {
+      color: var(--muted);
+      padding: 6px 0;
+    }
+
+    .totals-card {
+      margin-top: 12px;
+      padding: 14px 16px 16px;
+      background: linear-gradient(180deg, #23324a 0%, #1b283d 100%);
+      border-color: rgba(255, 255, 255, 0.06);
+      color: white;
+    }
+
+    .totals-head {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
+      gap: 8px;
       margin-bottom: 10px;
     }
 
-    .footer-summary h2 {
+    .totals-head h3 {
       margin: 0;
-      font-size: clamp(20px, 6vw, 30px);
+      font-size: 18px;
       letter-spacing: -0.03em;
       font-weight: 760;
+      color: white;
     }
 
-    .footer-meta {
+    .totals-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 14px;
-      align-items: center;
+      gap: 10px 14px;
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.72);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
+      color: rgba(255, 255, 255, 0.7);
     }
 
-    .footer-card {
+    .totals-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .totals-metric {
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
       background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .totals-metric-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: rgba(255, 255, 255, 0.62);
+      font-weight: 700;
+    }
+
+    .totals-metric-value {
+      margin-top: 6px;
+      font-size: 18px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-weight: 780;
+      color: white;
     }
 
     .totals-table-wrap {
-      width: 100%;
-      display: block;
-      margin-top: 12px;
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .totals-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      background: transparent;
+      background: rgba(255, 255, 255, 0.04);
     }
 
     .totals-table th,
     .totals-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      color: white;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
     }
 
     .totals-table th {
       color: rgba(255, 255, 255, 0.72);
-      background: rgba(255, 255, 255, 0.04);
-      font-size: 11px;
-      font-weight: 800;
-      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.07em;
+      text-align: left;
     }
 
-    .totals-table th.align-right,
-    .totals-table td.align-right {
-      text-align: right;
+    .totals-table td {
+      color: white;
     }
 
-    @media (min-width: 768px) {
-      .header-top {
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
+    @media (min-width: 800px) {
+      .report-head {
+        grid-template-columns: minmax(0, 1fr) 330px;
       }
 
-      .meta {
-        min-width: 280px;
-        width: auto;
-      }
-
-      .summary-grid,
-      .footer-grid {
+      .summary-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
-      .store-stats {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+      .store-stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
-      .content-grid {
-        grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      .store-layout {
+        grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
       }
 
-      .footer-summary-head {
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: end;
-        gap: 12px;
+      .totals-metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
     }
 
     @media print {
       body {
         background: white;
-        font-size: 10px;
+        font-size: 11px;
       }
 
       .page {
@@ -930,179 +960,172 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
         max-width: none;
       }
 
-      .header {
-        padding: 12px;
-        margin-bottom: 8px;
+      .shell {
+        border-radius: 0;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
       }
 
-      .summary-grid {
-        margin: 8px 0 10px;
-        gap: 8px;
+      .report-head {
+        grid-template-columns: minmax(0, 1fr) 290px;
+        gap: 10px;
       }
 
-      .stat-card,
-      .mini-stat,
-      .footer-card {
-        padding: 10px;
+      .report-title {
+        font-size: 24px;
       }
 
-      .section-title {
-        margin: 10px 0 6px;
-        font-size: 15px;
+      .report-subtitle {
+        font-size: 12px;
+        margin-top: 5px;
       }
 
-      .store-card {
-        margin-bottom: 8px;
+      .meta-card,
+      .summary-card,
+      .store-card,
+      .section-card,
+      .totals-card,
+      .store-stat {
+        box-shadow: none;
       }
 
-      .store-head {
-        padding: 10px 12px;
+      .summary-grid,
+      .store-stats-grid,
+      .totals-metrics {
+        gap: 6px;
       }
 
-      .store-stats {
-        padding: 10px 12px;
-        gap: 8px;
-      }
-
-      .content-grid {
-        gap: 8px;
-        padding: 10px 12px 12px;
-      }
-
-      .panel {
-        padding: 10px;
-        margin-bottom: 8px;
-      }
-
-      .kv {
-        padding: 5px 0;
-      }
-
-      th,
-      td {
+      .summary-card,
+      .section-card,
+      .store-stat,
+      .totals-metric {
         padding: 8px 10px;
       }
 
-      .footer-summary {
-        margin-top: 8px;
-        padding: 12px;
+      .store-header {
+        padding: 10px 12px;
       }
 
-      .footer-summary-head {
-        margin-bottom: 8px;
+      .store-stats-grid {
+        padding: 10px 12px;
       }
 
-      .footer-grid {
+      .store-layout {
+        padding: 10px 12px 12px;
         gap: 8px;
       }
 
-      .totals-table-wrap {
-        margin-top: 10px;
+      .compact-table td,
+      .totals-table th,
+      .totals-table td {
+        padding: 7px 8px;
       }
 
-      .header,
-      .stat-card,
-      .mini-stat,
-      .store-card,
-      .footer-summary {
-        box-shadow: none;
+      .list-row {
+        padding: 5px 0;
+      }
+
+      .totals-card {
+        margin-top: 10px;
+        padding: 12px;
       }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <header class="header">
-      <div class="header-top">
-        <div class="brand">
-          <h1>${escapeHtml(document.title)}</h1>
-          <p>${escapeHtml(document.subtitle)}</p>
+    <main class="shell">
+      <section class="report-head">
+        <div>
+          <h1 class="report-title">${escapeHtml(document.title)}</h1>
+          <p class="report-subtitle">${escapeHtml(document.subtitle)}</p>
         </div>
 
-        <div class="meta">
+        <div class="meta-card">
           <div class="meta-row">
             <span class="meta-label">Дата отчета</span>
-            <strong class="meta-value">${escapeHtml(document.reportDateLabel)}</strong>
+            <span class="meta-value">${escapeHtml(document.reportDateLabel)}</span>
           </div>
           <div class="meta-row">
             <span class="meta-label">Период</span>
-            <strong class="meta-value">${escapeHtml(document.periodLabel)}</strong>
+            <span class="meta-value">${escapeHtml(document.periodLabel)}</span>
           </div>
           <div class="meta-row">
             <span class="meta-label">Сформировано</span>
-            <strong class="meta-value">${escapeHtml(document.generatedAt)}</strong>
+            <span class="meta-value">${escapeHtml(document.generatedAt)}</span>
           </div>
         </div>
-      </div>
-    </header>
+      </section>
 
-    <section class="summary-grid">
-      ${document.summaryMetrics
-        .map(
-          (metric) => `
-            <div class="stat-card">
-              <div class="stat-label">${escapeHtml(metric.label)}</div>
-              <div class="stat-value">${escapeHtml(metric.value)}</div>
-            </div>
-          `
-        )
-        .join("")}
-    </section>
-
-    <h2 class="section-title">Магазины</h2>
-    ${document.stores.map(renderStore).join("")}
-
-    <section class="footer-summary">
-      <div class="footer-summary-head">
-        <h2>Общая сводка по всем магазинам</h2>
-        <div class="footer-meta">
-          <span>Дата: ${escapeHtml(document.reportDateLabel)}</span>
-          <span>Интервал: ${escapeHtml(document.periodLabel)}</span>
-        </div>
-      </div>
-
-      <div class="footer-grid">
-        ${document.footerMetrics
+      <section class="summary-grid">
+        ${document.summaryMetrics
           .map(
             (metric) => `
-              <div class="footer-card">
-                <div class="label">${escapeHtml(metric.label)}</div>
-                <div class="value">${escapeHtml(metric.value)}</div>
-              </div>
+              <article class="summary-card">
+                <div class="summary-label">${escapeHtml(metric.label)}</div>
+                <div class="summary-value">${escapeHtml(metric.value)}</div>
+              </article>
             `
           )
           .join("")}
-      </div>
+      </section>
 
-      <div class="totals-table-wrap">
-        <table class="totals-table">
-          <thead>
-            <tr>
-              <th>Магазин</th>
-              <th class="align-right">Выручка</th>
-              <th class="align-right">Продаж</th>
-              <th class="align-right">Средний чек</th>
-              <th class="align-right">Возвраты</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${document.totalsRows
-              .map(
-                (row) => `
-                  <tr>
-                    <td>${row.isTotal ? "<strong>" : ""}${escapeHtml(row.storeName)}${row.isTotal ? "</strong>" : ""}</td>
-                    <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.revenue)}${row.isTotal ? "</strong>" : ""}</td>
-                    <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.salesCount)}${row.isTotal ? "</strong>" : ""}</td>
-                    <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.averageCheck)}${row.isTotal ? "</strong>" : ""}</td>
-                    <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.returns)}${row.isTotal ? "</strong>" : ""}</td>
-                  </tr>
-                `
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <div class="block-title">Магазины</div>
+      ${document.stores.map(renderStore).join("")}
+
+      <section class="totals-card">
+        <div class="totals-head">
+          <h3>Общая сводка по всем магазинам</h3>
+          <div class="totals-meta">
+            <span>Дата: ${escapeHtml(document.reportDateLabel)}</span>
+            <span>Интервал: ${escapeHtml(document.periodLabel)}</span>
+          </div>
+        </div>
+
+        <div class="totals-metrics">
+          ${document.footerMetrics
+            .map(
+              (metric) => `
+                <div class="totals-metric">
+                  <div class="totals-metric-label">${escapeHtml(metric.label)}</div>
+                  <div class="totals-metric-value">${escapeHtml(metric.value)}</div>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+
+        <div class="totals-table-wrap">
+          <table class="totals-table">
+            <thead>
+              <tr>
+                <th>Магазин</th>
+                <th class="align-right">Выручка</th>
+                <th class="align-right">Продаж</th>
+                <th class="align-right">Средний чек</th>
+                <th class="align-right">Возвраты</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${document.totalsRows
+                .map(
+                  (row) => `
+                    <tr>
+                      <td>${row.isTotal ? "<strong>" : ""}${escapeHtml(row.storeName)}${row.isTotal ? "</strong>" : ""}</td>
+                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.revenue)}${row.isTotal ? "</strong>" : ""}</td>
+                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.salesCount)}${row.isTotal ? "</strong>" : ""}</td>
+                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.averageCheck)}${row.isTotal ? "</strong>" : ""}</td>
+                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.returns)}${row.isTotal ? "</strong>" : ""}</td>
+                    </tr>
+                  `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
   </div>
 </body>
 </html>`;
