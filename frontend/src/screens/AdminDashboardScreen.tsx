@@ -5395,8 +5395,8 @@ export function AdminDashboardScreen({
     }> = [
       {
         type: "daily_summary",
-        title: "Сводный отчет за день",
-        description: "Итоги по всем магазинам и всей команде.",
+        title: "Сводный отчет",
+        description: "Итоги магазинов и команды.",
         icon: LuReceiptText,
       },
       {
@@ -5478,9 +5478,9 @@ export function AdminDashboardScreen({
         setSettingsView("report-detail");
       };
       const metaPills: Array<{ label: string; icon: IconType }> = [
-        { label: "Все магазины", icon: LuStore },
+        { label: "Магазины", icon: LuStore },
         { label: "Один день", icon: LuCalendarDays },
-        { label: "PDF в Telegram", icon: LuSend },
+        { label: "Telegram", icon: LuSend },
       ];
 
       return (
@@ -5542,7 +5542,7 @@ export function AdminDashboardScreen({
 
               <Box h="1px" bg="rgba(231,228,222,0.86)" />
 
-              <HStack gap={2} flexWrap="wrap">
+              <HStack gap={2} flexWrap="nowrap" overflowX="auto" pb={0.5}>
                 {metaPills.map((pill) => {
                   const PillIcon = pill.icon;
 
@@ -5553,12 +5553,15 @@ export function AdminDashboardScreen({
                       borderRadius="999px"
                       bg={panelMutedSurface}
                       color="surface.600"
-                      px={3}
+                      px={2.5}
                       py={2}
                       fontWeight="800"
-                      fontSize="xs"
+                      fontSize="11px"
+                      lineHeight="1"
+                      whiteSpace="nowrap"
+                      flexShrink={0}
                     >
-                      <PillIcon size={14} />
+                      <PillIcon size={13} />
                       <Text>{pill.label}</Text>
                     </HStack>
                   );
