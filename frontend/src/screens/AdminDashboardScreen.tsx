@@ -5486,179 +5486,125 @@ export function AdminDashboardScreen({
 
     if (settingsView === "reports-menu") {
       return (
-        <VStack align="stretch" spacing={4}>
-          <Box
-            bg="linear-gradient(135deg, rgba(89,125,242,0.12), rgba(255,255,255,0.96))"
-            borderRadius={panelRadius}
-            px={4}
-            py={4}
-            boxShadow={panelShadow}
-            border="1px solid rgba(89,125,242,0.12)"
-          >
-            <HStack align="start" spacing={3}>
-              <Box
-                w="52px"
-                h="52px"
-                borderRadius="18px"
-                bg="rgba(89,125,242,0.14)"
-                color="brand.600"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                flexShrink={0}
-              >
-                <LuReceiptText size={24} />
-              </Box>
-              <VStack align="start" spacing={1} minW={0}>
-                <Text fontWeight="900" fontSize="lg" color="surface.900">
-                  Центр отчетов
-                </Text>
-                <Text color="surface.600" fontSize="sm">
-                  Выбери нужный сценарий и получи готовый PDF в Telegram.
-                </Text>
-              </VStack>
-            </HStack>
-          </Box>
-
-          <HStack spacing={2} flexWrap="wrap">
-            <StatusPill label="PDF в Telegram" tone="blue" />
-            <StatusPill label="По магазинам" tone="gray" />
-            <StatusPill label="По продавцам" tone="gray" />
-            <StatusPill label="График команды" tone="gray" />
-          </HStack>
-
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
           <VStack align="stretch" spacing={3}>
+            <VStack align="start" spacing={0}>
+              <Text fontWeight="900" fontSize="lg">
+                Отчеты
+              </Text>
+              <Text color="surface.500" fontSize="sm" fontWeight="700">
+                Выберите нужный сценарий и получите PDF в Telegram.
+              </Text>
+            </VStack>
+
             {reportMenuItems.map((item) => {
               const Icon = item.icon;
 
               return (
                 <Box
                   key={item.type}
-                  role="button"
-                  tabIndex={0}
-                  borderRadius="28px"
-                  bg="linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,245,241,0.92))"
-                  boxShadow={panelShadow}
-                  px={4}
-                  py={4}
-                  border="1px solid rgba(214,218,225,0.55)"
+                  as="button"
+                  type="button"
+                  textAlign="left"
+                  bg={panelMutedSurface}
+                  borderRadius="18px"
+                  px={3}
+                  py={3}
+                  border={0}
                   onClick={() => {
                     setReportType(item.type);
                     setReportStatus(null);
                     setSettingsView("report-detail");
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setReportType(item.type);
-                      setReportStatus(null);
-                      setSettingsView("report-detail");
-                    }
-                  }}
-                  cursor="pointer"
                 >
-                  <VStack align="stretch" spacing={4}>
-                    <HStack align="start" justify="space-between" spacing={3}>
-                      <HStack align="start" spacing={3} minW={0}>
-                        <Box
-                          w="52px"
-                          h="52px"
-                          borderRadius="18px"
-                          bg="rgba(89,125,242,0.14)"
-                          color="brand.600"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          flexShrink={0}
-                        >
-                          <Icon size={22} />
-                        </Box>
-                        <VStack align="start" spacing={1} minW={0}>
-                          <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
-                            {item.eyebrow}
-                          </Text>
-                          <Text fontWeight="900" color="surface.900" fontSize="xl" lineHeight="1.05">
-                            {item.title}
-                          </Text>
-                          <Text color="surface.600" fontSize="sm" lineHeight="1.4">
-                            {item.description}
-                          </Text>
-                        </VStack>
-                      </HStack>
-                      <VStack align="end" spacing={2} flexShrink={0}>
-                        <Text fontSize="xs" fontWeight="800" color="brand.600" textTransform="uppercase">
-                          Открыть
+                  <HStack justify="space-between" align="start" spacing={3}>
+                    <HStack align="start" spacing={3} minW={0}>
+                      <Box
+                        w="40px"
+                        h="40px"
+                        borderRadius="14px"
+                        bg="rgba(255,255,255,0.72)"
+                        color="brand.600"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        flexShrink={0}
+                      >
+                        <Icon size={18} />
+                      </Box>
+                      <VStack align="start" spacing={1} minW={0}>
+                        <Text fontWeight="900" color="surface.900">
+                          {item.title}
                         </Text>
-                        <Box
-                          w="40px"
-                          h="40px"
-                          borderRadius="16px"
-                          bg="rgba(89,125,242,0.12)"
-                          color="brand.600"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                        >
-                          <LuChevronRight size={18} />
-                        </Box>
+                        <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.35">
+                          {item.description}
+                        </Text>
+                        <HStack spacing={2} flexWrap="wrap" pt={1}>
+                          {item.highlights.slice(0, 2).map((highlight) => (
+                            <StatusPill key={highlight} label={highlight} tone="gray" />
+                          ))}
+                        </HStack>
                       </VStack>
                     </HStack>
-
-                    <HStack spacing={2} flexWrap="wrap">
-                      {item.highlights.map((highlight) => (
-                        <StatusPill key={highlight} label={highlight} tone="blue" />
-                      ))}
-                    </HStack>
-                  </VStack>
+                    <Box
+                      w="32px"
+                      h="32px"
+                      borderRadius="12px"
+                      bg="rgba(255,255,255,0.72)"
+                      color="surface.500"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      flexShrink={0}
+                    >
+                      <LuChevronRight size={16} />
+                    </Box>
+                  </HStack>
                 </Box>
               );
             })}
           </VStack>
-        </VStack>
+        </Box>
       );
     }
 
     return (
       <VStack align="stretch" spacing={4}>
-        <Box
-          bg="linear-gradient(135deg, rgba(89,125,242,0.12), rgba(255,255,255,0.96))"
-          borderRadius={panelRadius}
-          px={4}
-          py={4}
-          boxShadow={panelShadow}
-          border="1px solid rgba(89,125,242,0.12)"
-        >
-          <HStack align="start" spacing={3}>
-            <Box
-              w="52px"
-              h="52px"
-              borderRadius="18px"
-              bg="rgba(89,125,242,0.14)"
-              color="brand.600"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              flexShrink={0}
-            >
-              <ActiveReportIcon size={22} />
-            </Box>
-            <VStack align="start" spacing={1} minW={0}>
-              <Text fontSize="xs" color="surface.500" fontWeight="800" textTransform="uppercase">
-                {activeReportMeta.eyebrow}
-              </Text>
-              <Text fontWeight="900" fontSize="2xl" color="surface.900" lineHeight="1.05">
-                {activeReportMeta.title}
-              </Text>
-              <Text color="surface.600" fontSize="sm">
-                {reportDetailDescription}
-              </Text>
-              <HStack spacing={2} pt={2} flexWrap="wrap">
-                {reportDetailHighlights.map((highlight) => (
-                  <StatusPill key={highlight} label={highlight} tone="blue" />
-                ))}
-              </HStack>
-            </VStack>
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={3}>
+          <HStack justify="space-between" align="start" spacing={3}>
+            <HStack align="start" spacing={3} minW={0}>
+              <Box
+                w="40px"
+                h="40px"
+                borderRadius="14px"
+                bg="rgba(74,132,244,0.1)"
+                color="brand.600"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+              >
+                <ActiveReportIcon size={18} />
+              </Box>
+              <VStack align="start" spacing={0} minW={0}>
+                <Text fontWeight="900" fontSize="lg">
+                  {activeReportMeta.title}
+                </Text>
+                <Text color="surface.500" fontSize="sm" fontWeight="700">
+                  {reportDetailDescription}
+                </Text>
+              </VStack>
+            </HStack>
+            <StatusPill label="PDF" tone="blue" />
           </HStack>
+
+          <HStack spacing={2} flexWrap="wrap">
+            {reportDetailHighlights.map((highlight) => (
+              <StatusPill key={highlight} label={highlight} tone="gray" />
+            ))}
+          </HStack>
+        </VStack>
         </Box>
 
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
