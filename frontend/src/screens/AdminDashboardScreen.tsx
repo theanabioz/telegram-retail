@@ -5137,18 +5137,6 @@ export function AdminDashboardScreen({
                       {t("admin.inventory.selectStoreDescription")}
                     </Text>
                   </VStack>
-                  <Button
-                    minW="44px"
-                    w="44px"
-                    h="44px"
-                    borderRadius="999px"
-                    bg="rgba(255,255,255,0.84)"
-                    color="surface.700"
-                    _hover={{ bg: "white" }}
-                    onClick={() => setShowInventoryStoreSelector(false)}
-                  >
-                    ×
-                  </Button>
                 </HStack>
               </Box>
 
