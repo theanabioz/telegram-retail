@@ -1,3 +1,4 @@
+import { env } from "../../config.js";
 import { getBusinessDateInput, getBusinessDayRange } from "../../lib/business-time.js";
 import { maybeOne, queryDb } from "../../lib/db.js";
 import { HttpError } from "../../lib/http-error.js";
@@ -169,7 +170,7 @@ function formatDisplayDate(value: string) {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    timeZone: "UTC",
+    timeZone: env.APP_TIME_ZONE,
   }).format(date);
 }
 
@@ -189,7 +190,7 @@ function formatDisplayDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "UTC",
+    timeZone: env.APP_TIME_ZONE,
   }).format(new Date(value));
 }
 
