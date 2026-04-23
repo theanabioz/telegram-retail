@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
+  Steps,
   Avatar,
   Box,
   Button,
   Container,
-  DatePicker,
   HStack,
   Input,
   NativeSelect,
@@ -13,7 +13,6 @@ import {
   VStack,
   Dialog,
   Portal,
-  parseDate,
 } from "@chakra-ui/react";
 import {
   LuActivity,
@@ -5426,7 +5425,6 @@ export function AdminDashboardScreen({
     const activeReportMeta =
       reportMenuItems.find((item) => item.type === reportType) ?? reportMenuItems[0];
     const ActiveReportIcon = activeReportMeta.icon;
-    const reportDateValue = reportDate ? [parseDate(reportDate)] : undefined;
     const quickDateOptions: Array<{ label: string; value: ReportQuickPreset }> = [
       { label: "Сегодня", value: "today" },
       { label: "Вчера", value: "yesterday" },
@@ -5592,78 +5590,16 @@ export function AdminDashboardScreen({
                   {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
                 </Text>
               </HStack>
-              <DatePicker.Root
-                openOnClick
-                closeOnSelect
-                locale={getLocaleTag(locale)}
-                startOfWeek={1}
-                fixedWeeks
-                value={reportDateValue}
-                onValueChange={(details) => {
-                  const nextDate = details.value[0];
-                  if (!nextDate) {
-                    return;
-                  }
-
-                  setReportDate(nextDate.toString());
+              <Input
+                type="date"
+                value={reportDate}
+                onChange={(event) => {
+                  setReportDate(event.target.value);
                   setReportQuickPreset(null);
                 }}
-              >
-                <DatePicker.Control
-                  h="56px"
-                  borderRadius="20px"
-                  bg="rgba(255,255,255,0.96)"
-                  border="1px solid"
-                  borderColor="rgba(214,218,225,0.96)"
-                  boxShadow="0 10px 22px rgba(18,18,18,0.04)"
-                  px={4}
-                >
-                  <DatePicker.Input
-                    fontWeight="800"
-                    color="surface.900"
-                    _placeholder={{ color: "surface.400", fontWeight: "700" }}
-                  />
-                  <DatePicker.IndicatorGroup>
-                    <DatePicker.Trigger asChild>
-                      <Button
-                        variant="ghost"
-                        minW="40px"
-                        h="40px"
-                        px={0}
-                        borderRadius="14px"
-                        color="brand.600"
-                        _hover={{ bg: "rgba(74,132,244,0.08)" }}
-                      >
-                        <LuCalendarDays size={18} />
-                      </Button>
-                    </DatePicker.Trigger>
-                  </DatePicker.IndicatorGroup>
-                </DatePicker.Control>
-                <Portal>
-                  <DatePicker.Positioner>
-                    <DatePicker.Content
-                      zIndex={30}
-                      borderRadius="24px"
-                      border="1px solid rgba(226,224,218,0.92)"
-                      boxShadow="0 22px 50px rgba(18,18,18,0.12)"
-                      bg="rgba(255,255,255,0.98)"
-                    >
-                      <DatePicker.View view="day">
-                        <DatePicker.Header />
-                        <DatePicker.DayTable />
-                      </DatePicker.View>
-                      <DatePicker.View view="month">
-                        <DatePicker.Header />
-                        <DatePicker.MonthTable />
-                      </DatePicker.View>
-                      <DatePicker.View view="year">
-                        <DatePicker.Header />
-                        <DatePicker.YearTable />
-                      </DatePicker.View>
-                    </DatePicker.Content>
-                  </DatePicker.Positioner>
-                </Portal>
-              </DatePicker.Root>
+                {...adminFormInputStyles}
+                bg="rgba(255,255,255,0.96)"
+              />
             </VStack>
           </Box>
 
