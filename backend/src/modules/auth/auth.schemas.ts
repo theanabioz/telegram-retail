@@ -9,10 +9,7 @@ export const impersonationParamsSchema = z.object({
 });
 
 export const devLoginBodySchema = z.object({
-  telegramId: z.number().int().positive().optional(),
-  role: z.enum(["admin", "seller"]).optional(),
-}).refine((value) => value.telegramId || value.role, {
-  message: "telegramId or role is required",
+  telegramId: z.number().int().positive(),
 });
 
 export type TelegramAuthBody = z.infer<typeof telegramAuthBodySchema>;

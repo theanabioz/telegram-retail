@@ -6,7 +6,6 @@ import {
 } from "./telegram.js";
 import { signAppJwt, type JwtPayload } from "./jwt.js";
 import {
-  findActiveUserByRole,
   findCurrentAssignment,
   findUserById,
   findUserByTelegramId,
@@ -49,12 +48,8 @@ export async function authenticateTelegramUser(initData: string) {
   };
 }
 
-export async function authenticateDevUser(input: { telegramId?: number; role?: "admin" | "seller" }) {
-  const appUser = input.telegramId
-    ? await findUserByTelegramId(input.telegramId)
-    : input.role
-      ? await findActiveUserByRole(input.role)
-      : null;
+export async function authenticateDevUser(telegramId: number) {
+  const appUser = await findUserByTelegramId(telegramId);
 
   if (!appUser || !appUser.is_active) {
     throw new HttpError(403, "User is not provisioned or inactive");

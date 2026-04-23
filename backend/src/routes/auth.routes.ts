@@ -33,7 +33,7 @@ authRouter.post(
     }
 
     const body = devLoginBodySchema.parse(req.body);
-    const session = await authenticateDevUser(body);
+    const session = await authenticateDevUser(body.telegramId);
     res.json(session);
   })
 );
