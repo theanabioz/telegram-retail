@@ -5428,7 +5428,7 @@ export function AdminDashboardScreen({
       setReportSubmitting(true);
       setReportStatus(null);
       await apiPost<{ ok: boolean; message: string }>("/admin/reports", body, token);
-      setReportStatus("PDF отправлен в Telegram.");
+      setReportStatus("Отчет отправлен в Telegram.");
     } catch (error) {
       setReportStatus(error instanceof Error ? error.message : "Не удалось сформировать отчет.");
     } finally {
