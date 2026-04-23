@@ -116,6 +116,7 @@ type SellerCreateStep = "name" | "telegramId" | "store" | "status";
 type ProductCreateStep = "name" | "price" | "sku" | "status";
 type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
 type AdminReportPeriod = "week" | "month";
+type AdminSettingsView = "root" | "reports";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -524,6 +525,7 @@ export function AdminDashboardScreen({
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [showNewSellerModal, setShowNewSellerModal] = useState(false);
+  const [settingsView, setSettingsView] = useState<AdminSettingsView>("root");
   const [reportType, setReportType] = useState<AdminReportType>("daily_summary");
   const [reportDate, setReportDate] = useState(getTodayInputValue);
   const [reportStoreId, setReportStoreId] = useState("");
@@ -638,6 +640,9 @@ export function AdminDashboardScreen({
 
   const handleAdminTabChange = useCallback((tab: AdminTab) => {
     setActiveTab(tab);
+    if (tab !== "settings") {
+      setSettingsView("root");
+    }
     scrollToSectionTop();
   }, []);
 
@@ -650,6 +655,8 @@ export function AdminDashboardScreen({
         ? t("admin.team.sellerDetails")
         : activeTab === "team" && selectedTeamStore
           ? t("admin.team.storeDetails")
+        : activeTab === "settings" && settingsView === "reports"
+          ? "Отчеты"
       : ({
           overview: t("nav.overview"),
           sales: t("nav.sales"),
@@ -669,11 +676,15 @@ export function AdminDashboardScreen({
         ? productCatalogMode === "archive"
           ? t("admin.inventory.productArchiveLabel")
           : t("admin.inventory.productCatalogLabel")
+      : activeTab === "settings" && settingsView === "reports"
+        ? "PDF-отчеты и рабочие графики"
       : null;
 
   useTelegramBackButton(
     activeTab === "sales"
       ? Boolean(selectedAdminSaleId || selectedAdminReturnId)
+      : activeTab === "settings"
+        ? settingsView === "reports"
       : activeTab === "inventory"
         ? Boolean(selectedInventoryItemId || selectedProductId)
         : activeTab === "team"
@@ -687,6 +698,11 @@ export function AdminDashboardScreen({
 
       if (activeTab === "sales" && selectedAdminReturnId) {
         setSelectedAdminReturnId(null);
+        return;
+      }
+
+      if (activeTab === "settings" && settingsView === "reports") {
+        setSettingsView("root");
         return;
       }
 
@@ -5354,29 +5370,89 @@ export function AdminDashboardScreen({
   const renderReportsSettings = () => {
     const selectedStoreId = reportStoreId || stores[0]?.id || "";
     const selectedSellerId = reportSellerId || staff[0]?.id || "";
+    const reportMenuItems: Array<{ type: AdminReportType; title: string; description: string }> = [
+      {
+        type: "daily_summary",
+        title: "Сводный отчет за день",
+        description: "Все магазины, продавцы, продажи, возвраты и топ товаров за день.",
+      },
+      {
+        type: "store",
+        title: "Отчет по магазину",
+        description: "Продажи, возвраты и показатели выбранного магазина.",
+      },
+      {
+        type: "seller",
+        title: "Отчет по продавцу",
+        description: "Смены, продажи и выручка конкретного сотрудника.",
+      },
+      {
+        type: "schedule",
+        title: "Рабочий график",
+        description: "Смены и отработанные часы за неделю или месяц.",
+      },
+    ];
 
     return (
-      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+      <VStack align="stretch" spacing={4}>
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+          <VStack align="stretch" spacing={3}>
+            {reportMenuItems.map((item) => {
+              const active = reportType === item.type;
+
+              return (
+                <Button
+                  key={item.type}
+                  h="auto"
+                  minH="72px"
+                  justifyContent="space-between"
+                  borderRadius="20px"
+                  bg={active ? "rgba(89,125,242,0.12)" : "rgba(241,240,236,0.9)"}
+                  borderWidth="1px"
+                  borderColor={active ? "rgba(89,125,242,0.34)" : "transparent"}
+                  px={4}
+                  py={4}
+                  _hover={{
+                    bg: active ? "rgba(89,125,242,0.16)" : "rgba(225,223,218,0.95)",
+                  }}
+                  onClick={() => {
+                    setReportType(item.type);
+                    setReportStatus(null);
+                  }}
+                >
+                  <VStack align="start" spacing={1} minW={0}>
+                    <Text fontWeight="900" color="surface.900" whiteSpace="normal" textAlign="left">
+                      {item.title}
+                    </Text>
+                    <Text color="surface.500" fontSize="sm" whiteSpace="normal" textAlign="left">
+                      {item.description}
+                    </Text>
+                  </VStack>
+                  <Text fontWeight="900" color={active ? "brand.500" : "surface.400"}>
+                    {active ? "Выбрано" : "Открыть"}
+                  </Text>
+                </Button>
+              );
+            })}
+          </VStack>
+        </Box>
+
+        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <VStack align="stretch" spacing={4}>
           <VStack align="start" spacing={1}>
             <Text fontWeight="900" fontSize="lg">
-              Отчеты
+              {reportType === "daily_summary"
+                ? "Сводный отчет за день"
+                : reportType === "store"
+                  ? "Отчет по магазину"
+                  : reportType === "seller"
+                    ? "Отчет по продавцу"
+                    : "Рабочий график"}
             </Text>
             <Text color="surface.500" fontSize="sm">
-              Выберите тип отчета, период и получите PDF в Telegram-боте.
+              Настройте параметры и получите PDF в Telegram-боте.
             </Text>
           </VStack>
-
-          <Select
-            value={reportType}
-            onChange={(event) => setReportType(event.target.value as AdminReportType)}
-            {...adminFormInputStyles}
-          >
-            <option value="daily_summary">Сводный отчет за день</option>
-            <option value="store">Отчет по магазину</option>
-            <option value="seller">Отчет по продавцу</option>
-            <option value="schedule">Рабочий график</option>
-          </Select>
 
           <Input
             type="date"
@@ -5451,7 +5527,8 @@ export function AdminDashboardScreen({
             </Text>
           ) : null}
         </VStack>
-      </Box>
+        </Box>
+      </VStack>
     );
   };
 
@@ -5470,7 +5547,35 @@ export function AdminDashboardScreen({
               t("settings.admin.title"),
               t("settings.admin.description")
             )}
-            {renderReportsSettings()}
+            {settingsView === "reports" ? (
+              renderReportsSettings()
+            ) : (
+              <Button
+                h="72px"
+                justifyContent="space-between"
+                borderRadius="24px"
+                bg={panelSurface}
+                px={4}
+                boxShadow={panelShadow}
+                _hover={{ bg: "rgba(255,255,255,0.96)" }}
+                onClick={() => {
+                  setSettingsView("reports");
+                  setReportStatus(null);
+                }}
+              >
+                <VStack align="start" spacing={1}>
+                  <Text fontWeight="900" color="surface.900">
+                    Отчеты
+                  </Text>
+                  <Text color="surface.500" fontSize="sm">
+                    Сводный отчет за день, магазин, продавец и рабочий график.
+                  </Text>
+                </VStack>
+                <Text fontWeight="900" color="surface.400">
+                  Открыть
+                </Text>
+              </Button>
+            )}
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
                 <Text fontWeight="900" fontSize="lg">
