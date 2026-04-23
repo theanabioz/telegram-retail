@@ -5541,41 +5541,41 @@ export function AdminDashboardScreen({
       case "team":
         return renderTeam();
       case "settings":
+        if (settingsView === "reports") {
+          return renderReportsSettings();
+        }
+
         return (
           <VStack spacing={4} align="stretch">
             {renderPlaceholder(
               t("settings.admin.title"),
               t("settings.admin.description")
             )}
-            {settingsView === "reports" ? (
-              renderReportsSettings()
-            ) : (
-              <Button
-                h="72px"
-                justifyContent="space-between"
-                borderRadius="24px"
-                bg={panelSurface}
-                px={4}
-                boxShadow={panelShadow}
-                _hover={{ bg: "rgba(255,255,255,0.96)" }}
-                onClick={() => {
-                  setSettingsView("reports");
-                  setReportStatus(null);
-                }}
-              >
-                <VStack align="start" spacing={1}>
-                  <Text fontWeight="900" color="surface.900">
-                    Отчеты
-                  </Text>
-                  <Text color="surface.500" fontSize="sm">
-                    Сводный отчет за день, магазин, продавец и рабочий график.
-                  </Text>
-                </VStack>
-                <Text fontWeight="900" color="surface.400">
-                  Открыть
+            <Button
+              h="72px"
+              justifyContent="space-between"
+              borderRadius="24px"
+              bg={panelSurface}
+              px={4}
+              boxShadow={panelShadow}
+              _hover={{ bg: "rgba(255,255,255,0.96)" }}
+              onClick={() => {
+                setSettingsView("reports");
+                setReportStatus(null);
+              }}
+            >
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="900" color="surface.900">
+                  Отчеты
                 </Text>
-              </Button>
-            )}
+                <Text color="surface.500" fontSize="sm">
+                  Сводный отчет за день, магазин, продавец и рабочий график.
+                </Text>
+              </VStack>
+              <Text fontWeight="900" color="surface.400">
+                Открыть
+              </Text>
+            </Button>
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
                 <Text fontWeight="900" fontSize="lg">
