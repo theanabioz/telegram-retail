@@ -5161,19 +5161,15 @@ export function AdminDashboardScreen({
                       color="surface.900"
                       border="1px solid"
                       borderColor={isActive ? "rgba(214,210,201,0.96)" : "rgba(226,224,218,0.92)"}
-                      boxShadow={
-                        isActive
-                          ? "0 14px 28px rgba(18, 18, 18, 0.07)"
-                          : "0 12px 28px rgba(18, 18, 18, 0.05)"
-                      }
+                      boxShadow="none"
                       _hover={{
                         bg: isActive
                           ? "rgba(238,236,231,1)"
                           : "rgba(255,255,255,1)",
                       }}
-                      _focus={{ boxShadow: isActive ? "0 14px 28px rgba(18, 18, 18, 0.07)" : "0 12px 28px rgba(18, 18, 18, 0.05)" }}
+                      _focus={{ boxShadow: "none" }}
                       _focusVisible={{
-                        boxShadow: isActive ? "0 14px 28px rgba(18, 18, 18, 0.07)" : "0 12px 28px rgba(18, 18, 18, 0.05)",
+                        boxShadow: "none",
                         outline: "none",
                       }}
                       onClick={() => {
