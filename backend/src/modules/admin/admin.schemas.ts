@@ -113,21 +113,29 @@ const reportDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const adminReportRequestBodySchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("daily_summary"),
-    date: reportDateSchema,
+    date: reportDateSchema.optional(),
+    dateFrom: reportDateSchema.optional(),
+    dateTo: reportDateSchema.optional(),
   }),
   z.object({
     type: z.literal("store"),
-    date: reportDateSchema,
+    date: reportDateSchema.optional(),
+    dateFrom: reportDateSchema.optional(),
+    dateTo: reportDateSchema.optional(),
     storeId: z.string().uuid(),
   }),
   z.object({
     type: z.literal("seller"),
-    date: reportDateSchema,
+    date: reportDateSchema.optional(),
+    dateFrom: reportDateSchema.optional(),
+    dateTo: reportDateSchema.optional(),
     sellerId: z.string().uuid(),
   }),
   z.object({
     type: z.literal("schedule"),
-    period: z.enum(["week", "month"]),
-    periodAnchorDate: reportDateSchema,
+    period: z.enum(["week", "month"]).optional(),
+    periodAnchorDate: reportDateSchema.optional(),
+    dateFrom: reportDateSchema.optional(),
+    dateTo: reportDateSchema.optional(),
   }),
 ]);

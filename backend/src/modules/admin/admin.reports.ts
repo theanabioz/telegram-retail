@@ -16,6 +16,8 @@ type ReportRequestInput = {
   adminUserId: string;
   type: "daily_summary" | "store" | "seller" | "schedule";
   date?: string;
+  dateFrom?: string;
+  dateTo?: string;
   storeId?: string;
   sellerId?: string;
   period?: "week" | "month";
@@ -69,7 +71,34 @@ function buildDayRange(date?: string): ReportRange {
   };
 }
 
-function buildScheduleRange(input: Pick<ReportRequestInput, "period" | "periodAnchorDate">): ReportRange {
+function buildDateRange(input: Pick<ReportRequestInput, "date" | "dateFrom" | "dateTo">): ReportRange {
+  if (input.dateFrom || input.dateTo) {
+    if (!input.dateFrom || !input.dateTo) {
+      throw new HttpError(400, "Report date range requires dateFrom and dateTo");
+    }
+
+    const from = formatDateInput(input.dateFrom);
+    const to = formatDateInput(input.dateTo);
+    const start = from <= to ? from : to;
+    const end = from <= to ? to : from;
+    const startRange = buildDayRange(start);
+    const endRange = buildDayRange(end);
+
+    return {
+      label: start === end ? start : `${start} - ${end}`,
+      dateFrom: startRange.dateFrom,
+      dateTo: endRange.dateTo,
+    };
+  }
+
+  return buildDayRange(input.date);
+}
+
+function buildScheduleRange(input: Pick<ReportRequestInput, "period" | "periodAnchorDate" | "dateFrom" | "dateTo">): ReportRange {
+  if (input.dateFrom || input.dateTo) {
+    return buildDateRange(input);
+  }
+
   const anchor = formatDateInput(input.periodAnchorDate);
 
   if (input.period === "month") {
@@ -247,7 +276,7 @@ async function resolveReport(input: ReportRequestInput) {
     };
   }
 
-  const range = buildDayRange(input.date);
+  const range = buildDateRange(input);
   const stores = await listAdminStores();
   const users = await listAdminUsers();
 

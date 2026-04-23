@@ -132,7 +132,7 @@ type ProductCreateStep = "name" | "price" | "sku" | "status";
 type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
 type AdminReportPeriod = "week" | "month";
 type AdminSettingsView = "root" | "reports-menu" | "report-detail";
-type ReportQuickPreset = "today" | "yesterday" | "week" | "month";
+type ReportQuickPreset = "today" | "week" | "month" | "custom";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -544,6 +544,7 @@ export function AdminDashboardScreen({
   const [settingsView, setSettingsView] = useState<AdminSettingsView>("root");
   const [reportType, setReportType] = useState<AdminReportType>("daily_summary");
   const [reportDate, setReportDate] = useState(getTodayInputValue);
+  const [reportDateTo, setReportDateTo] = useState(getTodayInputValue);
   const [reportQuickPreset, setReportQuickPreset] = useState<ReportQuickPreset | null>("today");
   const [reportStoreId, setReportStoreId] = useState("");
   const [reportSellerId, setReportSellerId] = useState("");
@@ -5375,16 +5376,37 @@ export function AdminDashboardScreen({
       return;
     }
 
-    const body =
-      reportType === "daily_summary"
-        ? { type: reportType, date: reportDate }
-        : reportType === "store"
-          ? { type: reportType, date: reportDate, storeId: reportStoreId || stores[0]?.id }
-          : reportType === "seller"
-            ? { type: reportType, date: reportDate, sellerId: reportSellerId || staff[0]?.id }
-            : { type: reportType, period: reportPeriod, periodAnchorDate: reportDate };
+    const normalizedReportDateFrom = reportDate <= reportDateTo ? reportDate : reportDateTo;
+    const normalizedReportDateTo = reportDate <= reportDateTo ? reportDateTo : reportDate;
+    const reportDatePayload =
+      reportQuickPreset === "today"
+        ? { date: reportDate }
+        : {
+            dateFrom: normalizedReportDateFrom,
+            dateTo: normalizedReportDateTo,
+          };
 
-    if ((reportType === "store" && !body.storeId) || (reportType === "seller" && !body.sellerId)) {
+    type AdminReportRequestBody =
+      | ({ type: "daily_summary" } & typeof reportDatePayload)
+      | ({ type: "store"; storeId?: string } & typeof reportDatePayload)
+      | ({ type: "seller"; sellerId?: string } & typeof reportDatePayload)
+      | ({ type: "schedule"; period?: AdminReportPeriod; periodAnchorDate?: string } & Partial<typeof reportDatePayload>);
+
+    const body: AdminReportRequestBody =
+      reportType === "daily_summary"
+        ? { type: reportType, ...reportDatePayload }
+        : reportType === "store"
+          ? { type: reportType, ...reportDatePayload, storeId: reportStoreId || stores[0]?.id }
+          : reportType === "seller"
+            ? { type: reportType, ...reportDatePayload, sellerId: reportSellerId || staff[0]?.id }
+            : reportQuickPreset === "custom"
+              ? { type: reportType, ...reportDatePayload }
+              : { type: reportType, period: reportPeriod, periodAnchorDate: reportDate };
+
+    if (
+      (reportType === "store" && !(reportStoreId || stores[0]?.id)) ||
+      (reportType === "seller" && !(reportSellerId || staff[0]?.id))
+    ) {
       setReportStatus("Выберите магазин или продавца для отчета.");
       return;
     }
@@ -5404,8 +5426,7 @@ export function AdminDashboardScreen({
   const renderReportsSettings = () => {
     const selectedStoreId = reportStoreId || stores[0]?.id || "";
     const selectedSellerId = reportSellerId || staff[0]?.id || "";
-    const isEntityReport = reportType === "store" || reportType === "seller";
-    const yesterdayInputValue = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const todayInputValue = getTodayInputValue();
     const weekAnchorInputValue = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const monthAnchorInputValue = toDateInputValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const reportMenuItems: Array<{
@@ -5442,26 +5463,23 @@ export function AdminDashboardScreen({
 
     const quickDateOptions: Array<{ label: string; value: ReportQuickPreset }> = [
       { label: "Сегодня", value: "today" },
-      { label: "Вчера", value: "yesterday" },
       { label: "Неделя", value: "week" },
       { label: "Месяц", value: "month" },
+      { label: "Свой", value: "custom" },
     ];
 
     const handleSelectReportQuickPreset = (preset: ReportQuickPreset) => {
       setReportQuickPreset(preset);
 
       if (preset === "today") {
-        setReportDate(getTodayInputValue());
-        return;
-      }
-
-      if (preset === "yesterday") {
-        setReportDate(yesterdayInputValue);
+        setReportDate(todayInputValue);
+        setReportDateTo(todayInputValue);
         return;
       }
 
       if (preset === "week") {
         setReportDate(weekAnchorInputValue);
+        setReportDateTo(todayInputValue);
         if (reportType === "schedule") {
           setReportPeriod("week");
         }
@@ -5470,8 +5488,16 @@ export function AdminDashboardScreen({
 
       if (preset === "month") {
         setReportDate(monthAnchorInputValue);
+        setReportDateTo(todayInputValue);
         if (reportType === "schedule") {
           setReportPeriod("month");
+        }
+        return;
+      }
+
+      if (preset === "custom") {
+        if (!reportDateTo) {
+          setReportDateTo(reportDate || todayInputValue);
         }
       }
     };
@@ -5484,6 +5510,8 @@ export function AdminDashboardScreen({
         setReportType(type);
         setReportStatus(null);
         setReportQuickPreset("today");
+        setReportDate(todayInputValue);
+        setReportDateTo(todayInputValue);
         setSettingsView("report-detail");
       };
       const metaPills: Array<{ label: string; icon: IconType }> = [
@@ -5692,34 +5720,65 @@ export function AdminDashboardScreen({
         boxShadow={panelShadow}
         border="1px solid rgba(255,255,255,0.72)"
       >
-        <VStack align="stretch" gap={isEntityReport ? 3 : 4}>
-          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={isEntityReport ? 2.5 : 3.5}>
-            <VStack align="stretch" gap={isEntityReport ? 2 : 3}>
+        <VStack align="stretch" gap={3}>
+          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={2.5}>
+            <VStack align="stretch" gap={2}>
               <VStack align="start" gap={1}>
-                <Text fontWeight="800" color="surface.700" fontSize={isEntityReport ? "md" : "lg"}>
-                  {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
+                <Text fontWeight="800" color="surface.700" fontSize="md">
+                  {reportQuickPreset === "custom" ? "Период отчета" : reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
                 </Text>
                 <Text color="surface.500" fontSize="xs" fontWeight="700">
-                  {reportType === "schedule" ? "Выберите дату внутри нужного периода." : "Выберите день, за который нужен PDF."}
+                  {reportQuickPreset === "custom"
+                    ? "Выберите даты начала и окончания."
+                    : reportType === "schedule"
+                      ? "Выберите дату внутри нужного периода."
+                      : "Выберите день, за который нужен PDF."}
                 </Text>
               </VStack>
-              <Input
-                type="date"
-                value={reportDate}
-                onChange={(event) => {
-                  setReportDate(event.target.value);
-                  setReportQuickPreset(null);
-                }}
-                {...adminFormInputStyles}
-                bg="rgba(255,255,255,0.96)"
-                borderRadius="18px"
-                h={isEntityReport ? "50px" : adminFormInputStyles.h}
-              />
+              {reportQuickPreset === "custom" ? (
+                <HStack gap={2} w="100%">
+                  <Input
+                    type="date"
+                    value={reportDate}
+                    onChange={(event) => setReportDate(event.target.value)}
+                    {...adminFormInputStyles}
+                    bg="rgba(255,255,255,0.96)"
+                    borderRadius="18px"
+                    h="50px"
+                    minW={0}
+                    flex="1"
+                  />
+                  <Input
+                    type="date"
+                    value={reportDateTo}
+                    onChange={(event) => setReportDateTo(event.target.value)}
+                    {...adminFormInputStyles}
+                    bg="rgba(255,255,255,0.96)"
+                    borderRadius="18px"
+                    h="50px"
+                    minW={0}
+                    flex="1"
+                  />
+                </HStack>
+              ) : (
+                <Input
+                  type="date"
+                  value={reportDate}
+                  onChange={(event) => {
+                    setReportDate(event.target.value);
+                    setReportDateTo(event.target.value);
+                  }}
+                  {...adminFormInputStyles}
+                  bg="rgba(255,255,255,0.96)"
+                  borderRadius="18px"
+                  h="50px"
+                />
+              )}
             </VStack>
           </Box>
 
-          <VStack align="stretch" gap={isEntityReport ? 2 : 3}>
-            <Text fontWeight="800" color="surface.700" px={1} fontSize={isEntityReport ? "md" : "lg"}>
+          <VStack align="stretch" gap={2}>
+            <Text fontWeight="800" color="surface.700" px={1} fontSize="md">
               Период
             </Text>
             <HStack gap={2} w="100%">
@@ -5728,7 +5787,7 @@ export function AdminDashboardScreen({
                 key={option.value}
                 size="sm"
                 borderRadius="999px"
-                h={isEntityReport ? "38px" : "40px"}
+                h="38px"
                 px={0}
                 flex="1"
                 minW={0}
@@ -5830,9 +5889,9 @@ export function AdminDashboardScreen({
             </Box>
           ) : null}
 
-          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={isEntityReport ? 2.5 : 3.5}>
-            <VStack align="stretch" gap={isEntityReport ? 2 : 3}>
-              <Text fontWeight="800" color="surface.700" fontSize={isEntityReport ? "md" : "lg"}>
+          <Box bg={panelMutedSurface} borderRadius="24px" px={3.5} py={2.5}>
+            <VStack align="stretch" gap={2}>
+              <Text fontWeight="800" color="surface.700" fontSize="md">
                 Формат
               </Text>
               <HStack
@@ -5840,12 +5899,12 @@ export function AdminDashboardScreen({
                 borderRadius="22px"
                 border="1px solid rgba(214,218,225,0.96)"
                 bg="rgba(255,255,255,0.96)"
-                px={isEntityReport ? 3 : 3.5}
-                py={isEntityReport ? 2.5 : 3}
+                px={3}
+                py={2.5}
               >
                 <Box
-                  w={isEntityReport ? "40px" : "44px"}
-                  h={isEntityReport ? "40px" : "44px"}
+                  w="40px"
+                  h="40px"
                   borderRadius="15px"
                   bg="rgba(74,132,244,0.1)"
                   color="brand.600"
@@ -5854,14 +5913,14 @@ export function AdminDashboardScreen({
                   justifyContent="center"
                   flexShrink={0}
                 >
-                  <LuReceiptText size={isEntityReport ? 18 : 20} />
+                  <LuReceiptText size={18} />
                 </Box>
                 <VStack align="start" gap={0.5} minW={0} flex="1">
                   <Text fontWeight="900" color="surface.900">
                     PDF
                   </Text>
                   <Text color="surface.500" fontSize="xs" fontWeight="700" lineHeight="1.35">
-                    {isEntityReport ? "Отчет в формате PDF." : "Формируется отчет в формате PDF."}
+                    Отчет в формате PDF.
                   </Text>
                 </VStack>
                 <Box color="brand.600" flexShrink={0}>
