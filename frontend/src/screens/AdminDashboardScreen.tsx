@@ -19,7 +19,9 @@ import {
   LuCheck,
   LuChevronDown,
   LuChevronRight,
+  LuCircleCheck,
   LuClock3,
+  LuInfo,
   LuMinus,
   LuPlus,
   LuReceiptText,
@@ -5421,12 +5423,12 @@ export function AdminDashboardScreen({
 
     const reportDetailDescription =
       reportType === "daily_summary"
-        ? "Итоги дня по всем магазинам и всей команде."
+        ? "Итоги по всем магазинам и всей команде."
         : reportType === "store"
           ? "Показатели одной точки за выбранную дату."
           : reportType === "seller"
-            ? "Личный отчет сотрудника за выбранную дату."
-            : "График команды по неделе или месяцу.";
+            ? "Личные показатели за выбранную дату."
+            : "Смены и часы сотрудников за период.";
 
     const activeReportMeta =
       reportMenuItems.find((item) => item.type === reportType) ?? reportMenuItems[0];
@@ -5755,29 +5757,6 @@ export function AdminDashboardScreen({
             </VStack>
           </HStack>
 
-          <HStack gap={2} flexWrap="nowrap" overflowX="auto" pb={0.5}>
-            {quickDateOptions.map((option) => (
-              <Button
-                key={option.value}
-                size="sm"
-                borderRadius="999px"
-                h="40px"
-                px={4}
-                flexShrink={0}
-                fontWeight="900"
-                bg={reportQuickPreset === option.value ? "brand.500" : panelMutedSurface}
-                color={reportQuickPreset === option.value ? "white" : "surface.700"}
-                _hover={{
-                  bg: reportQuickPreset === option.value ? "brand.600" : "rgba(225,223,218,0.95)",
-                }}
-                _active={{ transform: "scale(0.98)" }}
-                onClick={() => handleSelectReportQuickPreset(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </HStack>
-
           <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
             <VStack align="stretch" gap={4}>
               <VStack align="start" gap={1}>
@@ -5801,6 +5780,36 @@ export function AdminDashboardScreen({
               />
             </VStack>
           </Box>
+
+          <VStack align="stretch" gap={3}>
+            <Text fontWeight="800" color="surface.700" px={1}>
+              Период
+            </Text>
+            <HStack gap={2} w="100%">
+            {quickDateOptions.map((option) => (
+              <Button
+                key={option.value}
+                size="sm"
+                borderRadius="999px"
+                h="44px"
+                px={0}
+                flex="1"
+                minW={0}
+                fontWeight="900"
+                fontSize="sm"
+                bg={reportQuickPreset === option.value ? "brand.500" : panelMutedSurface}
+                color={reportQuickPreset === option.value ? "white" : "surface.700"}
+                _hover={{
+                  bg: reportQuickPreset === option.value ? "brand.600" : "rgba(225,223,218,0.95)",
+                }}
+                _active={{ transform: "scale(0.98)" }}
+                onClick={() => handleSelectReportQuickPreset(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+            </HStack>
+          </VStack>
 
           {reportType === "store" ? (
             <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
@@ -5879,6 +5888,75 @@ export function AdminDashboardScreen({
                   ))}
                 </HStack>
               </VStack>
+            </Box>
+          ) : null}
+
+          <Box bg={panelMutedSurface} borderRadius="24px" px={4} py={4}>
+            <VStack align="stretch" gap={3}>
+              <Text fontWeight="800" color="surface.700">
+                Формат
+              </Text>
+              <HStack
+                gap={3}
+                borderRadius="22px"
+                border="1px solid rgba(214,218,225,0.96)"
+                bg="rgba(255,255,255,0.96)"
+                px={4}
+                py={4}
+              >
+                <Box
+                  w="48px"
+                  h="48px"
+                  borderRadius="16px"
+                  bg="rgba(74,132,244,0.1)"
+                  color="brand.600"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                >
+                  <LuReceiptText size={22} />
+                </Box>
+                <VStack align="start" gap={0.5} minW={0} flex="1">
+                  <Text fontWeight="900" color="surface.900">
+                    PDF
+                  </Text>
+                  <Text color="surface.500" fontSize="xs" fontWeight="700" lineHeight="1.35">
+                    Формируется отчет в формате PDF.
+                  </Text>
+                </VStack>
+                <Box color="brand.600" flexShrink={0}>
+                  <LuCircleCheck size={24} />
+                </Box>
+              </HStack>
+            </VStack>
+          </Box>
+
+          {reportType === "daily_summary" ? (
+            <Box bg="rgba(238,244,255,0.92)" borderRadius="24px" px={4} py={4}>
+              <HStack align="start" gap={3}>
+                <Box
+                  w="44px"
+                  h="44px"
+                  borderRadius="16px"
+                  bg="rgba(255,255,255,0.72)"
+                  color="brand.600"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                >
+                  <LuInfo size={20} />
+                </Box>
+                <VStack align="start" gap={1} minW={0} flex="1">
+                  <Text fontWeight="900" color="surface.900">
+                    Что включено
+                  </Text>
+                  <Text color="surface.600" fontSize="sm" fontWeight="700" lineHeight="1.45">
+                    Все магазины, все продавцы и все операции за выбранный период.
+                  </Text>
+                </VStack>
+              </HStack>
             </Box>
           ) : null}
 
