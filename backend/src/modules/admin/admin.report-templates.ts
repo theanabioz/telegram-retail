@@ -746,8 +746,8 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .store-section {
-      page-break-inside: avoid;
-      break-inside: avoid;
+      page-break-inside: auto;
+      break-inside: auto;
       padding: 16px 0 0;
       border-top: 1px solid var(--line);
     }
@@ -763,6 +763,8 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       gap: 16px;
       align-items: end;
       margin-bottom: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .store-eyebrow {
@@ -825,6 +827,8 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     .panel {
       background: var(--paper);
       border: 1px solid var(--line);
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .panel-title {
@@ -881,6 +885,11 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       margin-bottom: 12px;
     }
 
+    .network-stack {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
     .network-overview-item {
       padding: 12px 14px;
       border-right: 1px solid var(--line);
@@ -915,6 +924,8 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     .network-table-wrap {
       border: 1px solid var(--line);
       overflow: hidden;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .network-table th {
@@ -929,6 +940,11 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .network-table td {
       color: var(--muted-strong);
+    }
+
+    .network-table tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .network-table .total-row td {
@@ -1027,42 +1043,49 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       }
 
       .section {
-        margin-top: 16px;
+        margin-top: 14px;
       }
 
       .section-header {
-        margin-bottom: 8px;
-        padding-bottom: 6px;
+        margin-bottom: 7px;
+        padding-bottom: 5px;
+        page-break-after: avoid;
+        break-after: avoid-page;
       }
 
       .metric-cell,
       .network-overview-item {
-        padding: 10px 11px;
+        padding: 9px 10px;
       }
 
       .metric-number {
-        font-size: 22px;
-      }
-
-      .store-section {
-        padding-top: 12px;
-      }
-
-      .store-name {
         font-size: 20px;
       }
 
+      .store-section {
+        padding-top: 10px;
+      }
+
+      .store-name {
+        font-size: 18px;
+      }
+
       .store-highlight-value {
-        font-size: 22px;
+        font-size: 20px;
       }
 
       .store-grid {
-        gap: 10px;
-        margin-top: 10px;
+        gap: 8px;
+        margin-top: 8px;
       }
 
       .side-column {
+        gap: 8px;
+      }
+
+      .store-head {
         gap: 10px;
+        margin-bottom: 8px;
       }
 
       .meta-table th,
@@ -1071,11 +1094,15 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       .list-table td,
       .network-table th,
       .network-table td {
-        padding: 7px 8px;
+        padding: 6px 7px;
       }
 
       .panel-title {
-        padding: 8px;
+        padding: 7px;
+      }
+
+      .network-overview {
+        margin-bottom: 8px;
       }
     }
   </style>
@@ -1158,46 +1185,48 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
           <div class="section-note">${escapeHtml(document.reportDateLabel)}</div>
         </div>
 
-        <div class="network-overview">
-          ${document.footerMetrics
-            .map(
-              (metric) => `
-                <div class="network-overview-item">
-                  <div class="network-overview-label">${escapeHtml(metric.label)}</div>
-                  <div class="network-overview-value">${escapeHtml(metric.value)}</div>
-                </div>
-              `
-            )
-            .join("")}
-        </div>
+        <div class="network-stack">
+          <div class="network-overview">
+            ${document.footerMetrics
+              .map(
+                (metric) => `
+                  <div class="network-overview-item">
+                    <div class="network-overview-label">${escapeHtml(metric.label)}</div>
+                    <div class="network-overview-value">${escapeHtml(metric.value)}</div>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
 
-        <div class="network-table-wrap">
-          <table class="network-table">
-            <thead>
-              <tr>
-                <th>Магазин</th>
-                <th class="align-right">Выручка</th>
-                <th class="align-right">Продаж</th>
-                <th class="align-right">Средний чек</th>
-                <th class="align-right">Возвраты</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${document.totalsRows
-                .map(
-                  (row) => `
-                    <tr class="${row.isTotal ? "total-row" : ""}">
-                      <td>${escapeHtml(row.storeName)}</td>
-                      <td class="align-right">${escapeHtml(row.revenue)}</td>
-                      <td class="align-right">${escapeHtml(row.salesCount)}</td>
-                      <td class="align-right">${escapeHtml(row.averageCheck)}</td>
-                      <td class="align-right">${escapeHtml(row.returns)}</td>
-                    </tr>
-                  `
-                )
-                .join("")}
-            </tbody>
-          </table>
+          <div class="network-table-wrap">
+            <table class="network-table">
+              <thead>
+                <tr>
+                  <th>Магазин</th>
+                  <th class="align-right">Выручка</th>
+                  <th class="align-right">Продаж</th>
+                  <th class="align-right">Средний чек</th>
+                  <th class="align-right">Возвраты</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${document.totalsRows
+                  .map(
+                    (row) => `
+                      <tr class="${row.isTotal ? "total-row" : ""}">
+                        <td>${escapeHtml(row.storeName)}</td>
+                        <td class="align-right">${escapeHtml(row.revenue)}</td>
+                        <td class="align-right">${escapeHtml(row.salesCount)}</td>
+                        <td class="align-right">${escapeHtml(row.averageCheck)}</td>
+                        <td class="align-right">${escapeHtml(row.returns)}</td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </main>
