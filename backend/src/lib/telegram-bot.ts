@@ -2643,8 +2643,8 @@ export function startTelegramBot() {
       chatId,
       text:
         text === "/start"
-          ? "Этот бот используется только для уведомлений."
-          : "Управление в боте отключено. Здесь приходят только уведомления.",
+          ? "Привет! Добро пожаловать в Cannabis Shop."
+          : "Привет! Я на связи.",
       replyMarkup: { remove_keyboard: true },
       disableNotification: true,
     });
