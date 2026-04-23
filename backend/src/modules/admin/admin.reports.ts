@@ -1,5 +1,5 @@
 import { env } from "../../config.js";
-import { getBusinessDateInput, getBusinessDayRange } from "../../lib/business-time.js";
+import { getBusinessDateInput, getBusinessDayRange, getBusinessHour } from "../../lib/business-time.js";
 import { maybeOne, queryDb } from "../../lib/db.js";
 import { HttpError } from "../../lib/http-error.js";
 import { createPdfFromHtml } from "../../lib/report-pdf.js";
@@ -355,7 +355,7 @@ function buildDailySummaryReportDocument(range: ReportRange, data: Awaited<Retur
       }, new Map());
 
       const hours = sales.reduce<Map<number, number>>((map, sale) => {
-        const hour = new Date(sale.created_at).getUTCHours();
+        const hour = getBusinessHour(sale.created_at);
         map.set(hour, (map.get(hour) ?? 0) + 1);
         return map;
       }, new Map());
@@ -395,23 +395,24 @@ function buildDailySummaryReportDocument(range: ReportRange, data: Awaited<Retur
   return {
     title: range.label.includes(" - ") ? "Сводный отчет за период" : "Сводный отчет за торговый день",
     subtitle: range.label.includes(" - ")
-      ? "Сводка по магазинам, продажам, возвратам, среднему чеку и ключевым итогам за выбранный период."
-      : "Сводка по магазинам, продажам, возвратам, среднему чеку и ключевым итогам за торговый день.",
+      ? "Операционный отчет по магазинам, продажам, возвратам и ключевым финансовым показателям за выбранный период."
+      : "Операционный отчет по магазинам, продажам, возвратам и ключевым финансовым показателям за торговый день.",
     reportDateLabel: range.label.includes(" - ")
       ? `${formatDisplayDate(range.label.slice(0, 10))} – ${formatDisplayDate(range.label.slice(-10))}`
       : formatDisplayDate(range.label),
     periodLabel: buildPeriodLabel(range),
     generatedAt: formatGeneratedAtDisplay(),
     summaryMetrics: [
-      { label: "Общая выручка", value: formatCurrency(salesSummary.revenue) },
-      { label: "Всего продаж", value: String(salesSummary.completedCount) },
+      { label: "Выручка сети", value: formatCurrency(salesSummary.revenue) },
+      { label: "Количество продаж", value: String(salesSummary.completedCount) },
       { label: "Средний чек", value: formatCurrency(salesSummary.completedCount > 0 ? salesSummary.revenue / salesSummary.completedCount : 0) },
       { label: "Возвраты", value: formatCurrency(returnsTotal) },
     ],
     stores: rankedStores.map((entry) => ({
       storeName: entry.store.name,
       storeSubtitle: `${entry.store.address ?? "Адрес не указан"} · ${pluralizeSellers(entry.sellersPerDay)}`,
-      salesBadge: `${range.label.includes(" - ") ? "Выручка за период" : "Выручка за день"}: ${formatCurrency(entry.revenue)}`,
+      salesHighlightLabel: range.label.includes(" - ") ? "Выручка за период" : "Выручка за день",
+      salesHighlightValue: formatCurrency(entry.revenue),
       stats: [
         { label: "Продаж", value: String(entry.salesCount) },
         { label: "Средний чек", value: formatCurrency(entry.avgCheck) },
@@ -424,17 +425,17 @@ function buildDailySummaryReportDocument(range: ReportRange, data: Awaited<Retur
         { label: "Выручка до скидок", value: formatCurrency(entry.grossRevenue), emphasized: true },
         { label: "Скидки", value: formatCurrency(entry.discounts) },
         { label: "Возвраты", value: formatCurrency(entry.returnsAmount) },
-        { label: "Продано товаров", value: String(entry.itemsSold) },
-        { label: "Лучший час продаж", value: formatBestHourLabel(entry.bestHour) },
+        { label: "Продано единиц", value: String(entry.itemsSold) },
+        { label: "Пиковый час продаж", value: formatBestHourLabel(entry.bestHour) },
       ],
       topProducts: entry.topProducts,
       sellerTotals: entry.sellerTotals,
     })),
     footerMetrics: [
-      { label: "Итоговая выручка", value: formatCurrency(salesSummary.revenue) },
-      { label: "Всего продаж", value: String(salesSummary.completedCount) },
+      { label: "Выручка сети", value: formatCurrency(salesSummary.revenue) },
+      { label: "Количество продаж", value: String(salesSummary.completedCount) },
       { label: "Средний чек", value: formatCurrency(salesSummary.completedCount > 0 ? salesSummary.revenue / salesSummary.completedCount : 0) },
-      { label: "Продано товаров", value: String(soldUnits) },
+      { label: "Продано единиц", value: String(soldUnits) },
     ],
     totalsRows: [
       ...rankedStores.map((entry) => ({

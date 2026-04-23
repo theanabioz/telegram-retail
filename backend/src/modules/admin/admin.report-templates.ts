@@ -28,7 +28,8 @@ export type ReportTemplateDocument = {
 export type DailySummaryStoreReport = {
   storeName: string;
   storeSubtitle: string;
-  salesBadge: string;
+  salesHighlightLabel: string;
+  salesHighlightValue: string;
   stats: Array<{
     label: string;
     value: string;
@@ -431,76 +432,87 @@ export function renderReportPlainText(document: ReportTemplateDocument) {
 
 export function renderDailySummaryReportHtml(document: DailySummaryReportDocument) {
   const renderStoreStat = (stat: DailySummaryStoreReport["stats"][number]) => `
-    <div class="store-stat">
-      <div class="store-stat-label">${escapeHtml(stat.label)}</div>
-      <div class="store-stat-value ${stat.tone === "danger" ? "tone-danger" : stat.tone === "warning" ? "tone-warning" : ""}">${escapeHtml(stat.value)}</div>
+    <div class="metric-cell ${stat.tone === "danger" ? "metric-cell-danger" : stat.tone === "warning" ? "metric-cell-warning" : ""}">
+      <div class="metric-term">${escapeHtml(stat.label)}</div>
+      <div class="metric-number">${escapeHtml(stat.value)}</div>
     </div>
   `;
 
-  const renderListRow = (entry: { name: string; value: string }) => `
-    <div class="list-row">
-      <span>${escapeHtml(entry.name)}</span>
-      <strong>${escapeHtml(entry.value)}</strong>
-    </div>
+  const renderLedgerRow = (item: DailySummaryStoreReport["metricsTable"][number]) => `
+    <tr class="${item.emphasized ? "row-emphasis" : ""}">
+      <td>${escapeHtml(item.label)}</td>
+      <td class="align-right">${escapeHtml(item.value)}</td>
+    </tr>
+  `;
+
+  const renderListPanel = (
+    title: string,
+    rows: Array<{ name: string; value: string }>,
+    emptyState: string
+  ) => `
+    <section class="panel">
+      <div class="panel-title">${escapeHtml(title)}</div>
+      ${
+        rows.length > 0
+          ? `
+            <table class="list-table">
+              <tbody>
+                ${rows
+                  .map(
+                    (row) => `
+                      <tr>
+                        <td>${escapeHtml(row.name)}</td>
+                        <td class="align-right">${escapeHtml(row.value)}</td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          `
+          : `<div class="panel-empty">${escapeHtml(emptyState)}</div>`
+      }
+    </section>
   `;
 
   const renderStore = (store: DailySummaryStoreReport) => `
-    <section class="store-card">
-      <div class="store-header">
+    <section class="store-section">
+      <div class="store-head">
         <div>
-          <h3>${escapeHtml(store.storeName)}</h3>
-          <p>${escapeHtml(store.storeSubtitle)}</p>
+          <div class="store-eyebrow">Аналитика магазина</div>
+          <h3 class="store-name">${escapeHtml(store.storeName)}</h3>
+          <p class="store-subtitle">${escapeHtml(store.storeSubtitle)}</p>
         </div>
-        <div class="store-badge">${escapeHtml(store.salesBadge)}</div>
+
+        <div class="store-highlight">
+          <div class="store-highlight-label">${escapeHtml(store.salesHighlightLabel)}</div>
+          <div class="store-highlight-value">${escapeHtml(store.salesHighlightValue)}</div>
+        </div>
       </div>
 
-      <div class="store-stats-grid">
+      <div class="metric-band store-metrics">
         ${store.stats.map(renderStoreStat).join("")}
       </div>
 
-      <div class="store-layout">
-        <section class="section-card">
-          <div class="section-title-row">
-            <h4>Основные показатели</h4>
-          </div>
-          <table class="compact-table">
+      <div class="store-grid">
+        <section class="panel">
+          <div class="panel-title">Операционные показатели</div>
+          <table class="ledger-table">
             <tbody>
-              ${store.metricsTable
-                .map(
-                  (item) => `
-                    <tr>
-                      <td>${escapeHtml(item.label)}</td>
-                      <td class="align-right">${item.emphasized ? "<strong>" : ""}${escapeHtml(item.value)}${item.emphasized ? "</strong>" : ""}</td>
-                    </tr>
-                  `
-                )
-                .join("")}
+              ${store.metricsTable.map(renderLedgerRow).join("")}
             </tbody>
           </table>
         </section>
 
-        <div class="side-stack">
-          <section class="section-card">
-            <div class="section-title-row">
-              <h4>Топ товары</h4>
-            </div>
-            <div class="list-block">
-              ${store.topProducts.length > 0 ? store.topProducts.map(renderListRow).join("") : '<div class="empty-state">Нет данных по продажам товаров.</div>'}
-            </div>
-          </section>
-
-          <section class="section-card">
-            <div class="section-title-row">
-              <h4>Персонал</h4>
-            </div>
-            <div class="list-block">
-              ${store.sellerTotals.length > 0 ? store.sellerTotals.map(renderListRow).join("") : '<div class="empty-state">Нет данных по продавцам за выбранный период.</div>'}
-            </div>
-          </section>
+        <div class="side-column">
+          ${renderListPanel("Топ товары", store.topProducts, "За выбранный период нет продаж товаров.")}
+          ${renderListPanel("Персонал", store.sellerTotals, "За выбранный период нет продавцов с продажами.")}
         </div>
       </div>
     </section>
   `;
+
+  const storesLabel = `Магазинов в отчете: ${document.stores.length}`;
 
   return `<!DOCTYPE html>
 <html lang="ru">
@@ -510,449 +522,483 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
   <title>${escapeHtml(document.title)}</title>
   <style>
     :root {
-      --bg: #eff3f8;
-      --surface: #ffffff;
-      --surface-soft: #f7f9fc;
-      --surface-tint: #f1f5f9;
-      --ink: #172033;
-      --muted: #6b778c;
-      --line: #d8e0ea;
-      --line-strong: #c5d0dc;
-      --accent: #1f314d;
-      --accent-soft: #eef3fb;
-      --danger: #bb3a2f;
-      --warning: #9c5c1a;
-      --shadow: 0 10px 28px rgba(17, 28, 45, 0.05);
-      --radius-lg: 18px;
-      --radius-md: 14px;
-      --radius-sm: 12px;
+      --page-bg: #f3f0ea;
+      --paper: #ffffff;
+      --paper-soft: #faf9f7;
+      --panel: #f1f0ec;
+      --panel-strong: #e7e3db;
+      --line: #dfddd8;
+      --line-strong: #c8c2b7;
+      --text: #26221f;
+      --muted: #66615a;
+      --muted-strong: #4d4841;
+      --accent: #223f78;
+      --accent-soft: #eef5ff;
+      --danger: #b24335;
+      --warning: #8f5a18;
+      --shadow: 0 18px 38px rgba(38, 34, 31, 0.08);
     }
 
     * {
       box-sizing: border-box;
+      min-width: 0;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
-      min-width: 0;
     }
 
     @page {
       size: A4;
-      margin: 12mm;
+      margin: 10mm;
     }
 
     body {
       margin: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      line-height: 1.35;
-      font-size: 13px;
+      background: var(--page-bg);
+      color: var(--text);
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      font-size: 12px;
+      line-height: 1.45;
     }
 
     .page {
       max-width: 1040px;
       margin: 0 auto;
-      padding: 14px;
-    }
-
-    .shell {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 28px;
       padding: 18px;
+    }
+
+    .report {
+      background: linear-gradient(180deg, #ffffff 0%, #fbfaf7 100%);
+      border: 1px solid var(--line-strong);
       box-shadow: var(--shadow);
+      padding: 28px 30px 24px;
     }
 
-    .report-head {
+    .masthead {
       display: grid;
-      gap: 14px;
       grid-template-columns: minmax(0, 1fr);
-      align-items: start;
+      gap: 18px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid var(--text);
     }
 
-    .report-title {
-      margin: 0;
-      font-size: 32px;
-      line-height: 1.02;
-      letter-spacing: -0.04em;
-      font-weight: 780;
+    .kicker {
       color: var(--accent);
-    }
-
-    .report-subtitle {
-      margin: 8px 0 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.45;
-      max-width: 620px;
-    }
-
-    .meta-card {
-      background: linear-gradient(180deg, #fbfcfe 0%, #f4f7fb 100%);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      padding: 10px 14px;
-    }
-
-    .meta-row {
-      display: grid;
-      grid-template-columns: 132px 1fr;
-      gap: 10px;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .meta-row:last-child {
-      border-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    .meta-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }
-
-    .meta-value {
-      text-align: right;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .summary-card {
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      padding: 14px;
-    }
-
-    .summary-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .summary-value {
-      margin-top: 8px;
-      font-size: 24px;
-      line-height: 1;
-      letter-spacing: -0.04em;
-      font-weight: 780;
-      color: var(--accent);
-    }
-
-    .block-title {
-      margin: 18px 0 10px;
-      font-size: 15px;
+      font-size: 10px;
       font-weight: 800;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--accent);
     }
 
-    .store-card,
-    .totals-card {
-      page-break-inside: avoid;
-      break-inside: avoid;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      overflow: hidden;
-      box-shadow: 0 6px 18px rgba(17, 28, 45, 0.04);
+    .title {
+      margin: 10px 0 0;
+      font-size: 31px;
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+      font-weight: 800;
+      color: var(--text);
     }
 
-    .store-card + .store-card {
-      margin-top: 10px;
-    }
-
-    .store-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .store-header h3 {
-      margin: 0;
-      font-size: 18px;
-      line-height: 1.05;
-      letter-spacing: -0.03em;
-      color: var(--accent);
-    }
-
-    .store-header p {
-      margin: 6px 0 0;
+    .subtitle {
+      margin: 12px 0 0;
+      max-width: 640px;
       color: var(--muted);
       font-size: 13px;
     }
 
-    .store-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      border: 1px solid #d8e3f2;
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .store-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      padding: 12px 16px;
-      background: var(--surface-soft);
-      border-bottom: 1px solid var(--line);
-    }
-
-    .store-stat {
-      background: var(--surface);
+    .meta-panel {
+      background: var(--paper-soft);
       border: 1px solid var(--line);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
     }
 
-    .store-stat-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-    }
-
-    .store-stat-value {
-      margin-top: 6px;
-      font-size: 18px;
-      line-height: 1;
-      letter-spacing: -0.03em;
-      font-weight: 780;
-      color: var(--ink);
-    }
-
-    .tone-danger { color: var(--danger); }
-    .tone-warning { color: var(--warning); }
-
-    .store-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 10px;
-      padding: 12px 16px 16px;
-    }
-
-    .section-card {
-      background: var(--surface-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      padding: 10px 12px;
-    }
-
-    .section-title-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .section-title-row h4 {
-      margin: 0;
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--accent);
-    }
-
-    .compact-table,
-    .totals-table {
+    .meta-table,
+    .ledger-table,
+    .list-table,
+    .network-table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
     }
 
-    .compact-table td,
-    .totals-table th,
-    .totals-table td {
-      padding: 9px 10px;
+    .meta-table th,
+    .meta-table td,
+    .ledger-table td,
+    .list-table td,
+    .network-table th,
+    .network-table td {
+      padding: 10px 12px;
       border-bottom: 1px solid var(--line);
       vertical-align: top;
     }
 
-    .compact-table tr:last-child td,
-    .totals-table tbody tr:last-child td {
+    .meta-table tr:last-child th,
+    .meta-table tr:last-child td,
+    .ledger-table tr:last-child td,
+    .list-table tr:last-child td,
+    .network-table tbody tr:last-child td {
       border-bottom: 0;
     }
 
-    .compact-table td:first-child {
+    .meta-table th {
+      width: 42%;
+      text-align: left;
       color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .align-right {
+    .meta-table td {
       text-align: right;
+      font-weight: 700;
+      color: var(--text);
     }
 
-    .side-stack {
-      display: grid;
-      gap: 10px;
+    .section {
+      margin-top: 22px;
     }
 
-    .list-row {
+    .section-header {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
-      gap: 10px;
-      padding: 7px 0;
-      border-bottom: 1px dashed var(--line-strong);
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
     }
 
-    .list-row:last-child {
-      border-bottom: 0;
-      padding-bottom: 0;
+    .section-heading {
+      padding-left: 12px;
+      border-left: 4px solid var(--accent);
     }
 
-    .list-row span {
+    .section-kicker {
+      margin: 0 0 4px;
       color: var(--muted);
-    }
-
-    .list-row strong {
-      color: var(--ink);
-    }
-
-    .empty-state {
-      color: var(--muted);
-      padding: 6px 0;
-    }
-
-    .totals-card {
-      margin-top: 12px;
-      padding: 14px 16px 16px;
-      background: linear-gradient(180deg, #23324a 0%, #1b283d 100%);
-      border-color: rgba(255, 255, 255, 0.06);
-      color: white;
-    }
-
-    .totals-head {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .totals-head h3 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: -0.03em;
-      font-weight: 760;
-      color: white;
-    }
-
-    .totals-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px 14px;
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: rgba(255, 255, 255, 0.7);
     }
 
-    .totals-metrics {
+    .section-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+    }
+
+    .section-note {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .metric-band {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
     }
 
-    .totals-metric {
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    .metric-cell {
+      padding: 14px 16px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: transparent;
     }
 
-    .totals-metric-label {
+    .metric-cell:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .metric-cell:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+
+    .metric-cell-danger .metric-number {
+      color: var(--danger);
+    }
+
+    .metric-cell-warning .metric-number {
+      color: var(--warning);
+    }
+
+    .metric-term {
+      color: var(--muted);
       font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: rgba(255, 255, 255, 0.62);
-      font-weight: 700;
     }
 
-    .totals-metric-value {
-      margin-top: 6px;
-      font-size: 18px;
+    .metric-number {
+      margin-top: 8px;
+      color: var(--text);
+      font-size: 26px;
       line-height: 1;
-      letter-spacing: -0.03em;
-      font-weight: 780;
-      color: white;
+      letter-spacing: -0.05em;
+      font-weight: 800;
     }
 
-    .totals-table-wrap {
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
+    .store-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      padding: 16px 0 0;
+      border-top: 1px solid var(--line);
     }
 
-    .totals-table th,
-    .totals-table td {
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+    .store-section:first-of-type {
+      border-top: 0;
+      padding-top: 0;
     }
 
-    .totals-table th {
-      color: rgba(255, 255, 255, 0.72);
+    .store-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .store-eyebrow {
+      color: var(--muted);
       font-size: 10px;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
+    }
+
+    .store-name {
+      margin: 8px 0 0;
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+    }
+
+    .store-subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .store-highlight {
+      padding-top: 10px;
+      border-top: 3px solid var(--accent);
       text-align: left;
     }
 
-    .totals-table td {
-      color: white;
+    .store-highlight-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .store-highlight-value {
+      margin-top: 8px;
+      color: var(--accent);
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      font-weight: 800;
+    }
+
+    .store-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .store-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+
+    .panel-title {
+      padding: 10px 12px;
+      background: var(--paper-soft);
+      border-bottom: 1px solid var(--line);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .ledger-table td:first-child,
+    .list-table td:first-child {
+      color: var(--muted);
+    }
+
+    .ledger-table td:last-child,
+    .list-table td:last-child,
+    .align-right {
+      text-align: right;
+      font-weight: 700;
+      color: var(--muted-strong);
+    }
+
+    .ledger-table .row-emphasis td:last-child {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .side-column {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel-empty {
+      padding: 12px;
+      color: var(--muted);
+    }
+
+    .empty-state {
+      padding: 14px 16px;
+      border: 1px dashed var(--line-strong);
+      background: var(--paper-soft);
+      color: var(--muted);
+    }
+
+    .network-overview {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      background: var(--panel);
+      margin-bottom: 12px;
+    }
+
+    .network-overview-item {
+      padding: 12px 14px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .network-overview-item:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .network-overview-item:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+
+    .network-overview-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .network-overview-value {
+      margin-top: 6px;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+
+    .network-table-wrap {
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .network-table th {
+      background: var(--paper-soft);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: left;
+    }
+
+    .network-table td {
+      color: var(--muted-strong);
+    }
+
+    .network-table .total-row td {
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 800;
     }
 
     @media (min-width: 800px) {
-      .report-head {
-        grid-template-columns: minmax(0, 1fr) 330px;
+      .masthead {
+        grid-template-columns: minmax(0, 1fr) 320px;
       }
 
-      .summary-grid {
+      .metric-band {
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
-      .store-stats-grid {
+      .metric-cell:nth-child(2n) {
+        border-right: 1px solid var(--line);
+      }
+
+      .metric-cell:nth-child(4n) {
+        border-right: 0;
+      }
+
+      .metric-cell:nth-last-child(-n + 2) {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .metric-cell:nth-last-child(-n + 4) {
+        border-bottom: 0;
+      }
+
+      .store-head {
+        grid-template-columns: minmax(0, 1fr) 240px;
+      }
+
+      .store-highlight {
+        text-align: right;
+      }
+
+      .store-metrics {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
-      .store-layout {
-        grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
+      .store-metrics .metric-cell:nth-child(2n) {
+        border-right: 1px solid var(--line);
       }
 
-      .totals-metrics {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+      .store-metrics .metric-cell:nth-child(3n) {
+        border-right: 0;
+      }
+
+      .store-metrics .metric-cell:nth-last-child(-n + 2) {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .store-metrics .metric-cell:nth-last-child(-n + 3) {
+        border-bottom: 0;
+      }
+
+      .store-grid {
+        grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr);
       }
     }
 
     @media print {
       body {
         background: white;
-        font-size: 11px;
+        font-size: 10.8px;
       }
 
       .page {
@@ -960,144 +1006,173 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
         max-width: none;
       }
 
-      .shell {
-        border-radius: 0;
+      .report {
         border: 0;
         box-shadow: none;
-        padding: 0;
+        padding: 18px 18px 14px;
       }
 
-      .report-head {
-        grid-template-columns: minmax(0, 1fr) 290px;
+      .masthead {
+        gap: 14px;
+        padding-bottom: 14px;
+      }
+
+      .title {
+        font-size: 25px;
+      }
+
+      .subtitle {
+        font-size: 11px;
+        margin-top: 8px;
+      }
+
+      .section {
+        margin-top: 16px;
+      }
+
+      .section-header {
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+      }
+
+      .metric-cell,
+      .network-overview-item {
+        padding: 10px 11px;
+      }
+
+      .metric-number {
+        font-size: 22px;
+      }
+
+      .store-section {
+        padding-top: 12px;
+      }
+
+      .store-name {
+        font-size: 20px;
+      }
+
+      .store-highlight-value {
+        font-size: 22px;
+      }
+
+      .store-grid {
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .side-column {
         gap: 10px;
       }
 
-      .report-title {
-        font-size: 24px;
-      }
-
-      .report-subtitle {
-        font-size: 12px;
-        margin-top: 5px;
-      }
-
-      .meta-card,
-      .summary-card,
-      .store-card,
-      .section-card,
-      .totals-card,
-      .store-stat {
-        box-shadow: none;
-      }
-
-      .summary-grid,
-      .store-stats-grid,
-      .totals-metrics {
-        gap: 6px;
-      }
-
-      .summary-card,
-      .section-card,
-      .store-stat,
-      .totals-metric {
-        padding: 8px 10px;
-      }
-
-      .store-header {
-        padding: 10px 12px;
-      }
-
-      .store-stats-grid {
-        padding: 10px 12px;
-      }
-
-      .store-layout {
-        padding: 10px 12px 12px;
-        gap: 8px;
-      }
-
-      .compact-table td,
-      .totals-table th,
-      .totals-table td {
+      .meta-table th,
+      .meta-table td,
+      .ledger-table td,
+      .list-table td,
+      .network-table th,
+      .network-table td {
         padding: 7px 8px;
       }
 
-      .list-row {
-        padding: 5px 0;
-      }
-
-      .totals-card {
-        margin-top: 10px;
-        padding: 12px;
+      .panel-title {
+        padding: 8px;
       }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <main class="shell">
-      <section class="report-head">
+    <main class="report">
+      <header class="masthead">
         <div>
-          <h1 class="report-title">${escapeHtml(document.title)}</h1>
-          <p class="report-subtitle">${escapeHtml(document.subtitle)}</p>
+          <div class="kicker">Операционная отчетность</div>
+          <h1 class="title">${escapeHtml(document.title)}</h1>
+          <p class="subtitle">${escapeHtml(document.subtitle)}</p>
         </div>
 
-        <div class="meta-card">
-          <div class="meta-row">
-            <span class="meta-label">Дата отчета</span>
-            <span class="meta-value">${escapeHtml(document.reportDateLabel)}</span>
+        <aside class="meta-panel">
+          <table class="meta-table">
+            <tbody>
+              <tr>
+                <th>Дата отчета</th>
+                <td>${escapeHtml(document.reportDateLabel)}</td>
+              </tr>
+              <tr>
+                <th>Период</th>
+                <td>${escapeHtml(document.periodLabel)}</td>
+              </tr>
+              <tr>
+                <th>Сформировано</th>
+                <td>${escapeHtml(document.generatedAt)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </aside>
+      </header>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="section-heading">
+            <p class="section-kicker">Сводные показатели</p>
+            <h2 class="section-title">Ключевые показатели</h2>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">Период</span>
-            <span class="meta-value">${escapeHtml(document.periodLabel)}</span>
-          </div>
-          <div class="meta-row">
-            <span class="meta-label">Сформировано</span>
-            <span class="meta-value">${escapeHtml(document.generatedAt)}</span>
-          </div>
+          <div class="section-note">${escapeHtml(storesLabel)}</div>
+        </div>
+
+        <div class="metric-band">
+          ${document.summaryMetrics
+            .map(
+              (metric) => `
+                <article class="metric-cell">
+                  <div class="metric-term">${escapeHtml(metric.label)}</div>
+                  <div class="metric-number">${escapeHtml(metric.value)}</div>
+                </article>
+              `
+            )
+            .join("")}
         </div>
       </section>
 
-      <section class="summary-grid">
-        ${document.summaryMetrics
-          .map(
-            (metric) => `
-              <article class="summary-card">
-                <div class="summary-label">${escapeHtml(metric.label)}</div>
-                <div class="summary-value">${escapeHtml(metric.value)}</div>
-              </article>
-            `
-          )
-          .join("")}
-      </section>
-
-      <div class="block-title">Магазины</div>
-      ${document.stores.map(renderStore).join("")}
-
-      <section class="totals-card">
-        <div class="totals-head">
-          <h3>Общая сводка по всем магазинам</h3>
-          <div class="totals-meta">
-            <span>Дата: ${escapeHtml(document.reportDateLabel)}</span>
-            <span>Интервал: ${escapeHtml(document.periodLabel)}</span>
+      <section class="section">
+        <div class="section-header">
+          <div class="section-heading">
+            <p class="section-kicker">Аналитика по магазинам</p>
+            <h2 class="section-title">Разрез по магазинам</h2>
           </div>
+          <div class="section-note">${escapeHtml(document.periodLabel)}</div>
         </div>
 
-        <div class="totals-metrics">
+        ${
+          document.stores.length > 0
+            ? document.stores.map(renderStore).join("")
+            : '<div class="empty-state">За выбранный период не зафиксировано завершенных продаж и возвратов по магазинам.</div>'
+        }
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="section-heading">
+            <p class="section-kicker">Итоговые показатели сети</p>
+            <h2 class="section-title">Итог по сети</h2>
+          </div>
+          <div class="section-note">${escapeHtml(document.reportDateLabel)}</div>
+        </div>
+
+        <div class="network-overview">
           ${document.footerMetrics
             .map(
               (metric) => `
-                <div class="totals-metric">
-                  <div class="totals-metric-label">${escapeHtml(metric.label)}</div>
-                  <div class="totals-metric-value">${escapeHtml(metric.value)}</div>
+                <div class="network-overview-item">
+                  <div class="network-overview-label">${escapeHtml(metric.label)}</div>
+                  <div class="network-overview-value">${escapeHtml(metric.value)}</div>
                 </div>
               `
             )
             .join("")}
         </div>
 
-        <div class="totals-table-wrap">
-          <table class="totals-table">
+        <div class="network-table-wrap">
+          <table class="network-table">
             <thead>
               <tr>
                 <th>Магазин</th>
@@ -1111,12 +1186,12 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
               ${document.totalsRows
                 .map(
                   (row) => `
-                    <tr>
-                      <td>${row.isTotal ? "<strong>" : ""}${escapeHtml(row.storeName)}${row.isTotal ? "</strong>" : ""}</td>
-                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.revenue)}${row.isTotal ? "</strong>" : ""}</td>
-                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.salesCount)}${row.isTotal ? "</strong>" : ""}</td>
-                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.averageCheck)}${row.isTotal ? "</strong>" : ""}</td>
-                      <td class="align-right">${row.isTotal ? "<strong>" : ""}${escapeHtml(row.returns)}${row.isTotal ? "</strong>" : ""}</td>
+                    <tr class="${row.isTotal ? "total-row" : ""}">
+                      <td>${escapeHtml(row.storeName)}</td>
+                      <td class="align-right">${escapeHtml(row.revenue)}</td>
+                      <td class="align-right">${escapeHtml(row.salesCount)}</td>
+                      <td class="align-right">${escapeHtml(row.averageCheck)}</td>
+                      <td class="align-right">${escapeHtml(row.returns)}</td>
                     </tr>
                   `
                 )
@@ -1148,6 +1223,7 @@ export function renderDailySummaryReportPlainText(document: DailySummaryReportDo
 
   document.stores.forEach((store) => {
     lines.push("", `${store.storeName} (${store.storeSubtitle})`);
+    lines.push(`- ${store.salesHighlightLabel}: ${store.salesHighlightValue}`);
     store.stats.forEach((stat) => {
       lines.push(`- ${stat.label}: ${stat.value}`);
     });
