@@ -849,6 +849,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     .totals-table-wrap {
       width: 100%;
       display: block;
+      margin-top: 16px;
       border-radius: 12px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.08);
