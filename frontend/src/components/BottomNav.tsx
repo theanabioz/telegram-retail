@@ -63,8 +63,7 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
           {topAccessory}
         </Box>
       ) : null}
-
-      <HStack justify="space-between" align="center" spacing={1}>
+      <HStack justify="space-between" align="center" gap={1}>
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -72,83 +71,81 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
 
           return (
             <VStack
-              as="button"
-              type="button"
               aria-label={`Open ${label} tab`}
               aria-current={isActive ? "page" : undefined}
-              key={item.id}
               flex="1"
-              spacing={1}
+              gap={1}
               color={isActive ? "brand.500" : "surface.400"}
               cursor="pointer"
-              onPointerDown={(event) => {
-                if (event.pointerType === "mouse" && event.button !== 0) {
-                  return;
-                }
-
-                pointerHandledTabRef.current = item.id;
-                activateTab(item.id, isActive);
-              }}
-              onClick={() => {
-                if (pointerHandledTabRef.current === item.id) {
-                  pointerHandledTabRef.current = null;
-                  return;
-                }
-
-                activateTab(item.id, isActive);
-              }}
               border={0}
               p={1}
               minH="54px"
               borderRadius="16px"
               bg="transparent"
-              sx={{
+              css={{
                 WebkitTapHighlightColor: "transparent",
                 appearance: "none",
                 touchAction: "manipulation",
-                userSelect: "none",
+                userSelect: "none"
               }}
               transition="transform 180ms cubic-bezier(0.22, 1, 0.36, 1), color 160ms ease"
               _active={{ bg: "transparent", boxShadow: "none", transform: "scale(0.965)" }}
               _focus={{ boxShadow: "none" }}
               _focusVisible={{ boxShadow: "none" }}
               position="relative"
-            >
-              <Box
-                w="42px"
-                h="32px"
-                borderRadius="12px"
-                display="grid"
-                placeItems="center"
-                color={isActive ? "brand.500" : "surface.500"}
-                bg={isActive ? "rgba(74, 132, 244, 0.08)" : "transparent"}
-                transition="background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
-                transform={isActive ? "translateY(-1px)" : "translateY(0)"}
-              >
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-              </Box>
-              <Text
-                fontSize="10px"
-                letterSpacing="0.01em"
-                lineHeight="1.2"
-                fontWeight={isActive ? "800" : "600"}
-                transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
-                transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
-              >
-                {label}
-              </Text>
-              
-              {isActive && (
-                <Box
-                  position="absolute"
-                  bottom="-4px"
-                  w="4px"
-                  h="4px"
-                  borderRadius="full"
-                  bg="brand.500"
-                />
-              )}
-            </VStack>
+              asChild><button
+                  type="button"
+                  key={item.id}
+                  onPointerDown={(event) => {
+                    if (event.pointerType === "mouse" && event.button !== 0) {
+                      return;
+                    }
+
+                    pointerHandledTabRef.current = item.id;
+                    activateTab(item.id, isActive);
+                  }}
+                  onClick={() => {
+                    if (pointerHandledTabRef.current === item.id) {
+                      pointerHandledTabRef.current = null;
+                      return;
+                    }
+
+                    activateTab(item.id, isActive);
+                  }}>
+                  <Box
+                    w="42px"
+                    h="32px"
+                    borderRadius="12px"
+                    display="grid"
+                    placeItems="center"
+                    color={isActive ? "brand.500" : "surface.500"}
+                    bg={isActive ? "rgba(74, 132, 244, 0.08)" : "transparent"}
+                    transition="background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                    transform={isActive ? "translateY(-1px)" : "translateY(0)"}
+                  >
+                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  </Box>
+                  <Text
+                    fontSize="10px"
+                    letterSpacing="0.01em"
+                    lineHeight="1.2"
+                    fontWeight={isActive ? "800" : "600"}
+                    transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                    transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
+                  >
+                    {label}
+                  </Text>
+                  {isActive && (
+                    <Box
+                      position="absolute"
+                      bottom="-4px"
+                      w="4px"
+                      h="4px"
+                      borderRadius="full"
+                      bg="brand.500"
+                    />
+                  )}
+                </button></VStack>
           );
         })}
       </HStack>

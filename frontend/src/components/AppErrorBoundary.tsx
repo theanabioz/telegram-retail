@@ -30,7 +30,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     return (
       <Box minH="var(--app-viewport-height, 100vh)" px={5} pt="var(--app-screen-pt)" display="grid" placeItems="center">
         <VStack
-          spacing={4}
+          gap={4}
           textAlign="center"
           bg="rgba(255,255,255,0.88)"
           borderRadius="28px"

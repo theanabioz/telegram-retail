@@ -29,7 +29,6 @@ export function AdminTaskScreen({
         backdropFilter="blur(18px)"
         onClick={onClose}
       />
-
       <Box position="absolute" inset={0} onClick={(event) => event.stopPropagation()}>
         <Box
           w="100%"
@@ -48,7 +47,7 @@ export function AdminTaskScreen({
             backdropFilter="blur(14px)"
           >
             <HStack justify="space-between" align="start" gap={3}>
-              <VStack align="start" spacing={1} minW={0}>
+              <VStack align="start" gap={1} minW={0}>
                 {topLabel ? (
                   <Text
                     fontSize="10px"
@@ -98,7 +97,7 @@ export function AdminTaskScreen({
             flexDirection="column"
             justifyContent={inputPanel ? "flex-end" : "flex-start"}
           >
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               {children}
             </VStack>
           </Box>
@@ -113,7 +112,7 @@ export function AdminTaskScreen({
               backdropFilter="blur(20px)"
               boxShadow="0 -18px 34px rgba(21,28,38,0.12)"
             >
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 {primaryAction}
                 {inputPanel}
               </VStack>

@@ -125,7 +125,7 @@ function AppBootState({
       bg={hasIllustration ? "#f8f7f4" : undefined}
     >
       <VStack
-        spacing={hasIllustration ? 2 : 4}
+        gap={hasIllustration ? 2 : 4}
         textAlign="center"
         bg={hasIllustration ? "transparent" : "rgba(255,255,255,0.86)"}
         borderRadius="28px"
@@ -158,7 +158,7 @@ function AppBootState({
             CS
           </Box>
         )}
-        <VStack spacing={0}>
+        <VStack gap={0}>
           {!imageSrc ? (
             <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
               {title}

@@ -64,32 +64,13 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
 
           return (
             <VStack
-              as="button"
-              type="button"
               aria-label={`Open ${label} tab`}
               aria-current={isActive ? "page" : undefined}
-              key={item.id}
               flex="1"
-              spacing={0.5}
+              gap={0.5}
               color={isActive ? "surface.900" : "surface.500"}
               fontWeight={isActive ? "900" : "750"}
               cursor="pointer"
-              onPointerDown={(event) => {
-                if (event.pointerType === "mouse" && event.button !== 0) {
-                  return;
-                }
-
-                pointerHandledTabRef.current = item.id;
-                activateTab(item.id, isActive);
-              }}
-              onClick={() => {
-                if (pointerHandledTabRef.current === item.id) {
-                  pointerHandledTabRef.current = null;
-                  return;
-                }
-
-                activateTab(item.id, isActive);
-              }}
               border={0}
               px={0.5}
               py={0.5}
@@ -98,41 +79,59 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
               bg="transparent"
               _focus={{ boxShadow: "none" }}
               _focusVisible={{ boxShadow: "none" }}
-              sx={{
+              css={{
                 WebkitTapHighlightColor: "transparent",
                 appearance: "none",
                 touchAction: "manipulation",
-                userSelect: "none",
+                userSelect: "none"
               }}
               transition="transform 180ms cubic-bezier(0.22, 1, 0.36, 1), color 160ms ease"
               _active={{ bg: "transparent", boxShadow: "none", transform: "scale(0.97)" }}
-            >
-              <Box
-                w="38px"
-                h="38px"
-                borderRadius="14px"
-                display="grid"
-                placeItems="center"
-                color={isActive ? "brand.500" : "surface.500"}
-                bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
-                transition="background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
-                transform={isActive ? "translateY(-1px)" : "translateY(0)"}
-              >
-                <Icon size={23} strokeWidth={2.2} />
-              </Box>
-              <Text
-                fontSize="9px"
-                letterSpacing="-0.02em"
-                lineHeight="1"
-                noOfLines={1}
-                color={isActive ? "brand.500" : "surface.500"}
-                fontWeight={isActive ? "800" : "700"}
-                transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
-                transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
-              >
-                {label}
-              </Text>
-            </VStack>
+              asChild><button
+                    type="button"
+                    key={item.id}
+                    onPointerDown={(event) => {
+                      if (event.pointerType === "mouse" && event.button !== 0) {
+                        return;
+                      }
+
+                      pointerHandledTabRef.current = item.id;
+                      activateTab(item.id, isActive);
+                    }}
+                    onClick={() => {
+                      if (pointerHandledTabRef.current === item.id) {
+                        pointerHandledTabRef.current = null;
+                        return;
+                      }
+
+                      activateTab(item.id, isActive);
+                    }}>
+                    <Box
+                      w="38px"
+                      h="38px"
+                      borderRadius="14px"
+                      display="grid"
+                      placeItems="center"
+                      color={isActive ? "brand.500" : "surface.500"}
+                      bg={isActive ? "rgba(82, 129, 236, 0.10)" : "transparent"}
+                      transition="background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                      transform={isActive ? "translateY(-1px)" : "translateY(0)"}
+                    >
+                      <Icon size={23} strokeWidth={2.2} />
+                    </Box>
+                    <Text
+                      fontSize="9px"
+                      letterSpacing="-0.02em"
+                      lineHeight="1"
+                      lineClamp={1}
+                      color={isActive ? "brand.500" : "surface.500"}
+                      fontWeight={isActive ? "800" : "700"}
+                      transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+                      transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
+                    >
+                      {label}
+                    </Text>
+                  </button></VStack>
           );
         })}
       </HStack>

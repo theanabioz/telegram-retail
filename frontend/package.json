@@ -9,16 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@chakra-ui/icons": "^2.2.4",
-    "@chakra-ui/react": "^2.10.7",
+    "@chakra-ui/react": "^3.35.0",
     "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
     "@telegram-apps/sdk": "^3.11.8",
     "@telegram-apps/sdk-react": "^3.3.9",
-    "framer-motion": "^11.18.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-icons": "^5.5.0",
+    "react-icons": "^5.6.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

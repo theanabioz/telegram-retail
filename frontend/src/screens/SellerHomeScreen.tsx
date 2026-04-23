@@ -4,22 +4,14 @@ import {
   Box,
   Button,
   Container,
-  Divider,
   HStack,
   IconButton,
   Input,
-  InputGroup,
-  InputLeftElement,
-  InputRightElement,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
   SimpleGrid,
   Text,
   VStack,
+  Dialog,
+  Portal,
 } from "@chakra-ui/react";
 import {
   HiOutlineAdjustmentsHorizontal,
@@ -842,178 +834,187 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         : Math.max(0, discountModalItem.base_price - previewValue);
 
     return (
-      <Modal
-        isOpen={Boolean(discountModalItem)}
-        onClose={() => setDiscountModalItemId(null)}
-        motionPreset="slideInBottom"
-        isCentered={false}
+      <Dialog.Root
+        open={Boolean(discountModalItem)}
+        motionPreset="slide-in-bottom"
+        placement='center'
+        onOpenChange={e => {
+          if (!e.open) {
+            setDiscountModalItemId(null);
+          }
+        }}
       >
-        <ModalOverlay bg="rgba(14, 12, 10, 0.3)" />
-        <ModalContent
-          mx={0}
-          mt="auto"
-          mb={0}
-          maxW="100vw"
-          w="100vw"
-          borderRadius="32px"
-          bg="white"
-          boxShadow="0 28px 80px rgba(0,0,0,0.22)"
-          overflow="hidden"
-          pb={2}
-        >
-          <Box w="full" py={3} display="flex" justifyContent="center">
-            <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
-          </Box>
-          <ModalHeader px={6} pt={6} pb={2}>
-            <VStack align="start" spacing={1}>
-              <Text fontSize="11px" color="brand.500" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase">
-                {t("discount.adjustment")}
-              </Text>
-              <Text fontSize="xl" fontWeight="900" noOfLines={1} letterSpacing="-0.01em">
-                {discountModalItem.product_name_snapshot}
-              </Text>
-            </VStack>
-          </ModalHeader>
-          <ModalCloseButton top={6} right={6} borderRadius="full" bg="surface.50" />
-          <ModalBody px={6} pb={6}>
-            <VStack align="stretch" spacing={5}>
-              <HStack spacing={2} bg="surface.50" borderRadius="20px" p={1.5}>
-                {(["amount", "percent"] as const).map((type) => {
-                  const isSelected = discountDraft.type === type;
+        <Portal>
 
-                  return (
-                    <Button
-                      key={type}
-                      flex="1"
-                      h="44px"
-                      borderRadius="16px"
-                      bg={isSelected ? "white" : "transparent"}
-                      color={isSelected ? "brand.500" : "surface.500"}
-                      boxShadow={isSelected ? "0 4px 12px rgba(0,0,0,0.06)" : "none"}
-                      _hover={{ bg: isSelected ? "white" : "rgba(255,255,255,0.4)" }}
-                      onClick={() => updateDiscountDraft(discountModalItem.id, { type })}
-                      fontSize="sm"
-                      fontWeight="800"
-                    >
-                      {type === "amount" ? t("discount.fixedEur") : t("discount.percent")}
-                    </Button>
-                  );
-                })}
-              </HStack>
-
-              <Box
-                bg="rgba(246,244,239,0.96)"
-                borderRadius="24px"
-                px={4}
-                py={4}
-                border="1px solid"
-                borderColor="rgba(223,219,210,0.78)"
-              >
-                <SimpleGrid columns={2} spacing={3}>
-                  <Box
-                    bg="white"
-                    borderRadius="18px"
-                    px={4}
-                    py={3}
-                    border="1px solid"
-                    borderColor="rgba(232,229,223,0.9)"
-                  >
-                    <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
-                      {t("discount.value")}
-                    </Text>
-                    <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
-                      {discountDraft.value || "0"}
-                      <Box as="span" fontSize="lg" color="surface.400" ml={2} fontWeight="700">
-                        {discountDraft.type === "amount" ? "EUR" : "%"}
-                      </Box>
-                    </Text>
-                  </Box>
-                  <Box
-                    bg="rgba(82, 129, 236, 0.08)"
-                    borderRadius="18px"
-                    px={4}
-                    py={3}
-                    border="1px solid"
-                    borderColor="rgba(82, 129, 236, 0.16)"
-                  >
-                    <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
-                      {t("discount.finalPrice")}
-                    </Text>
-                    <Text fontSize="xl" fontWeight="900" color="surface.900">
-                      {formatEur(previewFinalPrice)}
-                    </Text>
-                  </Box>
-                </SimpleGrid>
+          <Dialog.Backdrop bg="rgba(14, 12, 10, 0.3)" />
+          <Dialog.Positioner>
+            <Dialog.Content
+              mx={0}
+              mt="auto"
+              mb={0}
+              maxW="100vw"
+              w="100vw"
+              borderRadius="32px"
+              bg="white"
+              boxShadow="0 28px 80px rgba(0,0,0,0.22)"
+              overflow="hidden"
+              pb={2}>
+              <Box w="full" py={3} display="flex" justifyContent="center">
+                <Box w="40px" h="4px" borderRadius="full" bg="surface.200" />
               </Box>
+              <Dialog.Header px={6} pt={6} pb={2}>
+                <VStack align="start" gap={1}>
+                  <Text fontSize="11px" color="brand.500" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase">
+                    {t("discount.adjustment")}
+                  </Text>
+                  <Text fontSize="xl" fontWeight="900" lineClamp={1} letterSpacing="-0.01em">
+                    {discountModalItem.product_name_snapshot}
+                  </Text>
+                </VStack>
+              </Dialog.Header>
+              <Dialog.CloseTrigger top={6} right={6} borderRadius="full" bg="surface.50" />
+              <Dialog.Body px={6} pb={6}>
+                <VStack align="stretch" gap={5}>
+                  <HStack gap={2} bg="surface.50" borderRadius="20px" p={1.5}>
+                    {(["amount", "percent"] as const).map((type) => {
+                      const isSelected = discountDraft.type === type;
 
-              <SimpleGrid columns={3} spacing={3}>
-                {keypad.map((key) => (
-                  <Button
-                    key={key}
-                    h="64px"
-                    borderRadius="20px"
-                    bg={key === "backspace" ? "surface.50" : "white"}
-                    color="surface.900"
-                    fontSize={key === "backspace" ? "md" : "2xl"}
-                    fontWeight="800"
+                      return (
+                        <Button
+                          key={type}
+                          flex="1"
+                          h="44px"
+                          borderRadius="16px"
+                          bg={isSelected ? "white" : "transparent"}
+                          color={isSelected ? "brand.500" : "surface.500"}
+                          boxShadow={isSelected ? "0 4px 12px rgba(0,0,0,0.06)" : "none"}
+                          _hover={{ bg: isSelected ? "white" : "rgba(255,255,255,0.4)" }}
+                          onClick={() => updateDiscountDraft(discountModalItem.id, { type })}
+                          fontSize="sm"
+                          fontWeight="800"
+                        >
+                          {type === "amount" ? t("discount.fixedEur") : t("discount.percent")}
+                        </Button>
+                      );
+                    })}
+                  </HStack>
+
+                  <Box
+                    bg="rgba(246,244,239,0.96)"
+                    borderRadius="24px"
+                    px={4}
+                    py={4}
                     border="1px solid"
-                    borderColor="surface.100"
-                    _hover={{ bg: "surface.50" }}
-                    _active={{ transform: "scale(0.92)", bg: "surface.100" }}
-                    onClick={() => pressDiscountKey(discountModalItem, key)}
+                    borderColor="rgba(223,219,210,0.78)"
                   >
-                    {key === "backspace" ? t("discount.backspace") : key}
-                  </Button>
-                ))}
-              </SimpleGrid>
+                    <SimpleGrid columns={2} gap={3}>
+                      <Box
+                        bg="white"
+                        borderRadius="18px"
+                        px={4}
+                        py={3}
+                        border="1px solid"
+                        borderColor="rgba(232,229,223,0.9)"
+                      >
+                        <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
+                          {t("discount.value")}
+                        </Text>
+                        <Text fontSize="3xl" fontWeight="900" letterSpacing="-0.02em" color="surface.900">
+                          {discountDraft.value || "0"}
+                          <Box as="span" fontSize="lg" color="surface.400" ml={2} fontWeight="700">
+                            {discountDraft.type === "amount" ? "EUR" : "%"}
+                          </Box>
+                        </Text>
+                      </Box>
+                      <Box
+                        bg="rgba(82, 129, 236, 0.08)"
+                        borderRadius="18px"
+                        px={4}
+                        py={3}
+                        border="1px solid"
+                        borderColor="rgba(82, 129, 236, 0.16)"
+                      >
+                        <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
+                          {t("discount.finalPrice")}
+                        </Text>
+                        <Text fontSize="xl" fontWeight="900" color="surface.900">
+                          {formatEur(previewFinalPrice)}
+                        </Text>
+                      </Box>
+                    </SimpleGrid>
+                  </Box>
 
-              <VStack spacing={3}>
-                <HStack spacing={3} w="full">
-                  <Button
-                    flex="1"
-                    h="56px"
-                    borderRadius="20px"
-                    variant="outline"
-                    borderColor="surface.200"
-                    fontWeight="800"
-                    onClick={() => pressDiscountKey(discountModalItem, "clear")}
-                  >
-                    {t("discount.clear")}
-                  </Button>
-                  <Button
-                    flex="1.5"
-                    h="56px"
-                    borderRadius="20px"
-                    bg="brand.500"
-                    color="white"
-                    fontWeight="800"
-                    _hover={{ bg: "brand.600" }}
-                    _active={{ transform: "scale(0.96)" }}
-                    onClick={() => applyDiscount(discountModalItem)}
-                  >
-                    {t("discount.apply")}
-                  </Button>
-                </HStack>
+                  <SimpleGrid columns={3} gap={3}>
+                    {keypad.map((key) => (
+                      <Button
+                        key={key}
+                        h="64px"
+                        borderRadius="20px"
+                        bg={key === "backspace" ? "surface.50" : "white"}
+                        color="surface.900"
+                        fontSize={key === "backspace" ? "md" : "2xl"}
+                        fontWeight="800"
+                        border="1px solid"
+                        borderColor="surface.100"
+                        _hover={{ bg: "surface.50" }}
+                        _active={{ transform: "scale(0.92)", bg: "surface.100" }}
+                        onClick={() => pressDiscountKey(discountModalItem, key)}
+                      >
+                        {key === "backspace" ? t("discount.backspace") : key}
+                      </Button>
+                    ))}
+                  </SimpleGrid>
 
-                {discountModalItem.discount_type ? (
-                  <Button
-                    w="full"
-                    h="44px"
-                    borderRadius="16px"
-                    variant="ghost"
-                    color="red.500"
-                    fontSize="sm"
-                    fontWeight="700"
-                    onClick={() => clearDiscount(discountModalItem)}
-                  >
-                    {t("discount.remove")}
-                  </Button>
-                ) : null}
-              </VStack>
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+                  <VStack gap={3}>
+                    <HStack gap={3} w="full">
+                      <Button
+                        flex="1"
+                        h="56px"
+                        borderRadius="20px"
+                        variant="outline"
+                        borderColor="surface.200"
+                        fontWeight="800"
+                        onClick={() => pressDiscountKey(discountModalItem, "clear")}
+                      >
+                        {t("discount.clear")}
+                      </Button>
+                      <Button
+                        flex="1.5"
+                        h="56px"
+                        borderRadius="20px"
+                        bg="brand.500"
+                        color="white"
+                        fontWeight="800"
+                        _hover={{ bg: "brand.600" }}
+                        _active={{ transform: "scale(0.96)" }}
+                        onClick={() => applyDiscount(discountModalItem)}
+                      >
+                        {t("discount.apply")}
+                      </Button>
+                    </HStack>
+
+                    {discountModalItem.discount_type ? (
+                      <Button
+                        w="full"
+                        h="44px"
+                        borderRadius="16px"
+                        variant="ghost"
+                        color="red.500"
+                        fontSize="sm"
+                        fontWeight="700"
+                        onClick={() => clearDiscount(discountModalItem)}
+                      >
+                        {t("discount.remove")}
+                      </Button>
+                    ) : null}
+                  </VStack>
+                </VStack>
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+
+        </Portal>
+      </Dialog.Root>
     );
   };
 
@@ -1023,7 +1024,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     return (
-      <VStack align="stretch" spacing={3}>
+      <VStack align="stretch" gap={3}>
         {draft.items.map((item) => (
           <Box
             key={item.id}
@@ -1033,13 +1034,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             border="1px solid"
             borderColor="surface.100"
           >
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={0.5}>
-                  <Text fontWeight="800" fontSize="md" color="surface.900" noOfLines={2}>
+                <VStack align="start" gap={0.5}>
+                  <Text fontWeight="800" fontSize="md" color="surface.900" lineClamp={2}>
                     {item.product_name_snapshot}
                   </Text>
-                  <HStack spacing={2}>
+                  <HStack gap={2}>
                     <Text
                       fontSize="sm"
                       color={item.discount_type ? "surface.400" : "surface.500"}
@@ -1069,35 +1070,31 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   p={1}
                   border="1px solid"
                   borderColor="surface.200"
-                  spacing={0}
+                  gap={0}
                 >
                   <IconButton
                     aria-label={t("draftCart.decreaseQuantity")}
-                    icon={<Text fontSize="xl">−</Text>}
                     size="sm"
                     w="36px"
                     h="36px"
                     borderRadius="12px"
                     variant="ghost"
                     onClick={() => void updateDraftItem(item.id, { quantity: Math.max(1, item.quantity - 1) })}
-                    isDisabled={item.quantity <= 1}
-                  />
+                    disabled={item.quantity <= 1}><Text fontSize="xl">−</Text></IconButton>
                   <Text w="44px" textAlign="center" fontWeight="800" fontSize="md">
                     {item.quantity}
                   </Text>
                   <IconButton
                     aria-label={t("draftCart.increaseQuantity")}
-                    icon={<Text fontSize="xl">+</Text>}
                     size="sm"
                     w="36px"
                     h="36px"
                     borderRadius="12px"
                     variant="ghost"
-                    onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}
-                  />
+                    onClick={() => void updateDraftItem(item.id, { quantity: item.quantity + 1 })}><Text fontSize="xl">+</Text></IconButton>
                 </HStack>
 
-                <HStack spacing={2}>
+                <HStack gap={2}>
                   <Button
                     size="sm"
                     h="38px"
@@ -1107,22 +1104,16 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     color="surface.600"
                     fontSize="xs"
                     fontWeight="700"
-                    onClick={() => openDiscountModal(item)}
-                    leftIcon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={3.5} />}
-                  >
-                    {item.discount_type ? t("draftCart.editDiscount") : t("draftCart.addDiscount")}
-                  </Button>
+                    onClick={() => openDiscountModal(item)}><Box boxSize={3.5} asChild><HiOutlineAdjustmentsHorizontal /></Box>{item.discount_type ? t("draftCart.editDiscount") : t("draftCart.addDiscount")}</Button>
                   <IconButton
                     aria-label={t("draftCart.removeItem")}
-                    icon={<Box as={HiOutlineTrash} boxSize={4} />}
                     size="sm"
                     h="38px"
                     w="38px"
                     borderRadius="14px"
                     variant="ghost"
-                    colorScheme="red"
-                    onClick={() => void removeDraftItem(item.id)}
-                  />
+                    colorPalette="red"
+                    onClick={() => void removeDraftItem(item.id)}><Box boxSize={4} asChild><HiOutlineTrash /></Box></IconButton>
                 </HStack>
               </HStack>
             </VStack>
@@ -1163,7 +1154,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           borderColor="rgba(223,219,210,0.78)"
           boxShadow="0 10px 24px rgba(20, 20, 20, 0.05)"
         >
-          <VStack align="stretch" spacing={3}>
+          <VStack align="stretch" gap={3}>
             <Box
               bg="rgba(82, 129, 236, 0.08)"
               borderRadius="18px"
@@ -1180,7 +1171,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </Text>
             </Box>
 
-            <HStack spacing={3} pt={1}>
+            <HStack gap={3} pt={1}>
               <Button
                 flex="1"
                 h="52px"
@@ -1254,7 +1245,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           
           <Box px={5} pt={2} overflowY="auto" flex="1" overscrollBehavior="contain">
             <HStack justify="space-between" mb={6} align="center">
-              <VStack align="start" spacing={0}>
+              <VStack align="start" gap={0}>
                 <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.02em">
                   {t("draftCart.title")}
                 </Text>
@@ -1264,13 +1255,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </VStack>
               <IconButton
                 aria-label={t("orders.back")}
-                icon={<Text fontSize="2xl" lineHeight="1">×</Text>}
                 size="md"
                 borderRadius="full"
                 variant="ghost"
                 bg="surface.50"
-                onClick={() => setIsDraftCartOpen(false)}
-              />
+                onClick={() => setIsDraftCartOpen(false)}><Text fontSize="2xl" lineHeight="1">×</Text></IconButton>
             </HStack>
             {renderDraftCartItems()}
           </Box>
@@ -1287,8 +1276,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
     return (
       <HStack
-        as="button"
-        type="button"
         w="100%"
         justify="space-between"
         align="center"
@@ -1298,54 +1285,52 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         px={4}
         py={3.5}
         boxShadow="0 12px 24px rgba(74, 132, 244, 0.3)"
-        onClick={() => setIsDraftCartOpen(true)}
         transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
         _active={{ transform: "scale(0.97)", bg: "brand.600" }}
-      >
-        <HStack spacing={3}>
-          <Box
-            w="40px"
-            h="40px"
-            borderRadius="12px"
-            bg="rgba(255,255,255,0.2)"
-            display="grid"
-            placeItems="center"
-          >
-            <Box as={LuShoppingCart} boxSize={5} strokeWidth={2.5} />
-          </Box>
-          <VStack align="start" spacing={0}>
-            <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
-              {formatCartItemsCount(draft.summary.itemsCount)}
+        asChild><button type="button" onClick={() => setIsDraftCartOpen(true)}>
+          <HStack gap={3}>
+            <Box
+              w="40px"
+              h="40px"
+              borderRadius="12px"
+              bg="rgba(255,255,255,0.2)"
+              display="grid"
+              placeItems="center"
+            >
+              <Box boxSize={5} strokeWidth={2.5} asChild><LuShoppingCart /></Box>
+            </Box>
+            <VStack align="start" gap={0}>
+              <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
+                {formatCartItemsCount(draft.summary.itemsCount)}
+              </Text>
+              <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" letterSpacing="0.01em">
+                {t("checkout.viewCartDetails")}
+              </Text>
+            </VStack>
+          </HStack>
+          <HStack gap={3}>
+            <Text fontSize="lg" fontWeight="900" letterSpacing="-0.02em">
+              {formatEur(draft.summary.totalAmount)}
             </Text>
-            <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" letterSpacing="0.01em">
-              {t("checkout.viewCartDetails")}
-            </Text>
-          </VStack>
-        </HStack>
-        
-        <HStack spacing={3}>
-          <Text fontSize="lg" fontWeight="900" letterSpacing="-0.02em">
-            {formatEur(draft.summary.totalAmount)}
-          </Text>
-          <Box
-            w="32px"
-            h="32px"
-            borderRadius="full"
-            bg="white"
-            color="brand.500"
-            display="grid"
-            placeItems="center"
-            fontWeight="900"
-          >
-            →
-          </Box>
-        </HStack>
-      </HStack>
+            <Box
+              w="32px"
+              h="32px"
+              borderRadius="full"
+              bg="white"
+              color="brand.500"
+              display="grid"
+              placeItems="center"
+              fontWeight="900"
+            >
+              →
+            </Box>
+          </HStack>
+        </button></HStack>
     );
   };
 
   const renderCheckoutTab = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       {!loading && !shiftActive ? (
         <Box
           bg={panelSurface}
@@ -1354,7 +1339,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           py={4}
           boxShadow={panelShadow}
         >
-          <VStack align="start" spacing={3}>
+          <VStack align="start" gap={3}>
             <Text fontSize="lg" fontWeight="800">
               {t("checkout.startShiftTitle")}
             </Text>
@@ -1366,7 +1351,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               bg="brand.500"
               color="white"
               _hover={{ bg: "brand.600" }}
-              isLoading={isShiftPending}
+              loading={isShiftPending}
               onClick={() => void startShift()}
             >
               {t("shift.start")}
@@ -1394,11 +1379,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     return (
-      <VStack spacing={4} align="stretch">
+      <VStack gap={4} align="stretch">
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={4}>
+          <VStack align="stretch" gap={4}>
             <HStack justify="space-between" align="start">
-              <VStack align="start" spacing={1}>
+              <VStack align="start" gap={1}>
                 <Text fontWeight="900" fontSize="xl">
                   {t("orders.receipt")}
                 </Text>
@@ -1424,7 +1409,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
             {selectedSale.items.map((item) => (
               <HStack key={item.id} justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
+                <VStack align="start" gap={0}>
                   <Text fontWeight="800">{item.product_name_snapshot}</Text>
                   <Text fontSize="sm" color="surface.500">
                     {t("receipt.qty")} {item.quantity} x {formatEur(item.final_price)}
@@ -1441,7 +1426,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
             <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
 
-            <VStack align="stretch" spacing={2}>
+            <VStack align="stretch" gap={2}>
               <HStack justify="space-between">
                 <Text color="surface.500" fontWeight="700">
                   {t("receipt.subtotal")}
@@ -1474,8 +1459,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   };
 
   const renderOrdersTab = () => selectedSale ? renderReceipt() : (
-    <VStack spacing={4} align="stretch">
-      <SimpleGrid columns={2} spacing={3}>
+    <VStack gap={4} align="stretch">
+      <SimpleGrid columns={2} gap={3}>
         {[
           {
             label: t("sellerProfile.todayRevenue"),
@@ -1494,7 +1479,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {item.label}
               </Text>
               <Box color="brand.500">
-                <Box as={item.icon} boxSize={4.5} />
+                <Box boxSize={4.5} asChild><item.icon /></Box>
               </Box>
             </HStack>
             <Text
@@ -1514,9 +1499,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       {sales.length > 0 ? (
         sales.map((sale) => (
           <HStack
-            key={sale.id}
-            as="button"
-            type="button"
             textAlign="left"
             bg={panelSurface}
             borderRadius={panelRadius}
@@ -1526,29 +1508,27 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             border={0}
             justify="space-between"
             align="center"
-            onClick={() => setSelectedSaleId(sale.id)}
-          >
-            <VStack align="start" spacing={0.5}>
-              <Text fontWeight="800">
-                {sale.status === "deleted" ? t("orders.deletedSale") : t("orders.completedSale")}
-              </Text>
-              <Text fontSize="sm" color="surface.500">
-                {new Date(sale.created_at).toLocaleDateString(getLocaleTag())}
-              </Text>
-              <Text fontSize="sm" color="surface.500">
-                {formatTimeLabel(sale.created_at)} · {formatSellerPaymentMethod(sale.payment_method)}
-              </Text>
-            </VStack>
-
-            <VStack align="end" spacing={0.5}>
-              <Text fontWeight="900" fontSize="lg">
-                {formatEur(sale.total_amount)}
-              </Text>
-              <Text fontSize="xs" color="surface.500" fontWeight="700">
-                {t("orders.openReceipt")}
-              </Text>
-            </VStack>
-          </HStack>
+            asChild><button key={sale.id} type="button" onClick={() => setSelectedSaleId(sale.id)}>
+              <VStack align="start" gap={0.5}>
+                <Text fontWeight="800">
+                  {sale.status === "deleted" ? t("orders.deletedSale") : t("orders.completedSale")}
+                </Text>
+                <Text fontSize="sm" color="surface.500">
+                  {new Date(sale.created_at).toLocaleDateString(getLocaleTag())}
+                </Text>
+                <Text fontSize="sm" color="surface.500">
+                  {formatTimeLabel(sale.created_at)} · {formatSellerPaymentMethod(sale.payment_method)}
+                </Text>
+              </VStack>
+              <VStack align="end" gap={0.5}>
+                <Text fontWeight="900" fontSize="lg">
+                  {formatEur(sale.total_amount)}
+                </Text>
+                <Text fontSize="xs" color="surface.500" fontWeight="700">
+                  {t("orders.openReceipt")}
+                </Text>
+              </VStack>
+            </button></HStack>
         ))
       ) : (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
@@ -1562,7 +1542,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderStockTab = () => (
-    <VStack spacing={5} align="stretch">
+    <VStack gap={5} align="stretch">
       {products.map((item) => {
         const draft = getStockDraft(item.id);
         const isLowStock = item.stock < 5;
@@ -1578,9 +1558,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             border="1px solid"
             borderColor="surface.100"
           >
-            <VStack align="stretch" spacing={5}>
+            <VStack align="stretch" gap={5}>
               <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={0.5}>
+                <VStack align="start" gap={0.5}>
                   <Text fontWeight="850" fontSize="lg" color="surface.900">
                     {item.name}
                   </Text>
@@ -1600,18 +1580,16 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </Box>
               </HStack>
 
-              <VStack spacing={4}>
-                <HStack justify="center" spacing={6} bg="surface.50" py={3} px={6} borderRadius="20px">
+              <VStack gap={4}>
+                <HStack justify="center" gap={6} bg="surface.50" py={3} px={6} borderRadius="20px">
                   <IconButton
                     aria-label={t("draftCart.decreaseQuantity")}
-                    icon={<Text fontSize="2xl" lineHeight="1">−</Text>}
                     onClick={() => updateStockDraft(item.id, { quantity: String(Math.max(1, adjQty - 1)) })}
                     variant="ghost"
                     color="surface.600"
                     size="lg"
-                    isRound
-                  />
-                  <VStack spacing={0}>
+                    borderRadius="full"><Text fontSize="2xl" lineHeight="1">−</Text></IconButton>
+                  <VStack gap={0}>
                     <Text fontSize="2xl" fontWeight="900" color="surface.900" lineHeight="1">
                       {adjQty}
                     </Text>
@@ -1621,16 +1599,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   </VStack>
                   <IconButton
                     aria-label={t("draftCart.increaseQuantity")}
-                    icon={<Text fontSize="2xl" lineHeight="1">+</Text>}
                     onClick={() => updateStockDraft(item.id, { quantity: String(adjQty + 1) })}
                     variant="ghost"
                     color="surface.600"
                     size="lg"
-                    isRound
-                  />
+                    borderRadius="full"><Text fontSize="2xl" lineHeight="1">+</Text></IconButton>
                 </HStack>
 
-                <HStack spacing={3} w="full">
+                <HStack gap={3} w="full">
                   <Button
                     flex="1"
                     h="52px"
@@ -1642,13 +1618,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontSize="sm"
                     fontWeight="800"
                     onClick={() => runStockOperation(item.id, "restock")}
-                    isLoading={Boolean(pendingStockProductIds[item.id])}
-                    isDisabled={Boolean(pendingStockProductIds[item.id])}
-                    leftIcon={<Box as={HiOutlineArchiveBox} boxSize={5} />}
-                    _active={{ transform: "scale(0.96)", bg: "surface.50" }}
-                  >
-                    {t("stock.restock")}
-                  </Button>
+                    loading={Boolean(pendingStockProductIds[item.id])}
+                    disabled={Boolean(pendingStockProductIds[item.id])}
+                    _active={{ transform: "scale(0.96)", bg: "surface.50" }}><Box boxSize={5} asChild><HiOutlineArchiveBox /></Box>{t("stock.restock")}</Button>
                   <Button
                     flex="1"
                     h="52px"
@@ -1660,13 +1632,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     fontSize="sm"
                     fontWeight="800"
                     onClick={() => runStockOperation(item.id, "writeoff")}
-                    isLoading={Boolean(pendingStockProductIds[item.id])}
-                    isDisabled={Boolean(pendingStockProductIds[item.id])}
-                    leftIcon={<Box as={HiOutlineTrash} boxSize={5} />}
-                    _active={{ transform: "scale(0.96)", bg: "red.50" }}
-                  >
-                    {t("stock.writeoff")}
-                  </Button>
+                    loading={Boolean(pendingStockProductIds[item.id])}
+                    disabled={Boolean(pendingStockProductIds[item.id])}
+                    _active={{ transform: "scale(0.96)", bg: "red.50" }}><Box boxSize={5} asChild><HiOutlineTrash /></Box>{t("stock.writeoff")}</Button>
                 </HStack>
               </VStack>
             </VStack>
@@ -1679,9 +1647,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
 
   const renderShiftHistoryCard = (entry: ShiftHistoryItem) => (
     <Box
-      key={entry.shift.id}
-      as="button"
-      type="button"
       textAlign="left"
       bg={panelSurface}
       p={4}
@@ -1689,65 +1654,67 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       boxShadow={panelShadow}
       transition="all 0.2s ease"
       _active={{ bg: panelSurface, transform: "scale(0.985)" }}
-      onClick={() => {
-        if (entry.salesSummary && entry.commission) {
-          showShiftDetails({
-            shift: entry.shift,
-            summary: entry.summary,
-            store: entry.store,
-            salesSummary: entry.salesSummary,
-            commission: entry.commission,
-          });
-        } else {
-          clearShiftDetails();
-        }
-        setShiftView("detail");
-        void loadShiftDetails(entry.shift.id);
-      }}
-    >
-      <HStack justify="space-between" align="center">
-        <HStack spacing={4}>
-          <Box
-            w="44px"
-            h="44px"
-            borderRadius="14px"
-            bg="surface.50"
-            display="grid"
-            placeItems="center"
-            color="surface.400"
-          >
-            <Box as={LuClock3} boxSize={6} />
-          </Box>
-          <VStack align="start" spacing={0}>
-            <Text fontWeight="850" fontSize="sm" color="surface.900">
-              {new Date(entry.shift.started_at).toLocaleDateString(getLocaleTag(), {
-                day: "numeric",
-                month: "short",
-              })}
+      asChild><button
+        key={entry.shift.id}
+        type="button"
+        onClick={() => {
+          if (entry.salesSummary && entry.commission) {
+            showShiftDetails({
+              shift: entry.shift,
+              summary: entry.summary,
+              store: entry.store,
+              salesSummary: entry.salesSummary,
+              commission: entry.commission,
+            });
+          } else {
+            clearShiftDetails();
+          }
+          setShiftView("detail");
+          void loadShiftDetails(entry.shift.id);
+        }}>
+        <HStack justify="space-between" align="center">
+          <HStack gap={4}>
+            <Box
+              w="44px"
+              h="44px"
+              borderRadius="14px"
+              bg="surface.50"
+              display="grid"
+              placeItems="center"
+              color="surface.400"
+            >
+              <Box boxSize={6} asChild><LuClock3 /></Box>
+            </Box>
+            <VStack align="start" gap={0}>
+              <Text fontWeight="850" fontSize="sm" color="surface.900">
+                {new Date(entry.shift.started_at).toLocaleDateString(getLocaleTag(), {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </Text>
+              <Text fontSize="xs" color="surface.500" fontWeight="600">
+                {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
+              </Text>
+            </VStack>
+          </HStack>
+          <VStack align="end" gap={0}>
+            <Text fontWeight="900" fontSize="md" color="surface.900">
+              {formatDuration(entry.summary.workedSeconds)}
             </Text>
-            <Text fontSize="xs" color="surface.500" fontWeight="600">
-              {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
+            <Text fontSize="10px" color="surface.400" fontWeight="700" textTransform="uppercase">
+              {getShiftStatusBadge(entry.shift.status)}
             </Text>
           </VStack>
         </HStack>
-        <VStack align="end" spacing={0}>
-          <Text fontWeight="900" fontSize="md" color="surface.900">
-            {formatDuration(entry.summary.workedSeconds)}
-          </Text>
-          <Text fontSize="10px" color="surface.400" fontWeight="700" textTransform="uppercase">
-            {getShiftStatusBadge(entry.shift.status)}
-          </Text>
-        </VStack>
-      </HStack>
-    </Box>
+      </button></Box>
   );
 
   const renderShiftOverview = () => (
-    <VStack spacing={5} align="stretch">
+    <VStack gap={5} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={6}>
+        <VStack align="stretch" gap={6}>
           <HStack justify="space-between" align="center">
-            <VStack align="start" spacing={1}>
+            <VStack align="start" gap={1}>
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                 {t("shift.current")}
               </Text>
@@ -1756,7 +1723,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </Text>
             </VStack>
             <HStack
-              spacing={1.5}
+              gap={1.5}
               px={3}
               py={2}
               borderRadius="999px"
@@ -1774,8 +1741,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </HStack>
           </HStack>
 
-          <SimpleGrid columns={2} spacing={4}>
-            <VStack align="start" spacing={1} bg={innerSurface} p={4} borderRadius="18px">
+          <SimpleGrid columns={2} gap={4}>
+            <VStack align="start" gap={1} bg={innerSurface} p={4} borderRadius="18px">
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 {t("shift.timeWorked")}
               </Text>
@@ -1783,7 +1750,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {shiftSummary ? formatDuration(shiftSummary.workedSeconds) : "0h 0m"}
               </Text>
             </VStack>
-            <VStack align="start" spacing={1} bg={innerSurface} p={4} borderRadius="18px">
+            <VStack align="start" gap={1} bg={innerSurface} p={4} borderRadius="18px">
               <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.05em">
                 {t("shift.onBreak")}
               </Text>
@@ -1793,7 +1760,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </VStack>
           </SimpleGrid>
 
-          <VStack spacing={3}>
+          <VStack gap={3}>
             {!shiftActive && shiftStatus !== "paused" ? (
               <Button
                 w="full"
@@ -1806,14 +1773,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _hover={{ bg: "brand.600" }}
                 _active={{ transform: "scale(0.97)" }}
                 boxShadow="0 8px 24px rgba(74, 132, 244, 0.3)"
-                isLoading={isShiftPending}
+                loading={isShiftPending}
                 onClick={() => void startShift()}
               >
                 {t("shift.startNew")}
               </Button>
             ) : (
               <>
-                <HStack spacing={3} w="full">
+                <HStack gap={3} w="full">
                   <Button
                     flex="1"
                     h="52px"
@@ -1824,14 +1791,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     color="surface.800"
                     fontWeight="800"
                     onClick={() => void pauseShift()}
-                    isDisabled={shiftStatus !== "active"}
-                    isLoading={isShiftPending && shiftStatus === "active"}
-                    leftIcon={<Box as={HiOutlinePause} boxSize={5} />}
+                    disabled={shiftStatus !== "active"}
+                    loading={isShiftPending && shiftStatus === "active"}
                     _hover={{ bg: "white" }}
-                    _active={{ bg: "surface.100" }}
-                  >
-                    {t("shift.pause")}
-                  </Button>
+                    _active={{ bg: "surface.100" }}><Box boxSize={5} asChild><HiOutlinePause /></Box>{t("shift.pause")}</Button>
                   <Button
                     flex="1"
                     h="52px"
@@ -1842,14 +1805,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     color="surface.800"
                     fontWeight="800"
                     onClick={() => void resumeShift()}
-                    isDisabled={shiftStatus !== "paused"}
-                    isLoading={isShiftPending && shiftStatus === "paused"}
-                    leftIcon={<Box as={HiOutlinePlay} boxSize={5} />}
+                    disabled={shiftStatus !== "paused"}
+                    loading={isShiftPending && shiftStatus === "paused"}
                     _hover={{ bg: "white" }}
-                    _active={{ bg: "surface.100" }}
-                  >
-                    {t("shift.resume")}
-                  </Button>
+                    _active={{ bg: "surface.100" }}><Box boxSize={5} asChild><HiOutlinePlay /></Box>{t("shift.resume")}</Button>
                 </HStack>
                 <Button
                   w="full"
@@ -1870,21 +1829,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       onConfirm: () => void stopShift(),
                     })
                   }
-                  isDisabled={shiftStatus === "inactive" || shiftStatus === "closed"}
-                  isLoading={isShiftPending && shiftStatus !== "inactive" && shiftStatus !== "closed"}
-                  leftIcon={<Box as={HiOutlinePower} boxSize={5} />}
+                  disabled={shiftStatus === "inactive" || shiftStatus === "closed"}
+                  loading={isShiftPending && shiftStatus !== "inactive" && shiftStatus !== "closed"}
                   _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                  _active={{ bg: "rgba(248,113,113,0.16)" }}
-                >
-                  {t("shift.end")}
-                </Button>
+                  _active={{ bg: "rgba(248,113,113,0.16)" }}><Box boxSize={5} asChild><HiOutlinePower /></Box>{t("shift.end")}</Button>
               </>
             )}
           </VStack>
         </VStack>
       </Box>
 
-      <VStack align="stretch" spacing={4} mt={2}>
+      <VStack align="stretch" gap={4} mt={2}>
         <HStack justify="space-between" px={1}>
           <Text fontWeight="900" fontSize="xl" letterSpacing="-0.02em">
             {t("shift.history")}
@@ -1904,7 +1859,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Button>
         </HStack>
 
-        <VStack spacing={3} align="stretch">
+        <VStack gap={3} align="stretch">
           {shiftHistory.slice(0, 7).map(renderShiftHistoryCard)}
 
           {shiftHistory.length === 0 ? (
@@ -1918,10 +1873,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderShiftHistoryPage = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <HStack justify="space-between" align="center">
-          <VStack align="start" spacing={1}>
+          <VStack align="start" gap={1}>
             <Text fontWeight="900" fontSize="xl">
               {t("shift.all")}
             </Text>
@@ -1935,21 +1890,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               borderRadius="14px"
               variant="outline"
               borderColor="surface.200"
-              leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
               onClick={() => {
                 setShiftView("overview");
                 clearShiftDetails();
                 void loadShiftHistory(7, 0);
-              }}
-            >
-              {t("orders.back")}
-            </Button>
+              }}><Box boxSize={4} asChild><HiOutlineChevronLeft /></Box>{t("orders.back")}</Button>
           ) : null}
         </HStack>
       </Box>
 
       {groupedShiftHistory.map((group) => (
-        <VStack key={group.label} spacing={3} align="stretch">
+        <VStack key={group.label} gap={3} align="stretch">
           <Text px={1} fontSize="sm" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.06em">
             {group.label}
           </Text>
@@ -1993,11 +1944,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderShiftDetailsSkeleton = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={5} py={5} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" gap={4}>
           <HStack justify="space-between" align="start">
-            <VStack align="start" spacing={2}>
+            <VStack align="start" gap={2}>
               {renderSkeletonLine("150px", "20px")}
               {renderSkeletonLine("108px", "14px")}
             </VStack>
@@ -2007,18 +1958,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 borderRadius="14px"
                 variant="outline"
                 borderColor="surface.200"
-                leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
                 onClick={() => {
                   clearShiftDetails();
                   setShiftView("history");
-                }}
-              >
-                {t("orders.back")}
-              </Button>
+                }}><Box boxSize={4} asChild><HiOutlineChevronLeft /></Box>{t("orders.back")}</Button>
             ) : null}
           </HStack>
 
-          <SimpleGrid columns={2} spacing={3}>
+          <SimpleGrid columns={2} gap={3}>
             {[0, 1].map((item) => (
               <Box key={item} bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
                 {renderSkeletonLine("58px", "10px")}
@@ -2029,7 +1976,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         </VStack>
       </Box>
 
-      <SimpleGrid columns={2} spacing={3}>
+      <SimpleGrid columns={2} gap={3}>
         {["worked", "break", "sales", "revenue"].map((item) => (
           <Box key={item} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
             {renderSkeletonLine("72px", "10px")}
@@ -2039,12 +1986,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       </SimpleGrid>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" gap={4}>
           <HStack justify="space-between">
             {renderSkeletonLine("150px", "20px")}
             {renderSkeletonLine("54px", "14px")}
           </HStack>
-          <SimpleGrid columns={2} spacing={3}>
+          <SimpleGrid columns={2} gap={3}>
             {[0, 1].map((item) => (
               <Box key={item} bg={innerSurface} borderRadius="20px" px={4} py={4}>
                 {renderSkeletonLine("70px", "10px")}
@@ -2059,7 +2006,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderShiftDetailsPage = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       {shiftDetailsLoading && !shiftDetails ? (
         renderShiftDetailsSkeleton()
       ) : null}
@@ -2076,15 +2023,15 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       {shiftDetails ? (
         <>
           <Box bg={panelSurface} borderRadius={panelRadius} px={5} py={5} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={1}>
+                <VStack align="start" gap={1}>
                   <Text
                     fontWeight="800"
                     fontSize="lg"
                     letterSpacing="-0.02em"
                     color="surface.900"
-                    noOfLines={1}
+                    lineClamp={1}
                   >
                     {shiftDetails.store?.name ?? storeName}
                   </Text>
@@ -2092,7 +2039,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     {formatDateLabel(shiftDetails.shift.started_at)}
                   </Text>
                 </VStack>
-                <HStack spacing={2}>
+                <HStack gap={2}>
                   <Box
                     px={3}
                     py={1.5}
@@ -2110,19 +2057,15 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                       borderRadius="14px"
                       variant="outline"
                       borderColor="surface.200"
-                      leftIcon={<Box as={HiOutlineChevronLeft} boxSize={4} />}
                       onClick={() => {
                         clearShiftDetails();
                         setShiftView("history");
-                      }}
-                    >
-                      {t("orders.back")}
-                    </Button>
+                      }}><Box boxSize={4} asChild><HiOutlineChevronLeft /></Box>{t("orders.back")}</Button>
                   ) : null}
                 </HStack>
               </HStack>
 
-              <SimpleGrid columns={2} spacing={3}>
+              <SimpleGrid columns={2} gap={3}>
                 <Box bg={innerSurface} borderRadius="18px" px={4} py={3.5}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     {t("shift.started")}
@@ -2143,7 +2086,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </VStack>
           </Box>
 
-          <SimpleGrid columns={2} spacing={3}>
+          <SimpleGrid columns={2} gap={3}>
             {[
               { label: t("shift.timeWorked"), value: formatDuration(shiftDetails.summary.workedSeconds) },
               { label: t("shift.breakTime"), value: formatDuration(shiftDetails.summary.pausedSeconds) },
@@ -2162,7 +2105,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </SimpleGrid>
 
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
                   {t("shift.paymentBreakdown")}
@@ -2172,7 +2115,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </Text>
               </HStack>
 
-              <SimpleGrid columns={2} spacing={3}>
+              <SimpleGrid columns={2} gap={3}>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     {t("shift.cashSales")}
@@ -2219,7 +2162,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </Box>
 
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               <HStack justify="space-between" align="center">
                 <Text fontWeight="900" fontSize="lg">
                   {t("shift.commission")}
@@ -2231,7 +2174,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </Box>
               </HStack>
 
-              <SimpleGrid columns={2} spacing={3}>
+              <SimpleGrid columns={2} gap={3}>
                 <Box bg={innerSurface} borderRadius="20px" px={4} py={4}>
                   <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
                     {t("shift.rate")}
@@ -2273,18 +2216,12 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   };
 
   const renderSellerProfileTab = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
         <HStack justify="space-between" align="center">
-          <HStack spacing={3}>
-            <Avatar
-              size="md"
-              name={operatorName}
-              bg="brand.500"
-              color="white"
-              fontWeight="800"
-            />
-            <VStack align="start" spacing={0.5}>
+          <HStack gap={3}>
+            <Avatar.Root size="md" bg="brand.500" color="white" fontWeight="800"><Avatar.Fallback name={operatorName} /></Avatar.Root>
+            <VStack align="start" gap={0.5}>
               <Text fontWeight="900" fontSize="xl" letterSpacing="-0.03em" color="surface.900">
                 {operatorName}
               </Text>
@@ -2295,7 +2232,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           </HStack>
 
           <HStack
-            spacing={1.5}
+            gap={1.5}
             px={3}
             py={2}
             borderRadius="999px"
@@ -2314,7 +2251,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         </HStack>
       </Box>
 
-      <SimpleGrid columns={2} spacing={3}>
+      <SimpleGrid columns={2} gap={3}>
         {[
           {
             label: t("sellerProfile.todaySales"),
@@ -2343,7 +2280,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 {item.label}
               </Text>
               <Box color="brand.500">
-                <Box as={item.icon} boxSize={4.5} />
+                <Box boxSize={4.5} asChild><item.icon /></Box>
               </Box>
             </HStack>
             <Text
@@ -2361,14 +2298,13 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       </SimpleGrid>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" gap={4}>
           <Text fontWeight="900" fontSize="lg">{t("sellerProfile.recentShifts")}</Text>
 
           {activeSellerProfileWeek ? (
-            <HStack spacing={3}>
+            <HStack gap={3}>
               <IconButton
                 aria-label={t("orders.back")}
-                icon={<Box as={HiOutlineChevronLeft} boxSize={5} strokeWidth={2.5} />}
                 size="sm"
                 borderRadius="16px"
                 bg="white"
@@ -2376,11 +2312,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 borderColor="rgba(223,219,213,0.95)"
                 color="surface.900"
                 flexShrink={0}
-                isDisabled={!canOpenOlderSellerProfileWeek}
+                disabled={!canOpenOlderSellerProfileWeek}
                 onClick={() => void goToOlderSellerProfileWeek()}
                 _hover={{ bg: "rgba(248,247,244,0.98)" }}
-                _active={{ transform: "scale(0.96)" }}
-              />
+                _active={{ transform: "scale(0.96)" }}><Box boxSize={5} strokeWidth={2.5} asChild><HiOutlineChevronLeft /></Box></IconButton>
               <Box bg={innerSurface} borderRadius="18px" px={4} py={3} flex="1">
                 <Text fontSize="sm" color="surface.700" fontWeight="800" textAlign="center">
                   {formatWeekRangeLabel(activeSellerProfileWeek.start, activeSellerProfileWeek.end)}
@@ -2388,7 +2323,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               </Box>
               <IconButton
                 aria-label={t("shift.viewAll")}
-                icon={<Box as={HiOutlineChevronRight} boxSize={5} strokeWidth={2.5} />}
                 size="sm"
                 borderRadius="16px"
                 bg="white"
@@ -2396,20 +2330,16 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 borderColor="rgba(223,219,213,0.95)"
                 color="surface.900"
                 flexShrink={0}
-                isDisabled={!canOpenNewerSellerProfileWeek}
+                disabled={!canOpenNewerSellerProfileWeek}
                 onClick={goToNewerSellerProfileWeek}
                 _hover={{ bg: "rgba(248,247,244,0.98)" }}
-                _active={{ transform: "scale(0.96)" }}
-              />
+                _active={{ transform: "scale(0.96)" }}><Box boxSize={5} strokeWidth={2.5} asChild><HiOutlineChevronRight /></Box></IconButton>
             </HStack>
           ) : null}
 
-          <VStack spacing={3} align="stretch">
+          <VStack gap={3} align="stretch">
             {activeSellerProfileWeek?.items.map((entry) => (
               <HStack
-                key={entry.shift.id}
-                as="button"
-                type="button"
                 textAlign="left"
                 w="full"
                 bg={innerSurface}
@@ -2419,41 +2349,42 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 border={0}
                 justify="space-between"
                 align="center"
-                onClick={() => {
-                  setActiveTab("shift");
-                  if (entry.salesSummary && entry.commission) {
-                    showShiftDetails({
-                      shift: entry.shift,
-                      summary: entry.summary,
-                      store: entry.store,
-                      salesSummary: entry.salesSummary,
-                      commission: entry.commission,
-                    });
-                  } else {
-                    clearShiftDetails();
-                  }
+                asChild><button
+                  key={entry.shift.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("shift");
+                    if (entry.salesSummary && entry.commission) {
+                      showShiftDetails({
+                        shift: entry.shift,
+                        summary: entry.summary,
+                        store: entry.store,
+                        salesSummary: entry.salesSummary,
+                        commission: entry.commission,
+                      });
+                    } else {
+                      clearShiftDetails();
+                    }
 
-                  setShiftView("detail");
-                  setIsSellerProfileOpen(false);
-                  void loadShiftDetails(entry.shift.id);
-                }}
-              >
-                <VStack align="start" spacing={0.5}>
-                  <Text fontWeight="800">
-                    {formatProfileShiftDateLabel(entry.shift.started_at)}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500">
-                    {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
-                  </Text>
-                </VStack>
-
-                <VStack align="end" spacing={0.5}>
-                  <Text fontWeight="900">{formatDuration(entry.summary.workedSeconds)}</Text>
-                  <Text fontSize="xs" color="surface.500" fontWeight="700">
-                    {getShiftStatusBadge(entry.shift.status)}
-                  </Text>
-                </VStack>
-              </HStack>
+                    setShiftView("detail");
+                    setIsSellerProfileOpen(false);
+                    void loadShiftDetails(entry.shift.id);
+                  }}>
+                  <VStack align="start" gap={0.5}>
+                    <Text fontWeight="800">
+                      {formatProfileShiftDateLabel(entry.shift.started_at)}
+                    </Text>
+                    <Text fontSize="sm" color="surface.500">
+                      {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
+                    </Text>
+                  </VStack>
+                  <VStack align="end" gap={0.5}>
+                    <Text fontWeight="900">{formatDuration(entry.summary.workedSeconds)}</Text>
+                    <Text fontSize="xs" color="surface.500" fontWeight="700">
+                      {getShiftStatusBadge(entry.shift.status)}
+                    </Text>
+                  </VStack>
+                </button></HStack>
             ))}
 
             {!activeSellerProfileWeek || activeSellerProfileWeek.items.length === 0 ? (
@@ -2468,14 +2399,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   );
 
   const renderOptionsTab = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
+        <VStack align="stretch" gap={3}>
           <Text fontWeight="900" fontSize="lg">{t("settings.language.title")}</Text>
           <Text color="surface.500" fontSize="sm">
             {t("settings.language.description")}
           </Text>
-          <HStack spacing={3}>
+          <HStack gap={3}>
             {localeOptions.map((option) => {
               const isActive = locale === option.value;
 
@@ -2500,7 +2431,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       </Box>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
+        <VStack align="stretch" gap={3}>
           <Text fontWeight="900" fontSize="lg">{t("settings.session.title")}</Text>
           <HStack justify="space-between">
             <Text color="surface.500">{t("settings.session.operator")}</Text>
@@ -2556,9 +2487,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         : bottomDockReservedSpace}
     >
       <Container maxW="container.sm" px={0}>
-        <VStack key={sellerMotionKey} spacing={5} align="stretch" className="soft-screen-transition">
-          <VStack spacing={6} align="stretch" pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
-            <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1}>
+        <VStack key={sellerMotionKey} gap={5} align="stretch" className="soft-screen-transition">
+          <VStack gap={6} align="stretch" pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
+            <VStack align="stretch" gap={showFullscreenHeaderContext ? 3 : 0} px={1}>
               {showFullscreenHeaderContext ? (
                 <HStack justify="space-between" align="center">
                   <Text
@@ -2577,7 +2508,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
               ) : null}
 
               <HStack justify="space-between" align="center">
-                <VStack align="start" spacing={0}>
+                <VStack align="start" gap={0}>
                   <Text
                     fontSize="3xl"
                     fontWeight="900"
@@ -2590,7 +2521,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 </VStack>
 
                 <HStack
-                  spacing={2.5}
+                  gap={2.5}
                   bg="rgba(255,255,255,0.6)"
                   backdropFilter="blur(10px)"
                   pl={1.5}
@@ -2602,21 +2533,14 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   boxShadow="0 4px 12px rgba(0,0,0,0.03)"
                   cursor="pointer"
                   userSelect="none"
-                  sx={{
+                  css={{
                     WebkitTapHighlightColor: "transparent",
-                    touchAction: "manipulation",
+                    touchAction: "manipulation"
                   }}
                   onClick={openSellerProfile}
                   _active={{ transform: "scale(0.98)" }}
                 >
-                  <Avatar
-                    size="xs"
-                    name={operatorName}
-                    bg="brand.500"
-                    color="white"
-                    fontWeight="800"
-                    fontSize="10px"
-                  />
+                  <Avatar.Root size="xs" bg="brand.500" color="white" fontWeight="800" fontSize="10px"><Avatar.Fallback name={operatorName} /></Avatar.Root>
                   <Text fontWeight="800" fontSize="sm" color="surface.700" letterSpacing="-0.01em">
                     {operatorName.split(" ")[0]}
                   </Text>
@@ -2625,10 +2549,17 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </VStack>
 
           {activeTab === "checkout" && !isSellerProfileOpen ? (
-            <InputGroup size="md">
-              <InputLeftElement pointerEvents="none" color="surface.500" h="54px" pl={2}>
-                <Box as={HiOutlineMagnifyingGlass} boxSize={5} strokeWidth={2.5} />
-              </InputLeftElement>
+            <Box position="relative">
+              <Box
+                position="absolute"
+                left={4}
+                top="50%"
+                transform="translateY(-50%)"
+                pointerEvents="none"
+                color="surface.500"
+              >
+                <Box boxSize={5} strokeWidth={2.5} asChild><HiOutlineMagnifyingGlass /></Box>
+              </Box>
               <Input
                 placeholder={t("checkout.searchPlaceholder")}
                 value={searchQuery}
@@ -2640,7 +2571,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 h="54px"
                 fontSize="md"
                 fontWeight="650"
-                px={5}
+                pl={12}
+                pr={16}
                 boxShadow="0 4px 12px rgba(0, 0, 0, 0.03)"
                 _placeholder={{ color: "surface.400", fontWeight: 600 }}
                 _focusVisible={{
@@ -2649,25 +2581,25 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 }}
                 transition="all 0.2s ease"
               />
-              <InputRightElement w="62px" h="54px" pr={1}>
+              <Box position="absolute" right={1} top="50%" transform="translateY(-50%)">
                 <IconButton
                   aria-label={t("checkout.filters")}
-                  icon={<Box as={HiOutlineAdjustmentsHorizontal} boxSize={5} strokeWidth={2} />}
                   size="sm"
                   borderRadius="14px"
                   bg="surface.50"
                   color="surface.600"
                   _hover={{ bg: "brand.50", color: "brand.600" }}
-                />
-              </InputRightElement>
-            </InputGroup>
+                >
+                  <Box boxSize={5} strokeWidth={2} asChild><HiOutlineAdjustmentsHorizontal /></Box>
+                </IconButton>
+              </Box>
+            </Box>
           ) : null}
         </VStack>
 
           {renderActiveTab()}
         </VStack>
       </Container>
-
       {renderDraftCartSheet()}
       {renderDiscountModal()}
       <ConfirmActionModal
@@ -2675,7 +2607,6 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         cancelLabel={t("common.cancel")}
         onClose={() => setConfirmAction(null)}
       />
-
       <Box
         position="fixed"
         left={0}

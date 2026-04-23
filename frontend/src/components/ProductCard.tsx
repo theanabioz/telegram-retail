@@ -17,7 +17,7 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
     <HStack
       align="center"
       justify="space-between"
-      spacing={4}
+      gap={4}
       bg="rgba(255, 255, 255, 0.82)"
       border="1px solid rgba(255, 255, 255, 0.6)"
       borderRadius="28px"
@@ -28,11 +28,11 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
       transition="all 0.2s ease"
       _active={{ transform: "scale(0.985)", bg: "rgba(255, 255, 255, 0.9)" }}
     >
-      <VStack align="start" spacing={0.5} flex="1">
+      <VStack align="start" gap={0.5} flex="1">
         <Text fontSize="md" fontWeight="850" lineHeight="1.2" color="surface.900">
           {item.name}
         </Text>
-        <HStack spacing={2}>
+        <HStack gap={2}>
           <Text color="brand.500" fontSize="sm" fontWeight="800">
             {formatEur(item.price)}
           </Text>
@@ -42,7 +42,6 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
           </Text>
         </HStack>
       </VStack>
-
       <Button
         aria-label={`${t("checkout.addToCart")}: ${item.name}`}
         w="48px"
@@ -54,7 +53,7 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
         _hover={{ bg: "brand.600" }}
         _active={{ bg: "brand.700", transform: "scale(0.92)" }}
         boxShadow="0 8px 20px rgba(74, 132, 244, 0.3)"
-        isDisabled={disabled}
+        disabled={disabled}
         onClick={() => onAdd?.(item.id)}
       >
         <LuPlus size={24} strokeWidth={3} />

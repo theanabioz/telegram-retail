@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
+  Steps,
   Avatar,
   Box,
   Button,
   Container,
   HStack,
   Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalOverlay,
-  Select,
+  NativeSelect,
   SimpleGrid,
   Text,
   VStack,
+  Dialog,
+  Portal,
 } from "@chakra-ui/react";
 import {
   LuActivity,
@@ -1934,8 +1933,8 @@ export function AdminDashboardScreen({
   };
 
   const renderDashboard = () => (
-    <VStack spacing={4} align="stretch">
-      <SimpleGrid columns={2} spacing={3}>
+    <VStack gap={4} align="stretch">
+      <SimpleGrid columns={2} gap={3}>
         {[
           { label: t("admin.overview.todayRevenue"), value: data ? formatEur(data.summary.totalRevenueToday) : "..." },
           { label: t("admin.overview.salesToday"), value: data ? String(data.summary.completedSalesToday) : "..." },
@@ -1962,9 +1961,9 @@ export function AdminDashboardScreen({
       </SimpleGrid>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
+        <VStack align="stretch" gap={4}>
           <HStack justify="space-between" align="center">
-            <VStack align="start" spacing={0}>
+            <VStack align="start" gap={0}>
               <Text fontWeight="900" fontSize="lg">
                 {t("admin.overview.revenueFlow")}
               </Text>
@@ -1978,7 +1977,7 @@ export function AdminDashboardScreen({
           </HStack>
 
           {data ? (
-            <VStack align="stretch" spacing={2}>
+            <VStack align="stretch" gap={2}>
               <Box
                 display="grid"
                 gridTemplateColumns="repeat(24, minmax(0, 1fr))"
@@ -2002,21 +2001,19 @@ export function AdminDashboardScreen({
                     const isSelected = selectedOverviewHour === entry.hour;
 
                     return (
-                      <VStack key={entry.hour} minW={0} spacing={2} align="center" justify="end" h="full">
+                      <VStack key={entry.hour} minW={0} gap={2} align="center" justify="end" h="full">
                         <Text
                           fontSize="10px"
                           fontWeight="900"
                           color="surface.700"
                           opacity={isSelected ? 1 : 0}
-                          noOfLines={1}
+                          lineClamp={1}
                           h="12px"
                           lineHeight="12px"
                         >
                           {isSelected ? entry.total.toFixed(0) : ""}
                         </Text>
                         <Box
-                          as="button"
-                          type="button"
                           w="full"
                           maxW="12px"
                           h={`${height}px`}
@@ -2039,8 +2036,7 @@ export function AdminDashboardScreen({
                           }
                           transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
                           _active={{ transform: "scale(0.96)" }}
-                          onClick={() => setSelectedOverviewHour(entry.hour)}
-                        />
+                          asChild><button type="button" onClick={() => setSelectedOverviewHour(entry.hour)} /></Box>
                       </VStack>
                     );
                   });
@@ -2075,7 +2071,7 @@ export function AdminDashboardScreen({
       </Box>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
+        <VStack align="stretch" gap={3}>
           <HStack justify="space-between">
               <Text fontWeight="900" fontSize="lg">
               {t("admin.overview.recentSales")}
@@ -2086,7 +2082,7 @@ export function AdminDashboardScreen({
           </HStack>
           {(data?.recentSales ?? []).slice(0, 5).map((sale) => (
             <HStack key={sale.id} justify="space-between" align="start">
-              <VStack align="start" spacing={0}>
+              <VStack align="start" gap={0}>
                 <Text fontWeight="800">{sale.store?.name ?? t("admin.sales.unknownStore")}</Text>
                 <Text fontSize="sm" color="surface.500">
                   {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatAdminPaymentMethod(sale.paymentMethod)}
@@ -2102,7 +2098,7 @@ export function AdminDashboardScreen({
       </Box>
 
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
+        <VStack align="stretch" gap={3}>
           <HStack justify="space-between">
               <Text fontWeight="900" fontSize="lg">
               {t("admin.overview.storePerformance")}
@@ -2114,7 +2110,7 @@ export function AdminDashboardScreen({
           {(data?.storePerformance ?? []).map((store) => (
             <Box key={store.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
               <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={0}>
+                <VStack align="start" gap={0}>
                   <Text fontWeight="800">{store.name}</Text>
                   <Text fontSize="sm" color="surface.500">
                     {store.address?.trim() || t("admin.overview.addressMissing")}
@@ -2123,7 +2119,7 @@ export function AdminDashboardScreen({
                     {store.stockUnits} {t("admin.overview.unitsInStock")}
                   </Text>
                 </VStack>
-                <VStack align="end" spacing={0.5}>
+                <VStack align="end" gap={0.5}>
                   <Text fontWeight="900">{formatEur(store.revenue)}</Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
                     {formatOverviewSalesCount(store.salesCount, locale)}
@@ -2138,10 +2134,10 @@ export function AdminDashboardScreen({
   );
 
   const renderStoresSection = () => (
-    <VStack spacing={4} align="stretch">
+    <VStack gap={4} align="stretch">
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={3}>
-        <VStack align="start" spacing={0}>
+        <VStack align="stretch" gap={3}>
+        <VStack align="start" gap={0}>
           <Text fontWeight="900" fontSize="lg">
             {t("admin.team.storeDirectory")}
           </Text>
@@ -2152,40 +2148,39 @@ export function AdminDashboardScreen({
 
           {stores.map((store) => (
             <Box
-              key={store.id}
-              as="button"
-              type="button"
               textAlign="left"
               bg={panelMutedSurface}
               borderRadius="18px"
               px={3}
               py={3}
               border={0}
-              onClick={() => {
-                setSelectedTeamStoreId(store.id);
-                setStoreDetailMode("overview");
-                setStoreActivityPage(0);
-                scrollToSectionTop();
-              }}
-            >
-              <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" noOfLines={1}>
-                    {store.name}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {store.address || `${t("admin.team.created")} ${formatShortDate(store.createdAt)}`}
-                  </Text>
-                </VStack>
+              asChild><button
+                key={store.id}
+                type="button"
+                onClick={() => {
+                  setSelectedTeamStoreId(store.id);
+                  setStoreDetailMode("overview");
+                  setStoreActivityPage(0);
+                  scrollToSectionTop();
+                }}>
+                <HStack justify="space-between" align="center" gap={3}>
+                  <VStack align="start" gap={0} minW={0}>
+                    <Text fontWeight="900" lineClamp={1}>
+                      {store.name}
+                    </Text>
+                    <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
+                      {store.address || `${t("admin.team.created")} ${formatShortDate(store.createdAt)}`}
+                    </Text>
+                  </VStack>
 
-                <Box flexShrink={0}>
-                  <StatusPill
-                    label={store.isActive ? t("admin.team.active") : t("admin.team.inactive")}
-                    tone={store.isActive ? "green" : "red"}
-                  />
-                </Box>
-              </HStack>
-            </Box>
+                  <Box flexShrink={0}>
+                    <StatusPill
+                      label={store.isActive ? t("admin.team.active") : t("admin.team.inactive")}
+                      tone={store.isActive ? "green" : "red"}
+                    />
+                  </Box>
+                </HStack>
+              </button></Box>
           ))}
 
         </VStack>
@@ -2255,9 +2250,9 @@ export function AdminDashboardScreen({
 
     return (
       <>
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={4}>
+          <VStack align="stretch" gap={4}>
             {!supportsTelegramBackButton ? (
               <HStack justify="flex-start">
                 <Button
@@ -2276,11 +2271,11 @@ export function AdminDashboardScreen({
             ) : null}
 
             <HStack justify="space-between" align="center">
-              <VStack align="start" spacing={0} minW={0}>
-                <Text fontWeight="900" fontSize="xl" noOfLines={1}>
+              <VStack align="start" gap={0} minW={0}>
+                <Text fontWeight="900" fontSize="xl" lineClamp={1}>
                   {store.name}
                 </Text>
-                <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                   {store.address || t("admin.overview.addressMissing")}
                 </Text>
               </VStack>
@@ -2290,7 +2285,7 @@ export function AdminDashboardScreen({
         </Box>
 
         <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-          <HStack spacing={2} overflowX="auto" pb={1}>
+          <HStack gap={2} overflowX="auto" pb={1}>
             {(["overview", "profile", "staff", "activity"] as StoreDetailMode[]).map((mode) => {
               const isActive = storeDetailMode === mode;
 
@@ -2322,8 +2317,8 @@ export function AdminDashboardScreen({
         </Box>
 
         {storeDetailMode === "overview" ? (
-          <VStack spacing={4} align="stretch">
-            <SimpleGrid columns={2} spacing={3}>
+          <VStack gap={4} align="stretch">
+            <SimpleGrid columns={2} gap={3}>
               {[
                 { label: t("admin.overview.todayRevenue"), value: formatEur(store.revenueToday) },
                 { label: t("admin.overview.salesToday"), value: String(store.salesCount) },
@@ -2342,7 +2337,7 @@ export function AdminDashboardScreen({
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                     {card.label}
                   </Text>
-                  <Text mt={2} fontWeight="900" fontSize="2xl" noOfLines={1}>
+                  <Text mt={2} fontWeight="900" fontSize="2xl" lineClamp={1}>
                     {card.value}
                   </Text>
                 </Box>
@@ -2350,7 +2345,7 @@ export function AdminDashboardScreen({
             </SimpleGrid>
 
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
                     {t("admin.team.storeSnapshot")}
@@ -2369,7 +2364,7 @@ export function AdminDashboardScreen({
                     <Text color="surface.500" fontSize="sm" fontWeight="800">
                       {item.label}
                     </Text>
-                    <Text fontWeight="900" textAlign="right" maxW="58%" noOfLines={2}>
+                    <Text fontWeight="900" textAlign="right" maxW="58%" lineClamp={2}>
                       {item.value}
                     </Text>
                   </HStack>
@@ -2381,8 +2376,8 @@ export function AdminDashboardScreen({
 
         {storeDetailMode === "profile" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
-              <VStack align="start" spacing={0}>
+            <VStack align="stretch" gap={4}>
+              <VStack align="start" gap={0}>
                 <Text fontWeight="900" fontSize="lg">
                   {t("admin.team.storeProfile")}
                 </Text>
@@ -2391,7 +2386,7 @@ export function AdminDashboardScreen({
                 </Text>
               </VStack>
 
-              <VStack align="stretch" spacing={2}>
+              <VStack align="stretch" gap={2}>
                 <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                   {t("admin.team.storeName")}
                 </Text>
@@ -2410,7 +2405,7 @@ export function AdminDashboardScreen({
                 />
               </VStack>
 
-              <VStack align="stretch" spacing={2}>
+              <VStack align="stretch" gap={2}>
                 <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                   {t("admin.team.address")}
                 </Text>
@@ -2429,7 +2424,7 @@ export function AdminDashboardScreen({
                 />
               </VStack>
 
-              <SimpleGrid columns={2} spacing={2}>
+              <SimpleGrid columns={2} gap={2}>
                 {[
                   { label: t("admin.team.enabled"), value: true },
                   { label: t("admin.team.disabled"), value: false },
@@ -2461,7 +2456,7 @@ export function AdminDashboardScreen({
                 bg="surface.900"
                 color="white"
                 _hover={{ bg: "surface.700" }}
-                isLoading={Boolean(pendingStoreIds[store.id])}
+                loading={Boolean(pendingStoreIds[store.id])}
                 onClick={() => void handleSaveStore(store.id)}
               >
                 {t("admin.team.saveStore")}
@@ -2472,7 +2467,7 @@ export function AdminDashboardScreen({
 
         {storeDetailMode === "staff" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
                   {t("admin.team.assignedStaff")}
@@ -2488,37 +2483,36 @@ export function AdminDashboardScreen({
 
                   return (
                     <Box
-                      key={seller.id}
-                      as="button"
-                      type="button"
                       textAlign="left"
                       bg={panelMutedSurface}
                       borderRadius="18px"
                       px={3}
                       py={3}
                       border={0}
-                      onClick={() => {
-                        setSelectedStaffSellerId(seller.id);
-                        setStaffDetailMode("overview");
-                        setStaffActivityPage(0);
-                        scrollToSectionTop();
-                      }}
-                    >
-                      <HStack justify="space-between" align="center">
-                        <HStack spacing={3} minW={0}>
-                          <Avatar size="sm" name={seller.fullName} bg="surface.200" color="surface.800" />
-                          <VStack align="start" spacing={0} minW={0}>
-                            <Text fontWeight="900" noOfLines={1}>
-                              {seller.fullName}
-                            </Text>
-                            <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                              {seller.salesCount} {t("admin.team.sales").toLowerCase()} · {formatEur(seller.revenue)}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                        <StatusPill label={status.label} tone={status.tone} />
-                      </HStack>
-                    </Box>
+                      asChild><button
+                          key={seller.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedStaffSellerId(seller.id);
+                            setStaffDetailMode("overview");
+                            setStaffActivityPage(0);
+                            scrollToSectionTop();
+                          }}>
+                          <HStack justify="space-between" align="center">
+                            <HStack gap={3} minW={0}>
+                              <Avatar.Root size="sm" bg="surface.200" color="surface.800"><Avatar.Fallback name={seller.fullName} /></Avatar.Root>
+                              <VStack align="start" gap={0} minW={0}>
+                                <Text fontWeight="900" lineClamp={1}>
+                                  {seller.fullName}
+                                </Text>
+                                <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
+                                  {seller.salesCount} {t("admin.team.sales").toLowerCase()} · {formatEur(seller.revenue)}
+                                </Text>
+                              </VStack>
+                            </HStack>
+                            <StatusPill label={status.label} tone={status.tone} />
+                          </HStack>
+                        </button></Box>
                   );
                 })
               ) : (
@@ -2535,7 +2529,7 @@ export function AdminDashboardScreen({
 
         {storeDetailMode === "activity" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
                   {t("admin.team.activityFeed")}
@@ -2550,7 +2544,7 @@ export function AdminDashboardScreen({
                   const Icon = item.icon;
 
                   return (
-                    <HStack key={item.id} spacing={3} align="center" bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+                    <HStack key={item.id} gap={3} align="center" bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
                       <Box
                         w="40px"
                         h="40px"
@@ -2563,11 +2557,11 @@ export function AdminDashboardScreen({
                       >
                         <Icon size={21} strokeWidth={2.5} />
                       </Box>
-                      <VStack align="start" spacing={0} minW={0} flex="1">
-                        <Text fontWeight="900" noOfLines={1}>
+                      <VStack align="start" gap={0} minW={0} flex="1">
+                        <Text fontWeight="900" lineClamp={1}>
                           {item.title}
                         </Text>
-                        <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                        <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                           {item.meta}
                         </Text>
                       </VStack>
@@ -2593,7 +2587,7 @@ export function AdminDashboardScreen({
                     borderRadius="14px"
                     bg={panelMutedSurface}
                     color="surface.700"
-                    isDisabled={safeActivityPage === 0}
+                    disabled={safeActivityPage === 0}
                     onClick={() => setStoreActivityPage((page) => Math.max(0, page - 1))}
                   >
                     {t("admin.team.previous")}
@@ -2606,7 +2600,7 @@ export function AdminDashboardScreen({
                     borderRadius="14px"
                     bg={panelMutedSurface}
                     color="surface.700"
-                    isDisabled={safeActivityPage >= activityTotalPages - 1}
+                    disabled={safeActivityPage >= activityTotalPages - 1}
                     onClick={() => setStoreActivityPage((page) => Math.min(activityTotalPages - 1, page + 1))}
                   >
                     {t("admin.team.next")}
@@ -2720,9 +2714,9 @@ export function AdminDashboardScreen({
       };
 
       return (
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               {!supportsTelegramBackButton ? (
                 <HStack justify="flex-start">
                   <Button
@@ -2741,11 +2735,11 @@ export function AdminDashboardScreen({
               ) : null}
 
               <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" fontSize="xl" noOfLines={2}>
+                <VStack align="start" gap={0} minW={0}>
+                  <Text fontWeight="900" fontSize="xl" lineClamp={2}>
                     {selectedProduct.name}
                   </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                     {selectedProduct.isArchived
                       ? `${t("admin.inventory.archived")} ${selectedProduct.archivedAt ? formatShortDate(selectedProduct.archivedAt) : ""}`.trim()
                       : formatInventoryStoresEnabled(selectedProduct.enabledStoreCount)}
@@ -2764,9 +2758,8 @@ export function AdminDashboardScreen({
               </HStack>
             </VStack>
           </Box>
-
           <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-            <HStack spacing={2}>
+            <HStack gap={2}>
               {(["overview", "settings", "stores"] as ProductDetailMode[]).map((mode) => {
                 const isActive = productDetailMode === mode;
 
@@ -2791,11 +2784,10 @@ export function AdminDashboardScreen({
               })}
             </HStack>
           </Box>
-
           {productDetailMode === "overview" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <SimpleGrid columns={2} spacing={3}>
+              <VStack align="stretch" gap={3}>
+                <SimpleGrid columns={2} gap={3}>
                   {[
                     { label: t("admin.inventory.defaultPrice"), value: formatEur(selectedProduct.defaultPrice) },
                     {
@@ -2825,11 +2817,10 @@ export function AdminDashboardScreen({
               </VStack>
             </Box>
           ) : null}
-
           {productDetailMode === "settings" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <VStack align="stretch" spacing={2}>
+              <VStack align="stretch" gap={3}>
+                <VStack align="stretch" gap={2}>
                   <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                     {t("admin.inventory.productName")}
                   </Text>
@@ -2848,7 +2839,7 @@ export function AdminDashboardScreen({
                   />
                 </VStack>
 
-                <VStack align="stretch" spacing={2}>
+                <VStack align="stretch" gap={2}>
                   <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                     {t("admin.inventory.defaultPrice")}
                   </Text>
@@ -2868,7 +2859,7 @@ export function AdminDashboardScreen({
                   />
                 </VStack>
 
-                <SimpleGrid columns={2} spacing={2}>
+                <SimpleGrid columns={2} gap={2}>
                   <Button
                     borderRadius="16px"
                     bg={draft.isActive ? "brand.500" : "rgba(241,240,236,0.95)"}
@@ -2905,7 +2896,7 @@ export function AdminDashboardScreen({
                   bg="surface.900"
                   color="white"
                   _hover={{ bg: "surface.700" }}
-                  isLoading={Boolean(pendingProductIds[selectedProduct.id])}
+                  loading={Boolean(pendingProductIds[selectedProduct.id])}
                   onClick={() => void handleSaveProduct(selectedProduct.id)}
                 >
                   {t("admin.inventory.saveProduct")}
@@ -2919,7 +2910,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="brand.600"
                       _hover={{ bg: "rgba(74,132,244,0.12)" }}
-                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
+                      loading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleRestoreProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       {t("admin.inventory.restoreProduct")}
@@ -2930,7 +2921,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="red.500"
                       _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
+                      loading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       {t("admin.inventory.deleteProduct")}
@@ -2944,7 +2935,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="red.500"
                       _hover={{ bg: "rgba(248,113,113,0.12)" }}
-                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
+                      loading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleDeleteProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       {t("admin.inventory.deleteProduct")}
@@ -2955,7 +2946,7 @@ export function AdminDashboardScreen({
                       variant="ghost"
                       color="surface.700"
                       _hover={{ bg: "rgba(18,18,18,0.06)" }}
-                      isLoading={Boolean(pendingProductIds[selectedProduct.id])}
+                      loading={Boolean(pendingProductIds[selectedProduct.id])}
                       onClick={() => void handleArchiveProduct(selectedProduct.id, selectedProduct.name)}
                     >
                       {t("admin.inventory.archiveProduct")}
@@ -2965,11 +2956,10 @@ export function AdminDashboardScreen({
               </VStack>
             </Box>
           ) : null}
-
           {productDetailMode === "stores" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <VStack align="start" spacing={0}>
+              <VStack align="stretch" gap={3}>
+                <VStack align="start" gap={0}>
                   <Text fontWeight="900" fontSize="lg">
                     {t("admin.inventory.storeAvailability")}
                   </Text>
@@ -2987,13 +2977,13 @@ export function AdminDashboardScreen({
 
                   return (
                     <Box key={setting.storeProductId} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                      <VStack align="stretch" spacing={3}>
+                      <VStack align="stretch" gap={3}>
                         <HStack justify="space-between" align="center" gap={3}>
-                          <VStack align="start" spacing={0} minW={0}>
-                            <Text fontWeight="900" noOfLines={1}>
+                          <VStack align="start" gap={0} minW={0}>
+                            <Text fontWeight="900" lineClamp={1}>
                               {setting.storeName}
                             </Text>
-                            <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                            <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                               {storeInfo?.address?.trim() || t("admin.inventory.storeLocationMissing")}
                             </Text>
                           </VStack>
@@ -3003,7 +2993,7 @@ export function AdminDashboardScreen({
                           />
                         </HStack>
 
-                        <VStack align="stretch" spacing={2}>
+                        <VStack align="stretch" gap={2}>
                           <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                             {t("admin.inventory.storePrice")}
                           </Text>
@@ -3026,7 +3016,7 @@ export function AdminDashboardScreen({
                           />
                         </VStack>
 
-                        <SimpleGrid columns={2} spacing={2}>
+                        <SimpleGrid columns={2} gap={2}>
                           <Button
                             borderRadius="16px"
                             bg={storeDraft.isEnabled ? "brand.500" : "rgba(241,240,236,0.95)"}
@@ -3063,7 +3053,7 @@ export function AdminDashboardScreen({
                           bg="surface.900"
                           color="white"
                           _hover={{ bg: "surface.700" }}
-                          isLoading={Boolean(pendingStoreProductIds[setting.storeProductId])}
+                          loading={Boolean(pendingStoreProductIds[setting.storeProductId])}
                           onClick={() => void handleSaveProductStoreSetting(setting.storeProductId)}
                         >
                           {t("admin.inventory.saveStoreSettings")}
@@ -3106,9 +3096,9 @@ export function AdminDashboardScreen({
       const isProductAvailable = draft.isEnabled && selectedItem.isProductActive;
 
       return (
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               {!supportsTelegramBackButton ? (
                 <HStack justify="flex-start">
                   <Button
@@ -3127,15 +3117,15 @@ export function AdminDashboardScreen({
               ) : null}
 
               <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" fontSize="xl" noOfLines={2}>
+                <VStack align="start" gap={0} minW={0}>
+                  <Text fontWeight="900" fontSize="xl" lineClamp={2}>
                     {selectedItem.productName}
                   </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                     {selectedStore?.name ?? selectedItem.storeName}
                   </Text>
                 </VStack>
-                <VStack align="end" spacing={1} flexShrink={0}>
+                <VStack align="end" gap={1} flexShrink={0}>
                   <StatusPill
                     label={`${selectedItem.stockQuantity} ${t("admin.inventory.units")}`}
                     tone={selectedItem.stockQuantity <= 10 ? "orange" : "blue"}
@@ -3148,9 +3138,8 @@ export function AdminDashboardScreen({
               </HStack>
             </VStack>
           </Box>
-
           <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-            <HStack spacing={2}>
+            <HStack gap={2}>
               {(["overview", "settings", "stock"] as InventoryDetailMode[]).map((mode) => {
                 const isActive = inventoryDetailMode === mode;
 
@@ -3175,10 +3164,9 @@ export function AdminDashboardScreen({
               })}
             </HStack>
           </Box>
-
           {inventoryDetailMode === "overview" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
                     {t("admin.inventory.productOverview")}
@@ -3188,7 +3176,7 @@ export function AdminDashboardScreen({
                   </Text>
                 </HStack>
 
-                <SimpleGrid columns={2} spacing={3}>
+                <SimpleGrid columns={2} gap={3}>
                   {[
                     { label: t("admin.inventory.storePrice"), value: formatEur(selectedItem.storePrice) },
                     { label: t("admin.inventory.defaultPrice"), value: formatEur(selectedItem.defaultPrice) },
@@ -3206,7 +3194,7 @@ export function AdminDashboardScreen({
                   ))}
                 </SimpleGrid>
 
-                <VStack align="stretch" spacing={0}>
+                <VStack align="stretch" gap={0}>
                   <HStack justify="space-between" pb={2}>
                     <Text fontWeight="900" fontSize="lg">
                       {t("admin.inventory.recentMovements")}
@@ -3233,20 +3221,20 @@ export function AdminDashboardScreen({
                           borderTop={index === 0 ? "1px solid" : "1px solid"}
                           borderColor="rgba(226,224,218,0.82)"
                         >
-                          <VStack align="start" spacing={0} minW={0} flex="1">
-                            <Text fontWeight="900" noOfLines={1}>
+                          <VStack align="start" gap={0} minW={0} flex="1">
+                            <Text fontWeight="900" lineClamp={1}>
                               {movementUi.title}
                             </Text>
                             {movementMeta ? (
-                              <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                              <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                                 {movementMeta}
                               </Text>
                             ) : null}
-                            <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
+                            <Text fontSize="xs" color="surface.500" fontWeight="700" lineClamp={1}>
                               {formatDateTime(entry.createdAt)} · {entry.actor?.full_name ?? t("admin.inventory.unknownActor")}
                             </Text>
                           </VStack>
-                          <VStack align="end" spacing={0} flexShrink={0}>
+                          <VStack align="end" gap={0} flexShrink={0}>
                             <Text fontWeight="900" color={entry.quantityDelta >= 0 ? "green.500" : "red.400"}>
                               {entry.quantityDelta >= 0 ? "+" : ""}
                               {entry.quantityDelta}
@@ -3267,11 +3255,10 @@ export function AdminDashboardScreen({
               </VStack>
             </Box>
           ) : null}
-
           {inventoryDetailMode === "settings" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <VStack align="start" spacing={0}>
+              <VStack align="stretch" gap={3}>
+                <VStack align="start" gap={0}>
                   <Text fontWeight="900" fontSize="lg">
                     {t("admin.inventory.priceAvailability")}
                   </Text>
@@ -3280,7 +3267,7 @@ export function AdminDashboardScreen({
                   </Text>
                 </VStack>
 
-                <VStack align="stretch" spacing={2}>
+                <VStack align="stretch" gap={2}>
                   <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
                     {t("admin.inventory.storePrice")}
                   </Text>
@@ -3303,7 +3290,7 @@ export function AdminDashboardScreen({
                   />
                 </VStack>
 
-                <SimpleGrid columns={2} spacing={2}>
+                <SimpleGrid columns={2} gap={2}>
                   <Button
                     borderRadius="16px"
                     bg={draft.isEnabled ? "brand.500" : "rgba(241,240,236,0.95)"}
@@ -3340,7 +3327,7 @@ export function AdminDashboardScreen({
                   bg="surface.900"
                   color="white"
                   _hover={{ bg: "surface.700" }}
-                  isLoading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
+                  loading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
                   onClick={() => void handleSaveStoreProduct(selectedItem.storeProductId)}
                 >
                   {t("admin.inventory.savePriceStatus")}
@@ -3348,11 +3335,10 @@ export function AdminDashboardScreen({
               </VStack>
             </Box>
           ) : null}
-
           {inventoryDetailMode === "stock" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
-                <VStack align="start" spacing={0}>
+              <VStack align="stretch" gap={3}>
+                <VStack align="start" gap={0}>
                   <Text fontWeight="900" fontSize="lg">
                     {t("admin.inventory.stockMovement")}
                   </Text>
@@ -3361,7 +3347,7 @@ export function AdminDashboardScreen({
                   </Text>
                 </VStack>
 
-                <SimpleGrid columns={3} spacing={2}>
+                <SimpleGrid columns={3} gap={2}>
                   {([
                     ["restock", t("admin.inventory.restock")],
                     ["writeoff", t("admin.inventory.writeoff")],
@@ -3400,7 +3386,7 @@ export function AdminDashboardScreen({
                   })}
                 </SimpleGrid>
 
-                <HStack justify="center" spacing={6} bg={panelMutedSurface} py={3} px={5} borderRadius="20px">
+                <HStack justify="center" gap={6} bg={panelMutedSurface} py={3} px={5} borderRadius="20px">
                   <Button
                     aria-label={t("admin.inventory.decreaseQuantity")}
                     minW="48px"
@@ -3423,7 +3409,7 @@ export function AdminDashboardScreen({
                   >
                     -
                   </Button>
-                  <VStack spacing={0}>
+                  <VStack gap={0}>
                     <Text fontSize="2xl" fontWeight="900" color="surface.900" lineHeight="1">
                       {movementQuantity}
                     </Text>
@@ -3478,7 +3464,7 @@ export function AdminDashboardScreen({
                   bg={movementTone.bg}
                   color={movementTone.color}
                   _hover={{ bg: movementTone.hover }}
-                  isLoading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
+                  loading={Boolean(pendingStoreProductIds[selectedItem.storeProductId])}
                   onClick={() => void handleInventoryAdjustment(selectedItem.storeProductId, movementType)}
                 >
                   {movementLabel} {movementQuantity} {t("admin.inventory.units")}
@@ -3492,9 +3478,9 @@ export function AdminDashboardScreen({
 
     return (
       <>
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
         <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-          <HStack spacing={2}>
+          <HStack gap={2}>
             {(["stock", "products"] as InventoryMode[]).map((mode) => {
               const isActive = inventoryMode === mode;
 
@@ -3517,7 +3503,7 @@ export function AdminDashboardScreen({
         </Box>
 
         {inventoryMode === "stock" ? (
-          <SimpleGrid columns={2} spacing={3}>
+          <SimpleGrid columns={2} gap={3}>
             {inventorySummaryCards.map((card) => (
               <Box
                 key={card.label}
@@ -3541,7 +3527,7 @@ export function AdminDashboardScreen({
 
         {inventoryMode === "stock" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <Button
                 h="76px"
                 px={4}
@@ -3552,8 +3538,8 @@ export function AdminDashboardScreen({
                 _hover={{ bg: "rgba(232,231,226,0.96)" }}
                 onClick={() => setShowInventoryStoreSelector(true)}
               >
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" fontSize="lg" noOfLines={1}>
+                <VStack align="start" gap={0} minW={0}>
+                  <Text fontWeight="900" fontSize="lg" lineClamp={1}>
                     {selectedStore?.name ?? t("admin.inventory.selectStore")}
                   </Text>
                   <Text fontSize="sm" color="surface.500" fontWeight="700">
@@ -3570,7 +3556,7 @@ export function AdminDashboardScreen({
 
         {inventoryMode === "stock" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
                   {t("admin.inventory.stockList")}
@@ -3582,50 +3568,49 @@ export function AdminDashboardScreen({
 
               {visibleInventoryItems.map((item) => (
                 <Box
-                  key={item.storeProductId}
-                  as="button"
-                  type="button"
                   textAlign="left"
                   bg={panelMutedSurface}
                   borderRadius="18px"
                   px={3}
                   py={3}
-                  onClick={() => {
-                    setSelectedInventoryItemId(item.storeProductId);
-                    setInventoryDetailMode("overview");
-                    scrollToSectionTop();
-                  }}
-                >
-                  <HStack justify="space-between" align="start">
-                    <VStack align="start" spacing={1} minW={0}>
-                      <HStack spacing={2}>
-                        <Text fontWeight="900">{item.productName}</Text>
-                        {!item.isProductActive ? <StatusPill label={t("admin.inventory.productOff")} tone="orange" /> : null}
-                      </HStack>
-                      <Text fontSize="sm" color="surface.600" fontWeight="700">
-                        {formatEur(item.storePrice)}
-                      </Text>
-                      <Text fontSize="xs" color="surface.500">
-                        {t("admin.inventory.defaultPrice")} {formatEur(item.defaultPrice)} · {t("admin.inventory.updated")} {formatShortDate(item.updatedAt)}
-                      </Text>
-                    </VStack>
-                    <VStack align="center" justify="center" spacing={0} minW="56px" flexShrink={0} alignSelf="stretch">
-                      <Text fontWeight="900" fontSize="2xl" lineHeight="1">
-                        {item.stockQuantity}
-                      </Text>
-                      <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.08em">
-                        {t("admin.inventory.units")}
-                      </Text>
-                    </VStack>
-                  </HStack>
-                </Box>
+                  asChild><button
+                    key={item.storeProductId}
+                    type="button"
+                    onClick={() => {
+                      setSelectedInventoryItemId(item.storeProductId);
+                      setInventoryDetailMode("overview");
+                      scrollToSectionTop();
+                    }}>
+                    <HStack justify="space-between" align="start">
+                      <VStack align="start" gap={1} minW={0}>
+                        <HStack gap={2}>
+                          <Text fontWeight="900">{item.productName}</Text>
+                          {!item.isProductActive ? <StatusPill label={t("admin.inventory.productOff")} tone="orange" /> : null}
+                        </HStack>
+                        <Text fontSize="sm" color="surface.600" fontWeight="700">
+                          {formatEur(item.storePrice)}
+                        </Text>
+                        <Text fontSize="xs" color="surface.500">
+                          {t("admin.inventory.defaultPrice")} {formatEur(item.defaultPrice)} · {t("admin.inventory.updated")} {formatShortDate(item.updatedAt)}
+                        </Text>
+                      </VStack>
+                      <VStack align="center" justify="center" gap={0} minW="56px" flexShrink={0} alignSelf="stretch">
+                        <Text fontWeight="900" fontSize="2xl" lineHeight="1">
+                          {item.stockQuantity}
+                        </Text>
+                        <Text fontSize="10px" color="surface.500" fontWeight="800" textTransform="uppercase" letterSpacing="0.08em">
+                          {t("admin.inventory.units")}
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </button></Box>
               ))}
             </VStack>
           </Box>
         ) : (
-          <VStack spacing={4} align="stretch">
+          <VStack gap={4} align="stretch">
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
                     {productCatalogMode === "archive" ? t("admin.inventory.productArchive") : t("admin.inventory.productCatalog")}
@@ -3638,46 +3623,45 @@ export function AdminDashboardScreen({
                 {(productCatalogMode === "archive" ? visibleProductCatalog : sortedProducts).map((product) => {
                   return (
                     <Box
-                      key={product.id}
-                      as="button"
-                      type="button"
                       textAlign="left"
                       bg={panelMutedSurface}
                       borderRadius="18px"
                       px={3}
                       py={3}
-                      onClick={() => {
-                        setSelectedProductId(product.id);
-                        setProductDetailMode("overview");
-                        scrollToSectionTop();
-                      }}
-                    >
-                      <HStack justify="space-between" align="center" gap={3}>
-                        <VStack align="start" spacing={0} minW={0}>
-                          <Text fontWeight="900" noOfLines={1}>
-                            {product.name}
-                          </Text>
-                          <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                            {t("admin.inventory.defaultPrice")} {formatEur(product.defaultPrice)}
-                          </Text>
-                          <Text fontSize="xs" color="surface.500" fontWeight="700" noOfLines={1}>
-                            {productCatalogMode === "archive"
-                              ? `${t("admin.inventory.archived")} ${product.archivedAt ? formatShortDate(product.archivedAt) : ""}`.trim()
-                              : formatInventoryStoresEnabled(product.enabledStoreCount)}
-                          </Text>
-                        </VStack>
-                        <StatusPill
-                          label={
-                            productCatalogMode === "archive"
-                              ? t("admin.inventory.archived")
-                              : product.isActive
-                                ? t("admin.inventory.active")
-                                : t("admin.inventory.inactive")
-                          }
-                          tone={productCatalogMode === "archive" ? "orange" : product.isActive ? "green" : "red"}
-                        />
-                      </HStack>
-                    </Box>
+                      asChild><button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedProductId(product.id);
+                            setProductDetailMode("overview");
+                            scrollToSectionTop();
+                          }}>
+                          <HStack justify="space-between" align="center" gap={3}>
+                            <VStack align="start" gap={0} minW={0}>
+                              <Text fontWeight="900" lineClamp={1}>
+                                {product.name}
+                              </Text>
+                              <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
+                                {t("admin.inventory.defaultPrice")} {formatEur(product.defaultPrice)}
+                              </Text>
+                              <Text fontSize="xs" color="surface.500" fontWeight="700" lineClamp={1}>
+                                {productCatalogMode === "archive"
+                                  ? `${t("admin.inventory.archived")} ${product.archivedAt ? formatShortDate(product.archivedAt) : ""}`.trim()
+                                  : formatInventoryStoresEnabled(product.enabledStoreCount)}
+                              </Text>
+                            </VStack>
+                            <StatusPill
+                              label={
+                                productCatalogMode === "archive"
+                                  ? t("admin.inventory.archived")
+                                  : product.isActive
+                                    ? t("admin.inventory.active")
+                                    : t("admin.inventory.inactive")
+                              }
+                              tone={productCatalogMode === "archive" ? "orange" : product.isActive ? "green" : "red"}
+                            />
+                          </HStack>
+                        </button></Box>
                   );
                 })}
 
@@ -3801,11 +3785,11 @@ export function AdminDashboardScreen({
 
     if (selectedSale) {
       return (
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={1}>
+                <VStack align="start" gap={1}>
                   <Text fontWeight="900" fontSize="xl">
                     {t("admin.sales.saleReceipt")}
                   </Text>
@@ -3839,7 +3823,7 @@ export function AdminDashboardScreen({
 
               {selectedSale.items.map((item) => (
                 <HStack key={item.id} justify="space-between" align="start">
-                  <VStack align="start" spacing={0}>
+                  <VStack align="start" gap={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
                       {t("admin.sales.qty")} {item.quantity} x {formatEur(item.finalPrice)}
@@ -3856,7 +3840,7 @@ export function AdminDashboardScreen({
 
               <Box borderTop="1px dashed rgba(170,167,158,0.7)" />
 
-              <VStack align="stretch" spacing={2}>
+              <VStack align="stretch" gap={2}>
                 <HStack justify="space-between">
                   <Text color="surface.500" fontWeight="700">
                     {t("admin.sales.subtotal")}
@@ -3901,11 +3885,11 @@ export function AdminDashboardScreen({
 
     if (selectedReturn) {
       return (
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={1}>
+                <VStack align="start" gap={1}>
                   <Text fontWeight="900" fontSize="xl">
                     {t("admin.sales.returnReceipt")}
                   </Text>
@@ -3938,7 +3922,7 @@ export function AdminDashboardScreen({
 
               {selectedReturn.items.map((item) => (
                 <HStack key={item.id} justify="space-between" align="start">
-                  <VStack align="start" spacing={0}>
+                  <VStack align="start" gap={0}>
                     <Text fontWeight="800">{item.productNameSnapshot}</Text>
                     <Text fontSize="sm" color="surface.500">
                       {t("admin.sales.qty")} {item.quantity} x {formatEur(item.returnedPrice)}
@@ -3969,8 +3953,8 @@ export function AdminDashboardScreen({
     }
 
     return (
-      <VStack spacing={4} align="stretch">
-        <SimpleGrid columns={2} spacing={3}>
+      <VStack gap={4} align="stretch">
+        <SimpleGrid columns={2} gap={3}>
           {salesSummaryCards.map((card) => (
             <Box key={card.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
               <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
@@ -3982,10 +3966,9 @@ export function AdminDashboardScreen({
             </Box>
           ))}
         </SimpleGrid>
-
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={3}>
-            <HStack spacing={2}>
+          <VStack align="stretch" gap={3}>
+            <HStack gap={2}>
               {(["today", "week", "month", "custom"] as SalesPeriod[]).map((period) => {
                 const isActive = salesPeriod === period;
 
@@ -4006,64 +3989,70 @@ export function AdminDashboardScreen({
               })}
             </HStack>
 
-            <SimpleGrid columns={2} spacing={2}>
-              <Select
-                value={salesStoreFilter}
-                onChange={(event) => {
-                  const storeId = event.target.value;
-                  setSalesStoreFilter(storeId);
-                  void handleApplySalesFilters({ storeId });
-                }}
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-              >
-                <option value="">{t("admin.sales.allStores")}</option>
-                {salesStores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                value={salesSellerFilter}
-                onChange={(event) => {
-                  const sellerId = event.target.value;
-                  setSalesSellerFilter(sellerId);
-                  void handleApplySalesFilters({ sellerId });
-                }}
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-              >
-                <option value="">{t("admin.sales.allSellers")}</option>
-                {salesSellers.map((seller) => (
-                  <option key={seller.id} value={seller.id}>
-                    {seller.fullName}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                value={salesStatusFilter}
-                onChange={(event) => {
-                  const saleStatus = event.target.value as "all" | "completed" | "deleted";
-                  setSalesStatusFilter(saleStatus);
-                  void handleApplySalesFilters({ saleStatus });
-                }}
-                borderRadius="18px"
-                bg="white"
-                borderColor="rgba(226,224,218,0.95)"
-              >
-                <option value="all">{t("admin.sales.allSales")}</option>
-                <option value="completed">{t("admin.sales.completed")}</option>
-                <option value="deleted">{t("admin.sales.deleted")}</option>
-              </Select>
+            <SimpleGrid columns={2} gap={2}>
+              <NativeSelect.Root>
+                <NativeSelect.Field
+                  value={salesStoreFilter}
+                  onChange={(event) => {
+                    const storeId = event.target.value;
+                    setSalesStoreFilter(storeId);
+                    void handleApplySalesFilters({ storeId });
+                  }}
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)">
+                  <option value="">{t("admin.sales.allStores")}</option>
+                  {salesStores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
+              <NativeSelect.Root>
+                <NativeSelect.Field
+                  value={salesSellerFilter}
+                  onChange={(event) => {
+                    const sellerId = event.target.value;
+                    setSalesSellerFilter(sellerId);
+                    void handleApplySalesFilters({ sellerId });
+                  }}
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)">
+                  <option value="">{t("admin.sales.allSellers")}</option>
+                  {salesSellers.map((seller) => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.fullName}
+                    </option>
+                  ))}
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
+              <NativeSelect.Root>
+                <NativeSelect.Field
+                  value={salesStatusFilter}
+                  onChange={(event) => {
+                    const saleStatus = event.target.value as "all" | "completed" | "deleted";
+                    setSalesStatusFilter(saleStatus);
+                    void handleApplySalesFilters({ saleStatus });
+                  }}
+                  borderRadius="18px"
+                  bg="white"
+                  borderColor="rgba(226,224,218,0.95)">
+                  <option value="all">{t("admin.sales.allSales")}</option>
+                  <option value="completed">{t("admin.sales.completed")}</option>
+                  <option value="deleted">{t("admin.sales.deleted")}</option>
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
               <Button
                 borderRadius="18px"
                 bg={panelMutedSurface}
                 color="surface.700"
                 _hover={{ bg: "rgba(232,231,226,0.96)" }}
-                isLoading={loadingSales}
+                loading={loadingSales}
                 onClick={() => void handleApplySalesFilters()}
               >
                 {t("admin.sales.refresh")}
@@ -4071,7 +4060,7 @@ export function AdminDashboardScreen({
             </SimpleGrid>
 
             {salesPeriod === "custom" ? (
-              <SimpleGrid columns={2} spacing={2}>
+              <SimpleGrid columns={2} gap={2}>
                 <Input
                   value={salesDateFrom}
                   onChange={(event) => setSalesDateFrom(event.target.value)}
@@ -4094,7 +4083,7 @@ export function AdminDashboardScreen({
                   bg="brand.500"
                   color="white"
                   _hover={{ bg: "brand.600" }}
-                  isLoading={loadingSales}
+                  loading={loadingSales}
                   onClick={() => void handleApplySalesFilters()}
                 >
                   {t("admin.sales.applyCustomRange")}
@@ -4103,9 +4092,8 @@ export function AdminDashboardScreen({
             ) : null}
           </VStack>
         </Box>
-
         <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-          <HStack spacing={2}>
+          <HStack gap={2}>
             {(["sales", "returns"] as SalesLedgerMode[]).map((mode) => {
               const isActive = salesLedgerMode === mode;
 
@@ -4126,9 +4114,8 @@ export function AdminDashboardScreen({
             })}
           </HStack>
         </Box>
-
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={3}>
+          <VStack align="stretch" gap={3}>
             <HStack justify="space-between">
               <Text fontWeight="900" fontSize="lg">
                 {salesLedgerMode === "sales" ? t("admin.sales.salesLedger") : t("admin.sales.returnsLedger")}
@@ -4153,81 +4140,79 @@ export function AdminDashboardScreen({
             {salesLedgerMode === "sales"
               ? visibleSales.map((sale) => (
                   <Box
-                    key={sale.id}
-                    as="button"
-                    type="button"
                     textAlign="left"
                     bg={panelMutedSurface}
                     borderRadius="18px"
                     px={3}
                     py={3}
-                    onClick={() => setSelectedAdminSaleId(sale.id)}
-                  >
-                    <HStack justify="space-between" align="start">
-                      <VStack align="start" spacing={1} minW={0}>
-                        <HStack spacing={2}>
-                          <Text fontWeight="900" noOfLines={1}>
-                            {t("admin.sales.saleRef")}
+                    asChild><button
+                      key={sale.id}
+                      type="button"
+                      onClick={() => setSelectedAdminSaleId(sale.id)}>
+                      <HStack justify="space-between" align="start">
+                        <VStack align="start" gap={1} minW={0}>
+                          <HStack gap={2}>
+                            <Text fontWeight="900" lineClamp={1}>
+                              {t("admin.sales.saleRef")}
+                            </Text>
+                            <StatusPill
+                              label={formatAdminPaymentMethod(sale.paymentMethod)}
+                              tone={sale.paymentMethod === "cash" ? "green" : "blue"}
+                            />
+                          </HStack>
+                          <Text fontSize="sm" color="surface.600" fontWeight="700">
+                            {sale.store?.name ?? t("admin.sales.unknownStore")}
                           </Text>
-                          <StatusPill
-                            label={formatAdminPaymentMethod(sale.paymentMethod)}
-                            tone={sale.paymentMethod === "cash" ? "green" : "blue"}
-                          />
-                        </HStack>
-                        <Text fontSize="sm" color="surface.600" fontWeight="700">
-                          {sale.store?.name ?? t("admin.sales.unknownStore")}
-                        </Text>
-                        <Text fontSize="xs" color="surface.500">
-                          {formatShortDate(sale.createdAt)} · {formatSalesTime(sale.createdAt)} ·{" "}
-                          {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatSaleItemsCount(sale.items.length)}
-                        </Text>
-                      </VStack>
-                      <VStack align="end" spacing={1}>
-                        <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
-                        {sale.status === "deleted" ? (
-                          <StatusPill
-                            label={t("status.deleted")}
-                            tone="red"
-                          />
-                        ) : null}
-                      </VStack>
-                    </HStack>
-                  </Box>
+                          <Text fontSize="xs" color="surface.500">
+                            {formatShortDate(sale.createdAt)} · {formatSalesTime(sale.createdAt)} ·{" "}
+                            {sale.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatSaleItemsCount(sale.items.length)}
+                          </Text>
+                        </VStack>
+                        <VStack align="end" gap={1}>
+                          <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
+                          {sale.status === "deleted" ? (
+                            <StatusPill
+                              label={t("status.deleted")}
+                              tone="red"
+                            />
+                          ) : null}
+                        </VStack>
+                      </HStack>
+                    </button></Box>
                 ))
               : visibleReturns.map((entry) => (
                   <Box
-                    key={entry.id}
-                    as="button"
-                    type="button"
                     textAlign="left"
                     bg={panelMutedSurface}
                     borderRadius="18px"
                     px={3}
                     py={3}
-                    onClick={() => setSelectedAdminReturnId(entry.id)}
-                  >
-                    <HStack justify="space-between" align="start">
-                      <VStack align="start" spacing={1} minW={0}>
-                        <HStack spacing={2}>
-                          <Text fontWeight="900">{t("admin.sales.return")}</Text>
-                          <StatusPill label={t("admin.sales.return")} tone="orange" />
-                        </HStack>
-                        <Text fontSize="sm" color="surface.600" fontWeight="700">
-                          {entry.store?.name ?? t("admin.sales.unknownStore")}
-                        </Text>
-                        <Text fontSize="xs" color="surface.500">
-                          {formatShortDate(entry.createdAt)} · {formatSalesTime(entry.createdAt)} ·{" "}
-                          {entry.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatSaleItemsCount(entry.items.length)}
-                        </Text>
-                      </VStack>
-                      <VStack align="end" spacing={1}>
-                        <Text fontWeight="900">{formatEur(entry.totalAmount)}</Text>
-                        <Text fontSize="xs" color="surface.500" fontWeight="700">
-                          Sale {entry.saleId.slice(0, 8)}
-                        </Text>
-                      </VStack>
-                    </HStack>
-                  </Box>
+                    asChild><button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => setSelectedAdminReturnId(entry.id)}>
+                      <HStack justify="space-between" align="start">
+                        <VStack align="start" gap={1} minW={0}>
+                          <HStack gap={2}>
+                            <Text fontWeight="900">{t("admin.sales.return")}</Text>
+                            <StatusPill label={t("admin.sales.return")} tone="orange" />
+                          </HStack>
+                          <Text fontSize="sm" color="surface.600" fontWeight="700">
+                            {entry.store?.name ?? t("admin.sales.unknownStore")}
+                          </Text>
+                          <Text fontSize="xs" color="surface.500">
+                            {formatShortDate(entry.createdAt)} · {formatSalesTime(entry.createdAt)} ·{" "}
+                            {entry.seller?.fullName ?? t("admin.sales.unknownSeller")} · {formatSaleItemsCount(entry.items.length)}
+                          </Text>
+                        </VStack>
+                        <VStack align="end" gap={1}>
+                          <Text fontWeight="900">{formatEur(entry.totalAmount)}</Text>
+                          <Text fontSize="xs" color="surface.500" fontWeight="700">
+                            Sale {entry.saleId.slice(0, 8)}
+                          </Text>
+                        </VStack>
+                      </HStack>
+                    </button></Box>
                 ))}
           </VStack>
         </Box>
@@ -4253,8 +4238,8 @@ export function AdminDashboardScreen({
 
   const renderStaffSection = () => (
     <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-      <VStack align="stretch" spacing={3}>
-        <VStack align="start" spacing={0}>
+      <VStack align="stretch" gap={3}>
+        <VStack align="start" gap={0}>
           <Text fontWeight="900" fontSize="lg">
             {t("admin.team.staffDirectory")}
           </Text>
@@ -4268,37 +4253,36 @@ export function AdminDashboardScreen({
 
           return (
             <Box
-              key={seller.id}
-              as="button"
-              type="button"
               textAlign="left"
               bg={panelMutedSurface}
               borderRadius="18px"
               px={3}
               py={3}
               border={0}
-              onClick={() => {
-                setSelectedStaffSellerId(seller.id);
-                setStaffDetailMode("overview");
-                setStaffActivityPage(0);
-                scrollToSectionTop();
-              }}
-            >
-              <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" noOfLines={1}>
-                    {seller.fullName}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
-                    {seller.currentAssignment?.storeName ?? t("admin.team.unassigned")}
-                  </Text>
-                </VStack>
+              asChild><button
+                  key={seller.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedStaffSellerId(seller.id);
+                    setStaffDetailMode("overview");
+                    setStaffActivityPage(0);
+                    scrollToSectionTop();
+                  }}>
+                  <HStack justify="space-between" align="center" gap={3}>
+                    <VStack align="start" gap={0} minW={0}>
+                      <Text fontWeight="900" lineClamp={1}>
+                        {seller.fullName}
+                      </Text>
+                      <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
+                        {seller.currentAssignment?.storeName ?? t("admin.team.unassigned")}
+                      </Text>
+                    </VStack>
 
-                <Box flexShrink={0}>
-                  <StatusPill label={status.label} tone={status.tone} />
-                </Box>
-              </HStack>
-            </Box>
+                    <Box flexShrink={0}>
+                      <StatusPill label={status.label} tone={status.tone} />
+                    </Box>
+                  </HStack>
+                </button></Box>
           );
         })}
 
@@ -4385,9 +4369,9 @@ export function AdminDashboardScreen({
     const commissionDraft = staffCommissionDrafts[seller.id] ?? "0";
 
     return (
-      <VStack spacing={4} align="stretch">
+      <VStack gap={4} align="stretch">
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={4}>
+          <VStack align="stretch" gap={4}>
             {!supportsTelegramBackButton ? (
               <HStack justify="flex-start">
                 <Button
@@ -4406,13 +4390,13 @@ export function AdminDashboardScreen({
             ) : null}
 
             <HStack justify="space-between" align="center">
-              <HStack spacing={3} minW={0}>
-                <Avatar size="md" name={seller.fullName} bg="surface.200" color="surface.800" />
-                <VStack align="start" spacing={0} minW={0}>
-                  <Text fontWeight="900" fontSize="xl" noOfLines={1}>
+              <HStack gap={3} minW={0}>
+                <Avatar.Root size="md" bg="surface.200" color="surface.800"><Avatar.Fallback name={seller.fullName} /></Avatar.Root>
+                <VStack align="start" gap={0} minW={0}>
+                  <Text fontWeight="900" fontSize="xl" lineClamp={1}>
                     {seller.fullName}
                   </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={1}>
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
                     {seller.currentAssignment?.storeName ?? t("admin.team.unassigned")}
                   </Text>
                 </VStack>
@@ -4422,9 +4406,8 @@ export function AdminDashboardScreen({
 
           </VStack>
         </Box>
-
         <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-          <HStack spacing={2} overflowX="auto" pb={1}>
+          <HStack gap={2} overflowX="auto" pb={1}>
             {(["overview", "profile", "worklog", "activity"] as StaffDetailMode[]).map((mode) => {
               const isActive = staffDetailMode === mode;
 
@@ -4454,10 +4437,9 @@ export function AdminDashboardScreen({
             })}
           </HStack>
         </Box>
-
         {staffDetailMode === "overview" ? (
-          <VStack spacing={4} align="stretch">
-            <SimpleGrid columns={2} spacing={3}>
+          <VStack gap={4} align="stretch">
+            <SimpleGrid columns={2} gap={3}>
               {[
                 { label: t("admin.team.revenue"), value: formatEur(seller.revenue) },
                 { label: t("admin.team.sales"), value: String(seller.salesCount) },
@@ -4468,7 +4450,7 @@ export function AdminDashboardScreen({
                   <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em">
                     {card.label}
                   </Text>
-                  <Text mt={2} fontWeight="900" fontSize={card.label === t("admin.team.lastSale") ? "sm" : "2xl"} noOfLines={2}>
+                  <Text mt={2} fontWeight="900" fontSize={card.label === t("admin.team.lastSale") ? "sm" : "2xl"} lineClamp={2}>
                     {card.value}
                   </Text>
                 </Box>
@@ -4477,7 +4459,7 @@ export function AdminDashboardScreen({
 
             {seller.activeShift ? (
               <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-                <VStack align="stretch" spacing={3}>
+                <VStack align="stretch" gap={3}>
                   <HStack justify="space-between">
                     <Text fontWeight="900" fontSize="lg">
                       {t("admin.team.currentShift")}
@@ -4485,7 +4467,7 @@ export function AdminDashboardScreen({
                     <StatusPill label={seller.activeShift.status} tone={seller.activeShift.status === "paused" ? "orange" : "blue"} />
                   </HStack>
                   <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
-                    <VStack align="stretch" spacing={0}>
+                    <VStack align="stretch" gap={0}>
                       {[
                         { label: t("admin.team.started"), value: formatSalesTime(seller.activeShift.startedAt) },
                         { label: t("admin.team.timeOpen"), value: `${Math.floor(activeShiftMinutes / 60)}h ${activeShiftMinutes % 60}m` },
@@ -4514,7 +4496,7 @@ export function AdminDashboardScreen({
             ) : null}
 
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <HStack justify="space-between">
                   <Text fontWeight="900" fontSize="lg">
                     {t("admin.team.recentSellerSales")}
@@ -4525,12 +4507,9 @@ export function AdminDashboardScreen({
                 </HStack>
                 {sellerSales.length > 0 ? (
                   <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
-                    <VStack align="stretch" spacing={0}>
+                    <VStack align="stretch" gap={0}>
                       {sellerSales.slice(0, 5).map((sale, index, rows) => (
                         <Box
-                          key={sale.id}
-                          as="button"
-                          type="button"
                           textAlign="left"
                           border={0}
                           bg="transparent"
@@ -4538,27 +4517,29 @@ export function AdminDashboardScreen({
                           py={3}
                           borderBottom={index === rows.length - 1 ? 0 : "1px solid"}
                           borderColor="rgba(226,224,218,0.82)"
-                          onClick={() => {
-                            setSelectedAdminSaleId(sale.id);
-                            setActiveTab("sales");
-                            scrollToSectionTop();
-                          }}
-                        >
-                          <HStack justify="space-between" align="start">
-                            <VStack align="start" spacing={0}>
-                              <Text fontWeight="900">{sale.store?.name ?? t("admin.team.unknownStore")}</Text>
-                              <Text fontSize="xs" color="surface.500">
-                                {formatDateTime(sale.createdAt)} · {formatAdminPaymentMethod(sale.paymentMethod)}
-                              </Text>
-                            </VStack>
-                            <VStack align="end" spacing={0}>
-                              <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
-                              <Text fontSize="xs" color="brand.500" fontWeight="800">
-                                {t("admin.team.openReceipt")}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                        </Box>
+                          asChild><button
+                            key={sale.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedAdminSaleId(sale.id);
+                              setActiveTab("sales");
+                              scrollToSectionTop();
+                            }}>
+                            <HStack justify="space-between" align="start">
+                              <VStack align="start" gap={0}>
+                                <Text fontWeight="900">{sale.store?.name ?? t("admin.team.unknownStore")}</Text>
+                                <Text fontSize="xs" color="surface.500">
+                                  {formatDateTime(sale.createdAt)} · {formatAdminPaymentMethod(sale.paymentMethod)}
+                                </Text>
+                              </VStack>
+                              <VStack align="end" gap={0}>
+                                <Text fontWeight="900">{formatEur(sale.totalAmount)}</Text>
+                                <Text fontSize="xs" color="brand.500" fontWeight="800">
+                                  {t("admin.team.openReceipt")}
+                                </Text>
+                              </VStack>
+                            </HStack>
+                          </button></Box>
                       ))}
                     </VStack>
                   </Box>
@@ -4572,10 +4553,9 @@ export function AdminDashboardScreen({
             </Box>
           </VStack>
         ) : null}
-
         {staffDetailMode === "profile" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between" align="center">
                 <Text fontWeight="900" fontSize="lg">
                   {t("admin.team.profile")}
@@ -4583,7 +4563,7 @@ export function AdminDashboardScreen({
                 <StatusPill label={seller.isActive ? t("admin.team.active") : t("admin.team.inactive")} tone={seller.isActive ? "green" : "red"} />
               </HStack>
               <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
-                <VStack align="stretch" spacing={0}>
+                <VStack align="stretch" gap={0}>
                   <HStack justify="space-between" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
                       {t("admin.team.telegramId")}
@@ -4600,32 +4580,34 @@ export function AdminDashboardScreen({
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
                       {t("admin.team.assignedStore")}
                     </Text>
-                    <Select
-                      value={staffAssignments[seller.id] ?? ""}
-                      onChange={(event) =>
-                        setStaffAssignments((current) => ({
-                          ...current,
-                          [seller.id]: event.target.value,
-                        }))
-                      }
-                      h="42px"
-                      maxW="190px"
-                      borderRadius="14px"
-                      bg="white"
-                      borderColor="rgba(226,224,218,0.95)"
-                      fontWeight="800"
-                    >
-                      <option value="" disabled>
-                        {t("admin.team.selectStore")}
-                      </option>
-                      {stores
-                        .filter((store) => store.isActive)
-                        .map((store) => (
-                          <option key={store.id} value={store.id}>
-                            {store.name}
-                          </option>
-                        ))}
-                    </Select>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        value={staffAssignments[seller.id] ?? ""}
+                        onChange={(event) =>
+                          setStaffAssignments((current) => ({
+                            ...current,
+                            [seller.id]: event.target.value,
+                          }))
+                        }
+                        h="42px"
+                        maxW="190px"
+                        borderRadius="14px"
+                        bg="white"
+                        borderColor="rgba(226,224,218,0.95)"
+                        fontWeight="800">
+                        <option value="" disabled>
+                          {t("admin.team.selectStore")}
+                        </option>
+                        {stores
+                          .filter((store) => store.isActive)
+                          .map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.name}
+                            </option>
+                          ))}
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
                   </HStack>
                   <HStack justify="space-between" align="center" px={1} py={3}>
                     <Text color="surface.500" fontWeight="800" fontSize="sm">
@@ -4661,8 +4643,8 @@ export function AdminDashboardScreen({
                 bg="brand.500"
                 color="white"
                 _hover={{ bg: "brand.600" }}
-                isLoading={Boolean(pendingSellerIds[seller.id])}
-                isDisabled={!seller.isActive || !staffAssignments[seller.id]}
+                loading={Boolean(pendingSellerIds[seller.id])}
+                disabled={!seller.isActive || !staffAssignments[seller.id]}
                 onClick={() => void handleAssignSeller(seller.id)}
               >
                 {t("admin.team.saveAssignment")}
@@ -4672,7 +4654,7 @@ export function AdminDashboardScreen({
                 variant="outline"
                 borderColor="surface.200"
                 color="surface.800"
-                isDisabled={!seller.currentAssignment || !seller.isActive}
+                disabled={!seller.currentAssignment || !seller.isActive}
                 onClick={() => void onViewAsSeller(seller.id)}
               >
                 {t("admin.team.viewAsSeller")}
@@ -4680,10 +4662,9 @@ export function AdminDashboardScreen({
             </VStack>
           </Box>
         ) : null}
-
         {staffDetailMode === "worklog" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
                   {t("admin.team.worklog")}
@@ -4693,10 +4674,10 @@ export function AdminDashboardScreen({
                 </Text>
               </HStack>
               <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
-                <VStack align="stretch" spacing={0}>
+                <VStack align="stretch" gap={0}>
                   {seller.activeShift ? (
                     <HStack justify="space-between" align="start" px={1} py={3} borderBottom="1px solid" borderColor="rgba(226,224,218,0.82)">
-                      <VStack align="start" spacing={0}>
+                      <VStack align="start" gap={0}>
                         <Text fontWeight="900">{t("admin.team.currentShiftLower")}</Text>
                         <Text fontSize="sm" color="surface.500">
                           {seller.activeShift.storeName} · {t("admin.team.startedLower")} {formatSalesTime(seller.activeShift.startedAt)}
@@ -4716,10 +4697,9 @@ export function AdminDashboardScreen({
             </VStack>
           </Box>
         ) : null}
-
         {staffDetailMode === "activity" ? (
           <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                 <Text fontWeight="900" fontSize="lg">
                   {t("admin.team.activityFeed")}
@@ -4730,7 +4710,7 @@ export function AdminDashboardScreen({
               </HStack>
               {visibleActivityItems.length > 0 ? (
                 <Box bg="rgba(255,255,255,0.54)" borderRadius="20px" overflow="hidden">
-                  <VStack align="stretch" spacing={0}>
+                  <VStack align="stretch" gap={0}>
                     {visibleActivityItems.map((item, index) => {
                       const Icon = item.icon;
 
@@ -4744,7 +4724,7 @@ export function AdminDashboardScreen({
                           borderBottom={index === visibleActivityItems.length - 1 ? 0 : "1px solid"}
                           borderColor="rgba(226,224,218,0.82)"
                         >
-                          <HStack spacing={3} align="start" minW={0}>
+                          <HStack gap={3} align="start" minW={0}>
                             <Box
                               w="42px"
                               h="42px"
@@ -4755,11 +4735,11 @@ export function AdminDashboardScreen({
                               color={item.iconColor}
                               flexShrink={0}
                             >
-                              <Box as={Icon} boxSize={6} strokeWidth={2.5} />
+                              <Box boxSize={6} strokeWidth={2.5} asChild><Icon /></Box>
                             </Box>
-                            <VStack align="start" spacing={0} minW={0}>
+                            <VStack align="start" gap={0} minW={0}>
                               <Text fontWeight="900">{item.title}</Text>
-                              <Text fontSize="sm" color="surface.500" noOfLines={2}>
+                              <Text fontSize="sm" color="surface.500" lineClamp={2}>
                                 {item.meta}
                               </Text>
                               <Text fontSize="xs" color="surface.400" fontWeight="700">
@@ -4783,7 +4763,7 @@ export function AdminDashboardScreen({
                     borderRadius="14px"
                     variant="outline"
                     borderColor="surface.200"
-                    isDisabled={safeActivityPage === 0}
+                    disabled={safeActivityPage === 0}
                     onClick={() => setStaffActivityPage((current) => Math.max(0, current - 1))}
                   >
                     {t("admin.team.previous")}
@@ -4796,7 +4776,7 @@ export function AdminDashboardScreen({
                     borderRadius="14px"
                     variant="outline"
                     borderColor="surface.200"
-                    isDisabled={safeActivityPage >= activityTotalPages - 1}
+                    disabled={safeActivityPage >= activityTotalPages - 1}
                     onClick={() => setStaffActivityPage((current) => Math.min(activityTotalPages - 1, current + 1))}
                   >
                     {t("admin.team.next")}
@@ -4852,8 +4832,8 @@ export function AdminDashboardScreen({
 
   const renderWizardPanel = (label: string, title: string, description?: string, content?: React.ReactNode) => (
     <Box bg={panelSurface} borderRadius="28px" px={5} py={5} boxShadow={panelShadow}>
-      <VStack align="stretch" spacing={4}>
-        <VStack align="stretch" spacing={1}>
+      <VStack align="stretch" gap={4}>
+        <VStack align="stretch" gap={1}>
           <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="900">
             {label}
           </Text>
@@ -4988,30 +4968,32 @@ export function AdminDashboardScreen({
                     t("admin.team.assignedStore"),
                     stores.find((store) => store.id === newSeller.storeId)?.name ?? t("admin.team.noStoreYet"),
                     "Выберите магазин сейчас или оставьте продавца без привязки на этом шаге.",
-                    <Select
-                      ref={sellerStoreSelectRef}
-                      value={newSeller.storeId}
-                      onChange={(event) =>
-                        setNewSeller((current) => ({ ...current, storeId: event.target.value }))
-                      }
-                      onFocus={scrollFocusedInputIntoView}
-                      {...adminFormInputStyles}
-                    >
-                      <option value="">{t("admin.team.noStoreYet")}</option>
-                      {stores
-                        .filter((store) => store.isActive)
-                        .map((store) => (
-                          <option key={store.id} value={store.id}>
-                            {store.name}
-                          </option>
-                        ))}
-                    </Select>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        ref={sellerStoreSelectRef}
+                        value={newSeller.storeId}
+                        onChange={(event) =>
+                          setNewSeller((current) => ({ ...current, storeId: event.target.value }))
+                        }
+                        onFocus={scrollFocusedInputIntoView}
+                        {...adminFormInputStyles}>
+                        <option value="">{t("admin.team.noStoreYet")}</option>
+                        {stores
+                          .filter((store) => store.isActive)
+                          .map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.name}
+                            </option>
+                          ))}
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
                   )
                 : renderWizardPanel(
                     t("admin.inventory.status"),
                     newSeller.isActive ? t("admin.team.active") : t("admin.team.inactive"),
                     "Определите, должен ли продавец сразу получить доступ к работе.",
-                    <SimpleGrid columns={2} spacing={3}>
+                    <SimpleGrid columns={2} gap={3}>
                       {[
                         { label: t("admin.team.active"), value: true },
                         { label: t("admin.team.inactive"), value: false },
@@ -5124,7 +5106,7 @@ export function AdminDashboardScreen({
                   t("admin.inventory.status"),
                   newProductIsActive ? t("admin.inventory.active") : t("admin.inventory.inactive"),
                   "Определите, должен ли товар сразу появиться в активном каталоге.",
-                  <SimpleGrid columns={2} spacing={3}>
+                  <SimpleGrid columns={2} gap={3}>
                     <Button
                       h="56px"
                       borderRadius="20px"
@@ -5158,148 +5140,157 @@ export function AdminDashboardScreen({
 
   const renderInventoryStoreSelector = () =>
     showInventoryStoreSelector ? (
-      <Modal isOpen onClose={() => setShowInventoryStoreSelector(false)} isCentered motionPreset="slideInBottom">
-        <ModalOverlay bg="rgba(14, 12, 10, 0.32)" backdropFilter="blur(10px)" />
-        <ModalContent
-          mx={4}
-          borderRadius="30px"
-          bg="rgba(255,255,255,0.96)"
-          boxShadow="0 24px 60px rgba(18, 18, 18, 0.18)"
-          overflow="hidden"
-        >
-          <ModalBody px={4} py={4}>
-            <VStack align="stretch" spacing={4}>
-              <Box
-                borderRadius="24px"
-                px={4}
-                py={4}
-                bg="linear-gradient(180deg, rgba(247,246,242,0.98) 0%, rgba(240,238,231,0.92) 100%)"
-                border="1px solid rgba(228,225,218,0.9)"
-              >
-                <HStack align="start" justify="space-between" gap={3}>
-                  <VStack align="start" spacing={1}>
-                    <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.12em" fontWeight="900">
-                      {t("nav.inventory")}
-                    </Text>
-                    <Text fontSize="2xl" fontWeight="900" lineHeight="1.05">
-                      {t("admin.inventory.selectStoreTitle")}
-                    </Text>
-                    <Text color="surface.500" fontSize="sm" fontWeight="700">
-                      {t("admin.inventory.selectStoreDescription")}
-                    </Text>
-                  </VStack>
-                </HStack>
-              </Box>
+      <Dialog.Root open placement='center' motionPreset="slide-in-bottom" onOpenChange={e => {
+        if (!e.open) {
+          setShowInventoryStoreSelector(false);
+        }
+      }}>
+        <Portal>
 
-              <VStack align="stretch" spacing={3} maxH="52vh" overflowY="auto" pr={1}>
-                {inventoryStores.map((store) => {
-                  const isActive = selectedInventoryStoreId === store.id;
+          <Dialog.Backdrop bg="rgba(14, 12, 10, 0.32)" backdropFilter="blur(10px)" />
+          <Dialog.Positioner>
+            <Dialog.Content
+              mx={4}
+              borderRadius="30px"
+              bg="rgba(255,255,255,0.96)"
+              boxShadow="0 24px 60px rgba(18, 18, 18, 0.18)"
+              overflow="hidden">
+              <Dialog.Body px={4} py={4}>
+                <VStack align="stretch" gap={4}>
+                  <Box
+                    borderRadius="24px"
+                    px={4}
+                    py={4}
+                    bg="linear-gradient(180deg, rgba(247,246,242,0.98) 0%, rgba(240,238,231,0.92) 100%)"
+                    border="1px solid rgba(228,225,218,0.9)"
+                  >
+                    <HStack align="start" justify="space-between" gap={3}>
+                      <VStack align="start" gap={1}>
+                        <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.12em" fontWeight="900">
+                          {t("nav.inventory")}
+                        </Text>
+                        <Text fontSize="2xl" fontWeight="900" lineHeight="1.05">
+                          {t("admin.inventory.selectStoreTitle")}
+                        </Text>
+                        <Text color="surface.500" fontSize="sm" fontWeight="700">
+                          {t("admin.inventory.selectStoreDescription")}
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </Box>
 
-                  return (
-                    <Button
-                      key={store.id}
-                      justifyContent="space-between"
-                      minH="80px"
-                      h="auto"
-                      px={4}
-                      py={4}
-                      borderRadius="24px"
-                      bg={
-                        isActive
-                          ? "rgba(241,240,236,0.98)"
-                          : "rgba(247,246,242,0.98)"
-                      }
-                      color="surface.900"
-                      border="1px solid"
-                      borderColor={isActive ? "rgba(214,210,201,0.96)" : "rgba(226,224,218,0.92)"}
-                      boxShadow="none"
-                      _hover={{
-                        bg: isActive
-                          ? "rgba(238,236,231,1)"
-                          : "rgba(255,255,255,1)",
-                      }}
-                      _focus={{ boxShadow: "none" }}
-                      _focusVisible={{
-                        boxShadow: "none",
-                        outline: "none",
-                      }}
-                      onClick={() => {
-                        const cachedSnapshot = inventoryCache[store.id];
-                        if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
-                          setInventoryView(cachedSnapshot);
-                          setInventorySoftRefreshing(false);
-                          setSelectedInventoryItemId(null);
-                          setSelectedInventoryStoreId(store.id);
-                          setShowInventoryStoreSelector(false);
-                          return;
-                        }
+                  <VStack align="stretch" gap={3} maxH="52vh" overflowY="auto" pr={1}>
+                    {inventoryStores.map((store) => {
+                      const isActive = selectedInventoryStoreId === store.id;
 
-                        setInventorySoftRefreshing(true);
-                        setSelectedInventoryItemId(null);
-                        setShowInventoryStoreSelector(false);
-                        void loadInventory(store.id, { silent: true })
-                          .then(() => {
-                            setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
-                            setSelectedInventoryStoreId(store.id);
-                          })
-                          .finally(() => {
-                            setInventorySoftRefreshing(false);
-                          });
-                      }}
-                    >
-                      <HStack justify="space-between" align="center" w="full" gap={3}>
-                        <VStack align="start" spacing={1} minW={0}>
-                          <Text fontWeight="900" noOfLines={1}>
-                            {store.name}
-                          </Text>
-                          <Text fontSize="sm" color="surface.500" fontWeight="700" noOfLines={2}>
-                            {getStoreAddressLabel(
-                              stores.find((entry) => entry.id === store.id) ?? { name: store.name },
-                              t("admin.overview.addressMissing")
+                      return (
+                        <Button
+                          key={store.id}
+                          justifyContent="space-between"
+                          minH="80px"
+                          h="auto"
+                          px={4}
+                          py={4}
+                          borderRadius="24px"
+                          bg={
+                            isActive
+                              ? "rgba(241,240,236,0.98)"
+                              : "rgba(247,246,242,0.98)"
+                          }
+                          color="surface.900"
+                          border="1px solid"
+                          borderColor={isActive ? "rgba(214,210,201,0.96)" : "rgba(226,224,218,0.92)"}
+                          boxShadow="none"
+                          _hover={{
+                            bg: isActive
+                              ? "rgba(238,236,231,1)"
+                              : "rgba(255,255,255,1)",
+                          }}
+                          _focus={{ boxShadow: "none" }}
+                          _focusVisible={{
+                            boxShadow: "none",
+                            outline: "none",
+                          }}
+                          onClick={() => {
+                            const cachedSnapshot = inventoryCache[store.id];
+                            if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
+                              setInventoryView(cachedSnapshot);
+                              setInventorySoftRefreshing(false);
+                              setSelectedInventoryItemId(null);
+                              setSelectedInventoryStoreId(store.id);
+                              setShowInventoryStoreSelector(false);
+                              return;
+                            }
+
+                            setInventorySoftRefreshing(true);
+                            setSelectedInventoryItemId(null);
+                            setShowInventoryStoreSelector(false);
+                            void loadInventory(store.id, { silent: true })
+                              .then(() => {
+                                setTrustedInventoryStoreIds((current) => ({ ...current, [store.id]: true }));
+                                setSelectedInventoryStoreId(store.id);
+                              })
+                              .finally(() => {
+                                setInventorySoftRefreshing(false);
+                              });
+                          }}
+                        >
+                          <HStack justify="space-between" align="center" w="full" gap={3}>
+                            <VStack align="start" gap={1} minW={0}>
+                              <Text fontWeight="900" lineClamp={1}>
+                                {store.name}
+                              </Text>
+                              <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={2}>
+                                {getStoreAddressLabel(
+                                  stores.find((entry) => entry.id === store.id) ?? { name: store.name },
+                                  t("admin.overview.addressMissing")
+                                )}
+                              </Text>
+                            </VStack>
+                            {isActive ? (
+                              <Box
+                                w="34px"
+                                h="34px"
+                                borderRadius="999px"
+                                bg="surface.900"
+                                color="rgba(255,255,255,0.96)"
+                                display="grid"
+                                placeItems="center"
+                                flexShrink={0}
+                                boxShadow="0 8px 18px rgba(18, 18, 18, 0.14)"
+                              >
+                                <LuCheck size={18} />
+                              </Box>
+                            ) : (
+                              <Box color="surface.400" flexShrink={0}>
+                                <LuChevronDown size={18} />
+                              </Box>
                             )}
-                          </Text>
-                        </VStack>
-                        {isActive ? (
-                          <Box
-                            w="34px"
-                            h="34px"
-                            borderRadius="999px"
-                            bg="surface.900"
-                            color="rgba(255,255,255,0.96)"
-                            display="grid"
-                            placeItems="center"
-                            flexShrink={0}
-                            boxShadow="0 8px 18px rgba(18, 18, 18, 0.14)"
-                          >
-                            <LuCheck size={18} />
-                          </Box>
-                        ) : (
-                          <Box color="surface.400" flexShrink={0}>
-                            <LuChevronDown size={18} />
-                          </Box>
-                        )}
-                      </HStack>
-                    </Button>
-                  );
-                })}
-              </VStack>
+                          </HStack>
+                        </Button>
+                      );
+                    })}
+                  </VStack>
 
-              <Button
-                w="full"
-                h="54px"
-                borderRadius="20px"
-                bg="surface.100"
-                color="surface.700"
-                fontWeight="900"
-                _hover={{ bg: "surface.200" }}
-                onClick={() => setShowInventoryStoreSelector(false)}
-              >
-                {t("common.cancel")}
-              </Button>
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+                  <Button
+                    w="full"
+                    h="54px"
+                    borderRadius="20px"
+                    bg="surface.100"
+                    color="surface.700"
+                    fontWeight="900"
+                    _hover={{ bg: "surface.200" }}
+                    onClick={() => setShowInventoryStoreSelector(false)}
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                </VStack>
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+
+        </Portal>
+      </Dialog.Root>
     ) : null;
 
   const renderTeam = () => {
@@ -5313,9 +5304,9 @@ export function AdminDashboardScreen({
 
     return (
       <>
-        <VStack spacing={4} align="stretch">
+        <VStack gap={4} align="stretch">
           <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-            <HStack spacing={2}>
+            <HStack gap={2}>
               {(["stores", "staff"] as TeamMode[]).map((mode) => {
                 const isActive = teamMode === mode;
 
@@ -5473,8 +5464,8 @@ export function AdminDashboardScreen({
     if (settingsView === "reports-menu") {
       return (
         <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" spacing={3}>
-            <VStack align="start" spacing={0}>
+          <VStack align="stretch" gap={3}>
+            <VStack align="start" gap={0}>
               <Text fontWeight="900" fontSize="lg">
                 Отчеты
               </Text>
@@ -5488,9 +5479,6 @@ export function AdminDashboardScreen({
 
               return (
                 <Box
-                  key={item.type}
-                  as="button"
-                  type="button"
                   textAlign="left"
                   bg={panelMutedSurface}
                   borderRadius="18px"
@@ -5498,49 +5486,51 @@ export function AdminDashboardScreen({
                   py={3}
                   minH="84px"
                   border={0}
-                  onClick={() => {
-                    setReportType(item.type);
-                    setReportStatus(null);
-                    setReportQuickPreset("today");
-                    setSettingsView("report-detail");
-                  }}
-                >
-                  <HStack justify="space-between" align="start" spacing={3}>
-                    <HStack align="start" spacing={3} minW={0}>
+                  asChild><button
+                    key={item.type}
+                    type="button"
+                    onClick={() => {
+                      setReportType(item.type);
+                      setReportStatus(null);
+                      setReportQuickPreset("today");
+                      setSettingsView("report-detail");
+                    }}>
+                    <HStack justify="space-between" align="start" gap={3}>
+                      <HStack align="start" gap={3} minW={0}>
+                        <Box
+                          w="40px"
+                          h="40px"
+                          borderRadius="14px"
+                          bg="rgba(255,255,255,0.72)"
+                          color="brand.600"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          flexShrink={0}
+                        >
+                          <Icon size={18} />
+                        </Box>
+                        <VStack align="start" gap={0} minW={0} justify="center" flex="1">
+                          <Text fontWeight="900" color="surface.900">
+                            {item.title}
+                          </Text>
+                        </VStack>
+                      </HStack>
                       <Box
-                        w="40px"
-                        h="40px"
-                        borderRadius="14px"
+                        w="32px"
+                        h="32px"
+                        borderRadius="12px"
                         bg="rgba(255,255,255,0.72)"
-                        color="brand.600"
+                        color="surface.500"
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
                         flexShrink={0}
                       >
-                        <Icon size={18} />
+                        <LuChevronRight size={16} />
                       </Box>
-                      <VStack align="start" spacing={0} minW={0} justify="center" flex="1">
-                        <Text fontWeight="900" color="surface.900">
-                          {item.title}
-                        </Text>
-                      </VStack>
                     </HStack>
-                    <Box
-                      w="32px"
-                      h="32px"
-                      borderRadius="12px"
-                      bg="rgba(255,255,255,0.72)"
-                      color="surface.500"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      flexShrink={0}
-                    >
-                      <LuChevronRight size={16} />
-                    </Box>
-                  </HStack>
-                </Box>
+                  </button></Box>
               );
             })}
           </VStack>
@@ -5550,8 +5540,8 @@ export function AdminDashboardScreen({
 
     return (
       <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-        <VStack align="stretch" spacing={4}>
-          <HStack align="start" spacing={3} minW={0}>
+        <VStack align="stretch" gap={4}>
+          <HStack align="start" gap={3} minW={0}>
             <Box
               w="44px"
               h="44px"
@@ -5565,7 +5555,7 @@ export function AdminDashboardScreen({
             >
               <ActiveReportIcon size={20} />
             </Box>
-            <VStack align="start" spacing={0} minW={0}>
+            <VStack align="start" gap={0} minW={0}>
               <Text fontWeight="900" fontSize="xl">
                 {activeReportMeta.title}
               </Text>
@@ -5575,7 +5565,7 @@ export function AdminDashboardScreen({
             </VStack>
           </HStack>
 
-          <HStack spacing={2} flexWrap="wrap">
+          <HStack gap={2} flexWrap="wrap">
             {quickDateOptions.map((option) => (
               <Button
                 key={option.value}
@@ -5594,7 +5584,7 @@ export function AdminDashboardScreen({
           </HStack>
 
           <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-            <VStack align="stretch" spacing={3}>
+            <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                 <Text fontWeight="800" color="surface.700">
                   {reportType === "schedule" ? "Опорная дата" : "Дата отчета"}
@@ -5615,55 +5605,59 @@ export function AdminDashboardScreen({
 
           {reportType === "store" ? (
             <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Магазин
                 </Text>
-                <Select
-                  value={selectedStoreId}
-                  onChange={(event) => setReportStoreId(event.target.value)}
-                  {...adminFormInputStyles}
-                  bg="rgba(255,255,255,0.96)"
-                >
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </Select>
+                <NativeSelect.Root>
+                  <NativeSelect.Field
+                    value={selectedStoreId}
+                    onChange={(event) => setReportStoreId(event.target.value)}
+                    {...adminFormInputStyles}
+                    bg="rgba(255,255,255,0.96)">
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                  <NativeSelect.Indicator />
+                </NativeSelect.Root>
               </VStack>
             </Box>
           ) : null}
 
           {reportType === "seller" ? (
             <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Продавец
                 </Text>
-                <Select
-                  value={selectedSellerId}
-                  onChange={(event) => setReportSellerId(event.target.value)}
-                  {...adminFormInputStyles}
-                  bg="rgba(255,255,255,0.96)"
-                >
-                  {staff.map((seller) => (
-                    <option key={seller.id} value={seller.id}>
-                      {seller.fullName}
-                    </option>
-                  ))}
-                </Select>
+                <NativeSelect.Root>
+                  <NativeSelect.Field
+                    value={selectedSellerId}
+                    onChange={(event) => setReportSellerId(event.target.value)}
+                    {...adminFormInputStyles}
+                    bg="rgba(255,255,255,0.96)">
+                    {staff.map((seller) => (
+                      <option key={seller.id} value={seller.id}>
+                        {seller.fullName}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                  <NativeSelect.Indicator />
+                </NativeSelect.Root>
               </VStack>
             </Box>
           ) : null}
 
           {reportType === "schedule" ? (
             <Box bg={panelMutedSurface} borderRadius="22px" px={4} py={4}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <Text fontWeight="800" color="surface.700">
                   Период
                 </Text>
-                <HStack spacing={3}>
+                <HStack gap={3}>
                   {(["week", "month"] as AdminReportPeriod[]).map((period) => (
                     <Button
                       key={period}
@@ -5689,13 +5683,10 @@ export function AdminDashboardScreen({
             borderRadius="22px"
             bg="surface.900"
             color="white"
-            isLoading={reportSubmitting}
+            loading={reportSubmitting}
             _hover={{ bg: "surface.700" }}
-            onClick={handleRequestReport}
-            leftIcon={<LuCalendarDays />}
-          >
-            Заказать отчет
-          </Button>
+            onClick={handleRequestReport}><LuCalendarDays />Заказать отчет
+                      </Button>
 
           {reportStatus ? (
             <Text color="surface.500" fontSize="sm" fontWeight="700">
@@ -5721,7 +5712,7 @@ export function AdminDashboardScreen({
         }
 
         return (
-          <VStack spacing={4} align="stretch">
+          <VStack gap={4} align="stretch">
             {renderPlaceholder(
               t("settings.admin.title"),
               t("settings.admin.description")
@@ -5739,7 +5730,7 @@ export function AdminDashboardScreen({
                 setReportStatus(null);
               }}
             >
-              <VStack align="start" spacing={1}>
+              <VStack align="start" gap={1}>
                 <Text fontWeight="900" color="surface.900">
                   Отчеты
                 </Text>
@@ -5752,14 +5743,14 @@ export function AdminDashboardScreen({
               </Text>
             </Button>
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-              <VStack align="stretch" spacing={3}>
+              <VStack align="stretch" gap={3}>
                 <Text fontWeight="900" fontSize="lg">
                   {t("settings.language.title")}
                 </Text>
                 <Text color="surface.500" fontSize="sm">
                   {t("settings.language.description")}
                 </Text>
-                <HStack spacing={3}>
+                <HStack gap={3}>
                   {localeOptions.map((option) => {
                     const isActive = locale === option.value;
 
@@ -5795,8 +5786,8 @@ export function AdminDashboardScreen({
   return (
     <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
-        <VStack key={adminMotionKey} spacing={5} align="stretch" className="soft-screen-transition">
-          <VStack align="stretch" spacing={showFullscreenHeaderContext ? 3 : 0} px={1} pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
+        <VStack key={adminMotionKey} gap={5} align="stretch" className="soft-screen-transition">
+          <VStack align="stretch" gap={showFullscreenHeaderContext ? 3 : 0} px={1} pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
             {showFullscreenHeaderContext ? (
               <HStack justify="space-between" align="center">
                 <Text
@@ -5815,7 +5806,7 @@ export function AdminDashboardScreen({
             ) : null}
 
             <HStack justify="space-between" align="center">
-              <VStack align="start" spacing={adminPageSubtitle ? 1 : 0}>
+              <VStack align="start" gap={adminPageSubtitle ? 1 : 0}>
                 <Text
                   fontSize="3xl"
                   fontWeight="900"
@@ -5833,15 +5824,15 @@ export function AdminDashboardScreen({
               </VStack>
 
               <HStack
-                spacing={3}
+                gap={3}
                 bg="rgba(255,255,255,0.9)"
                 borderRadius="18px"
                 px={3}
                 py={2}
                 boxShadow="0 12px 30px rgba(17, 17, 17, 0.06)"
               >
-                <Avatar size="sm" name={operatorName} bg="surface.200" color="surface.800" />
-                <VStack align="start" spacing={0}>
+                <Avatar.Root size="sm" bg="surface.200" color="surface.800"><Avatar.Fallback name={operatorName} /></Avatar.Root>
+                <VStack align="start" gap={0}>
                   <Text fontWeight="800" lineHeight="1">
                     {operatorName}
                   </Text>
@@ -5872,13 +5863,11 @@ export function AdminDashboardScreen({
           {renderTab()}
         </VStack>
       </Container>
-
       <ConfirmActionModal
         action={confirmAction}
         cancelLabel={t("common.cancel")}
         onClose={() => setConfirmAction(null)}
       />
-
       {!hasFullscreenAdminTask ? (
         <Box position="fixed" left={0} right={0} bottom={0} zIndex={30}>
           <AdminNav activeTab={activeTab} onChange={handleAdminTabChange} onReselect={resetAdminSection} />

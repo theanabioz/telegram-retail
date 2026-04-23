@@ -41,7 +41,6 @@ export function AdminFormScreen({
         backdropFilter="blur(18px)"
         onClick={onClose}
       />
-
       <Box position="absolute" inset={0} onClick={(event) => event.stopPropagation()}>
         <Box
           w="100%"
@@ -61,7 +60,7 @@ export function AdminFormScreen({
             backdropFilter="blur(16px)"
           >
             <HStack justify="space-between" align="start" gap={3}>
-              <VStack align="start" spacing={1} minW={0}>
+              <VStack align="start" gap={1} minW={0}>
                 {topLabel ? (
                   <Text
                     fontSize="10px"
@@ -127,9 +126,11 @@ export function AdminFormScreen({
             overscrollBehavior="contain"
             scrollPaddingTop="120px"
             scrollPaddingBottom="220px"
-            sx={{ WebkitOverflowScrolling: "touch" }}
+            css={{
+              WebkitOverflowScrolling: "touch"
+            }}
           >
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" gap={4}>
               {children}
             </VStack>
           </Box>
@@ -143,7 +144,7 @@ export function AdminFormScreen({
             backdropFilter="blur(18px)"
             boxShadow="0 -16px 34px rgba(21,28,38,0.08)"
           >
-            <HStack spacing={3}>
+            <HStack gap={3}>
               {secondaryActionLabel && onSecondaryAction ? (
                 <Button
                   flex={secondaryActionLabel ? "0 0 120px" : undefined}
@@ -154,7 +155,7 @@ export function AdminFormScreen({
                   fontWeight="900"
                   fontSize="md"
                   _hover={{ bg: "rgba(224,227,232,1)" }}
-                  isDisabled={secondaryActionDisabled}
+                  disabled={secondaryActionDisabled}
                   onClick={onSecondaryAction}
                 >
                   {secondaryActionLabel}
@@ -169,8 +170,8 @@ export function AdminFormScreen({
                 fontWeight="900"
                 fontSize="lg"
                 _hover={{ bg: "surface.700" }}
-                isDisabled={primaryActionDisabled}
-                isLoading={primaryActionLoading}
+                disabled={primaryActionDisabled}
+                loading={primaryActionLoading}
                 onClick={onPrimaryAction}
               >
                 {primaryActionLabel}
