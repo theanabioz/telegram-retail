@@ -38,7 +38,8 @@ async function loadPlaywright(): Promise<PlaywrightModule | null> {
       paths: lookupPaths,
     });
 
-    return (await import(resolvedPath)) as PlaywrightModule;
+    const imported = await import(resolvedPath);
+    return ((imported as { default?: PlaywrightModule }).default ?? imported) as PlaywrightModule;
   } catch {
     return null;
   }
