@@ -1889,7 +1889,7 @@ export function AdminDashboardScreen({
           { label: t("admin.overview.todayRevenue"), value: data ? formatEur(data.summary.totalRevenueToday) : "..." },
           { label: t("admin.overview.salesToday"), value: data ? String(data.summary.completedSalesToday) : "..." },
           { label: t("admin.overview.lowStock"), value: data ? String(data.summary.lowStockCount) : "..." },
-          { label: t("admin.overview.activeSellers"), value: data ? String(data.summary.totalSellers) : "..." },
+          { label: t("admin.overview.activeSellers"), value: data ? String(data.summary.activeShifts) : "..." },
         ].map((card) => (
           <Box
             key={card.label}
