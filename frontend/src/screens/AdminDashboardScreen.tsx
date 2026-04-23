@@ -5525,7 +5525,7 @@ export function AdminDashboardScreen({
       const metaPills: Array<{ label: string; icon: IconType }> = [
         { label: "Магазины", icon: LuStore },
         { label: "Один день", icon: LuCalendarDays },
-        { label: "Telegram", icon: LuSend },
+        { label: "Отчет в Telegram", icon: LuSend },
       ];
 
       return (
@@ -6000,7 +6000,7 @@ export function AdminDashboardScreen({
                   Отчеты
                 </Text>
                 <Text color="surface.500" fontSize="sm">
-                  Сводный отчет за день, магазин, продавец и рабочий график.
+                  PDF-отчеты по магазину и команде.
                 </Text>
               </VStack>
               <Text fontWeight="900" color="surface.400">
