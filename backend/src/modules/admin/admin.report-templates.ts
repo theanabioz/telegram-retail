@@ -671,32 +671,21 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .section-heading {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .section-kicker {
-      margin: 0;
-      display: inline-flex;
-      align-items: center;
-      padding: 5px 10px;
-      background: var(--accent);
-      color: #ffffff;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+      display: block;
     }
 
     .section-title {
       margin: 0;
-      color: var(--text);
-      font-size: 18px;
-      line-height: 1.15;
-      letter-spacing: -0.02em;
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px 9px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1;
+      letter-spacing: 0.12em;
       font-weight: 800;
+      text-transform: uppercase;
     }
 
     .section-note {
@@ -1066,7 +1055,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       }
 
       .section-heading {
-        gap: 6px;
+        display: block;
       }
 
       .metric-cell,
@@ -1156,7 +1145,6 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       <section class="section">
         <div class="section-header">
           <div class="section-heading">
-            <p class="section-kicker">Сводные показатели</p>
             <h2 class="section-title">Ключевые показатели</h2>
           </div>
           <div class="section-note">${escapeHtml(storesLabel)}</div>
@@ -1179,7 +1167,6 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       <section class="section">
         <div class="section-header">
           <div class="section-heading">
-            <p class="section-kicker">Аналитика по магазинам</p>
             <h2 class="section-title">Разрез по магазинам</h2>
           </div>
           <div class="section-note">${escapeHtml(document.periodLabel)}</div>
@@ -1195,7 +1182,6 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       <section class="section">
         <div class="section-header">
           <div class="section-heading">
-            <p class="section-kicker">Итоговые показатели сети</p>
             <h2 class="section-title">Итог по сети</h2>
           </div>
           <div class="section-note">${escapeHtml(document.reportDateLabel)}</div>
