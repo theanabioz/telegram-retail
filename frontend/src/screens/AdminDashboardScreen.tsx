@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
-  Steps,
   Avatar,
   Box,
   Button,
@@ -24,6 +23,8 @@ import {
   LuMinus,
   LuPlus,
   LuReceiptText,
+  LuSend,
+  LuShieldCheck,
   LuStore,
   LuUserRound,
   LuUsersRound,
@@ -5389,26 +5390,31 @@ export function AdminDashboardScreen({
     const reportMenuItems: Array<{
       type: AdminReportType;
       title: string;
+      description: string;
       icon: IconType;
     }> = [
       {
         type: "daily_summary",
         title: "Сводный отчет за день",
+        description: "Итоги по всем магазинам и всей команде.",
         icon: LuReceiptText,
       },
       {
         type: "store",
         title: "Отчет по магазину",
+        description: "Аналитика выбранной точки за период.",
         icon: LuStore,
       },
       {
         type: "seller",
         title: "Отчет по продавцу",
+        description: "Смены, продажи и личные показатели.",
         icon: LuUserRound,
       },
       {
         type: "schedule",
         title: "Рабочий график",
+        description: "Смены и часы сотрудников.",
         icon: LuUsersRound,
       },
     ];
@@ -5462,79 +5468,206 @@ export function AdminDashboardScreen({
     };
 
     if (settingsView === "reports-menu") {
+      const primaryReport = reportMenuItems[0];
+      const PrimaryReportIcon = primaryReport.icon;
+      const secondaryReports = reportMenuItems.slice(1);
+      const openReportDetail = (type: AdminReportType) => {
+        setReportType(type);
+        setReportStatus(null);
+        setReportQuickPreset("today");
+        setSettingsView("report-detail");
+      };
+      const metaPills: Array<{ label: string; icon: IconType }> = [
+        { label: "Все магазины", icon: LuStore },
+        { label: "Один день", icon: LuCalendarDays },
+        { label: "PDF в Telegram", icon: LuSend },
+      ];
+
       return (
-        <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-          <VStack align="stretch" gap={3}>
-            <VStack align="start" gap={0}>
-              <Text fontWeight="900" fontSize="lg">
-                Отчеты
-              </Text>
-              <Text color="surface.500" fontSize="sm" fontWeight="700">
-                Выберите нужный сценарий и получите PDF в Telegram.
-              </Text>
-            </VStack>
-
-            {reportMenuItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
+        <VStack align="stretch" gap={5}>
+          <Box
+            key={primaryReport.type}
+            textAlign="left"
+            bg={panelSurface}
+            borderRadius="30px"
+            px={4}
+            py={4}
+            boxShadow={panelShadow}
+            border="1px solid rgba(255,255,255,0.72)"
+            transition="transform 0.16s ease, background 0.16s ease"
+            _hover={{ bg: "rgba(255,255,255,0.96)" }}
+            _active={{ transform: "scale(0.99)" }}
+            _focusVisible={{ outline: "3px solid rgba(74,132,244,0.28)", outlineOffset: "3px" }}
+            asChild><button type="button" onClick={() => openReportDetail(primaryReport.type)}>
+            <VStack align="stretch" gap={4}>
+              <HStack align="start" gap={3}>
                 <Box
-                  textAlign="left"
-                  bg={panelMutedSurface}
-                  borderRadius="18px"
-                  px={3}
-                  py={3}
-                  minH="84px"
-                  border={0}
-                  asChild><button
-                    key={item.type}
-                    type="button"
-                    onClick={() => {
-                      setReportType(item.type);
-                      setReportStatus(null);
-                      setReportQuickPreset("today");
-                      setSettingsView("report-detail");
-                    }}>
-                    <HStack justify="space-between" align="start" gap={3}>
-                      <HStack align="start" gap={3} minW={0}>
+                  w={{ base: "56px", sm: "64px" }}
+                  h={{ base: "56px", sm: "64px" }}
+                  borderRadius="22px"
+                  bg="rgba(74,132,244,0.1)"
+                  color="brand.600"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                >
+                  <PrimaryReportIcon size={26} />
+                </Box>
+                <VStack align="start" gap={1} minW={0} flex="1">
+                  <HStack align="start" justify="space-between" gap={3} w="100%">
+                    <Text fontWeight="900" fontSize={{ base: "xl", sm: "2xl" }} lineHeight="1.15">
+                      {primaryReport.title}
+                    </Text>
+                    <Box
+                      borderRadius="999px"
+                      bg="brand.500"
+                      color="white"
+                      px={4}
+                      py={2}
+                      fontWeight="900"
+                      fontSize="sm"
+                      lineHeight="1"
+                      flexShrink={0}
+                      boxShadow="0 10px 22px rgba(74,132,244,0.18)"
+                    >
+                      PDF
+                    </Box>
+                  </HStack>
+                  <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.45">
+                    {primaryReport.description}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              <Box h="1px" bg="rgba(231,228,222,0.86)" />
+
+              <HStack gap={2} flexWrap="wrap">
+                {metaPills.map((pill) => {
+                  const PillIcon = pill.icon;
+
+                  return (
+                    <HStack
+                      key={pill.label}
+                      gap={1.5}
+                      borderRadius="999px"
+                      bg={panelMutedSurface}
+                      color="surface.600"
+                      px={3}
+                      py={2}
+                      fontWeight="800"
+                      fontSize="xs"
+                    >
+                      <PillIcon size={14} />
+                      <Text>{pill.label}</Text>
+                    </HStack>
+                  );
+                })}
+              </HStack>
+            </VStack>
+          </button></Box>
+
+          <VStack align="stretch" gap={3}>
+            <Text px={1} color="surface.600" fontWeight="900" fontSize="md">
+              Другие отчеты
+            </Text>
+            <Box
+              bg={panelSurface}
+              borderRadius={panelRadius}
+              px={2}
+              py={2}
+              boxShadow={panelShadow}
+              border="1px solid rgba(255,255,255,0.68)"
+            >
+              <VStack align="stretch" gap={1}>
+                {secondaryReports.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <Box
+                      key={item.type}
+                      textAlign="left"
+                      bg="transparent"
+                      borderRadius="20px"
+                      px={3}
+                      py={3}
+                      minH="76px"
+                      transition="background 0.16s ease, transform 0.16s ease"
+                      _hover={{ bg: "rgba(241,240,236,0.76)" }}
+                      _active={{ transform: "scale(0.99)", bg: "rgba(235,233,228,0.9)" }}
+                      _focusVisible={{ outline: "3px solid rgba(74,132,244,0.24)", outlineOffset: "2px" }}
+                      asChild><button type="button" onClick={() => openReportDetail(item.type)}>
+                      <HStack justify="space-between" align="center" gap={3}>
+                        <HStack align="center" gap={3} minW={0}>
+                          <Box
+                            w="46px"
+                            h="46px"
+                            borderRadius="16px"
+                            bg="rgba(74,132,244,0.08)"
+                            color="brand.600"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            flexShrink={0}
+                          >
+                            <Icon size={20} />
+                          </Box>
+                          <VStack align="start" gap={0.5} minW={0} justify="center" flex="1">
+                            <Text fontWeight="900" color="surface.900" fontSize="md" lineHeight="1.2">
+                              {item.title}
+                            </Text>
+                            <Text color="surface.500" fontSize="xs" fontWeight="700" lineHeight="1.35">
+                              {item.description}
+                            </Text>
+                          </VStack>
+                        </HStack>
                         <Box
-                          w="40px"
-                          h="40px"
+                          w="34px"
+                          h="34px"
                           borderRadius="14px"
-                          bg="rgba(255,255,255,0.72)"
-                          color="brand.600"
+                          bg="rgba(255,255,255,0.82)"
+                          color="surface.500"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                           flexShrink={0}
                         >
-                          <Icon size={18} />
+                          <LuChevronRight size={17} />
                         </Box>
-                        <VStack align="start" gap={0} minW={0} justify="center" flex="1">
-                          <Text fontWeight="900" color="surface.900">
-                            {item.title}
-                          </Text>
-                        </VStack>
                       </HStack>
-                      <Box
-                        w="32px"
-                        h="32px"
-                        borderRadius="12px"
-                        bg="rgba(255,255,255,0.72)"
-                        color="surface.500"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        flexShrink={0}
-                      >
-                        <LuChevronRight size={16} />
-                      </Box>
-                    </HStack>
-                  </button></Box>
-              );
-            })}
+                    </button></Box>
+                  );
+                })}
+              </VStack>
+            </Box>
           </VStack>
-        </Box>
+
+          <Box bg="rgba(238,244,255,0.92)" borderRadius="26px" px={4} py={4}>
+            <HStack align="center" gap={3}>
+              <Box
+                w="48px"
+                h="48px"
+                borderRadius="17px"
+                bg="rgba(255,255,255,0.72)"
+                color="brand.600"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+              >
+                <LuShieldCheck size={22} />
+              </Box>
+              <VStack align="start" gap={0.5} minW={0} flex="1">
+                <Text color="brand.600" fontSize="md" fontWeight="900">
+                  Безопасность данных
+                </Text>
+                <Text color="surface.600" fontSize="sm" fontWeight="700" lineHeight="1.45">
+                  Отчеты формируются автоматически и доступны только вам.
+                </Text>
+              </VStack>
+            </HStack>
+          </Box>
+        </VStack>
       );
     }
 
