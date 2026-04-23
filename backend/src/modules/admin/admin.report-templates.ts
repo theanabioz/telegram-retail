@@ -664,21 +664,27 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       align-items: end;
       gap: 16px;
       margin-bottom: 12px;
-      padding: 10px 12px 11px;
-      border: 1px solid var(--line);
-      border-left: 6px solid var(--accent);
-      background: linear-gradient(90deg, var(--accent-soft) 0%, #f6f7f8 58%, var(--paper) 100%);
+      padding: 12px 0 10px;
+      border-top: 3px solid var(--accent);
+      border-bottom: 1px solid var(--line);
+      background: none;
     }
 
     .section-heading {
-      padding-left: 0;
-      border-left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
     }
 
     .section-kicker {
-      margin: 0 0 4px;
-      color: var(--accent);
-      font-size: 10px;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 9px;
       font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -686,21 +692,21 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .section-title {
       margin: 0;
-      color: var(--accent);
-      font-size: 15px;
-      line-height: 1.2;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.15;
       letter-spacing: -0.02em;
       font-weight: 800;
     }
 
     .section-note {
-      color: var(--muted-strong);
-      font-size: 11px;
+      color: var(--muted);
+      font-size: 10px;
       font-weight: 700;
       white-space: nowrap;
-      padding: 5px 8px;
-      border: 1px solid rgba(34, 63, 120, 0.12);
-      background: rgba(255, 255, 255, 0.72);
+      padding: 0;
+      border: 0;
+      background: none;
     }
 
     .metric-band {
@@ -838,14 +844,14 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .panel-title {
       padding: 10px 12px;
-      background: linear-gradient(90deg, var(--accent-soft) 0%, var(--paper-soft) 100%);
+      background: var(--paper);
+      border-top: 2px solid var(--accent);
       border-bottom: 1px solid var(--line);
-      color: var(--accent);
+      color: var(--muted-strong);
       font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      border-left: 4px solid var(--accent);
     }
 
     .ledger-table td:first-child,
@@ -1054,9 +1060,13 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
       .section-header {
         margin-bottom: 7px;
-        padding: 8px 9px;
+        padding: 9px 0 7px;
         page-break-after: avoid;
         break-after: avoid-page;
+      }
+
+      .section-heading {
+        gap: 6px;
       }
 
       .metric-cell,
