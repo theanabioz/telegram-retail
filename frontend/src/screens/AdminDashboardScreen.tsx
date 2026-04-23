@@ -5171,6 +5171,11 @@ export function AdminDashboardScreen({
                           ? "rgba(238,236,231,1)"
                           : "rgba(255,255,255,1)",
                       }}
+                      _focus={{ boxShadow: isActive ? "0 14px 28px rgba(18, 18, 18, 0.07)" : "0 12px 28px rgba(18, 18, 18, 0.05)" }}
+                      _focusVisible={{
+                        boxShadow: isActive ? "0 14px 28px rgba(18, 18, 18, 0.07)" : "0 12px 28px rgba(18, 18, 18, 0.05)",
+                        outline: "none",
+                      }}
                       onClick={() => {
                         const cachedSnapshot = inventoryCache[store.id];
                         if (cachedSnapshot && trustedInventoryStoreIds[store.id]) {
