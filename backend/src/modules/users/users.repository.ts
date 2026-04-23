@@ -55,6 +55,22 @@ export async function findUserById(userId: string) {
   }
 }
 
+export async function findActiveUserByRole(role: AppUser["role"]) {
+  try {
+    return await maybeOne<AppUser>(
+      `select id, telegram_id, role, full_name, is_active
+       from public.users
+       where role = $1
+         and is_active = true
+       order by full_name asc
+       limit 1`,
+      [role]
+    );
+  } catch (error) {
+    throw new HttpError(500, `Failed to load active user by role: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function findCurrentAssignment(userId: string) {
   try {
     const row = await maybeOne<CurrentAssignment>(
@@ -71,4 +87,3 @@ export async function findCurrentAssignment(userId: string) {
     throw new HttpError(500, `Failed to load current assignment: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
-

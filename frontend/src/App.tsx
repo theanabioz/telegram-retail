@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Box, Button, Image, Text, VStack } from "@chakra-ui/react";
 import { ApiError, apiGet, apiPost } from "./lib/api";
-import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
 import { disconnectRealtimeConnection, ensureRealtimeConnection } from "./lib/realtime";
@@ -44,12 +43,18 @@ function canUseBrowserDevAuth() {
 function resolveBrowserDevTelegramId() {
   const params = new URLSearchParams(window.location.search);
   const requestedRole = params.get("browserRole");
+  const requestedTelegramId = params.get("browserTelegramId");
 
-  if (requestedRole === "seller") {
-    return config.devSellerTelegramId;
+  if (requestedTelegramId) {
+    const parsed = Number(requestedTelegramId);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return { telegramId: parsed };
+    }
   }
 
-  return config.devAdminTelegramId;
+  return {
+    role: requestedRole === "seller" ? "seller" : "admin",
+  } as const;
 }
 
 function isStartupCacheFresh(cachedAt?: number) {
@@ -281,9 +286,7 @@ export function App() {
 
     try {
       const authSession = browserDevAuth
-        ? await apiPost<AuthSessionResponse>("/auth/dev-login", {
-            telegramId: resolveBrowserDevTelegramId(),
-          })
+        ? await apiPost<AuthSessionResponse>("/auth/dev-login", resolveBrowserDevTelegramId())
         : await apiPost<AuthSessionResponse>("/auth/telegram", {
             initData,
           });
