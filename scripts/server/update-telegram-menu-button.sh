@@ -33,8 +33,8 @@ curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton" \
   >/dev/null
 
 curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
-  -d 'commands=[{"command":"menu","description":"Open the control panel"},{"command":"admin","description":"Open the admin panel"}]' \
+  -d 'commands=[{"command":"menu","description":"Open the app menu"},{"command":"admin","description":"Show hidden admin commands"},{"command":"reports","description":"Request workday reports"},{"command":"addshop","description":"Add a shop"},{"command":"addseller","description":"Add a seller"},{"command":"addproduct","description":"Add a product"},{"command":"editshop","description":"Edit a shop"},{"command":"editseller","description":"Edit a seller"},{"command":"editproduct","description":"Edit a product"},{"command":"deleteshop","description":"Delete a shop"},{"command":"deleteseller","description":"Delete a seller"},{"command":"deleteproduct","description":"Delete a product"}]' \
   >/dev/null
 
 echo "Telegram menu button URL set to ${app_url}"
-echo "Telegram bot commands set: /menu, /admin"
+echo "Telegram bot commands updated for hidden admin command mode"

@@ -2133,17 +2133,6 @@ export function AdminDashboardScreen({
             </Box>
           ))}
 
-          <Button
-            w="full"
-            h="52px"
-            borderRadius="18px"
-            bg="surface.900"
-            color="white"
-            _hover={{ bg: "surface.700" }}
-            onClick={openNewStoreForm}
-        >
-          {t("admin.team.newStore")}
-        </Button>
         </VStack>
       </Box>
 
@@ -3670,17 +3659,6 @@ export function AdminDashboardScreen({
                   <>
                     <Button
                       w="full"
-                      h="52px"
-                      borderRadius="18px"
-                      bg="surface.900"
-                      color="white"
-                      _hover={{ bg: "surface.700" }}
-                      onClick={openNewProductForm}
-                    >
-                      {t("admin.inventory.newProduct")}
-                    </Button>
-                    <Button
-                      w="full"
                       h="48px"
                       borderRadius="18px"
                       bg={panelMutedSurface}
@@ -3701,7 +3679,6 @@ export function AdminDashboardScreen({
           </VStack>
         )}
         </VStack>
-        {renderProductCreationModal()}
         {renderInventoryStoreSelector()}
       </>
     );
@@ -4270,17 +4247,6 @@ export function AdminDashboardScreen({
           );
         })}
 
-        <Button
-          w="full"
-          h="52px"
-          borderRadius="18px"
-          bg="surface.900"
-          color="white"
-          _hover={{ bg: "surface.700" }}
-          onClick={openNewSellerForm}
-        >
-          {t("admin.team.newSeller")}
-        </Button>
       </VStack>
     </Box>
   );
@@ -5268,7 +5234,6 @@ export function AdminDashboardScreen({
 
           {teamMode === "staff" ? renderStaffSection() : renderStoresSection()}
         </VStack>
-        {renderTeamCreationModals()}
       </>
     );
   };
