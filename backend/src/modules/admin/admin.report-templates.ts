@@ -543,7 +543,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       width: 100%;
       max-width: 1120px;
       margin: 0 auto;
-      padding: 14px;
+      padding: 10px;
     }
 
     .header,
@@ -558,9 +558,9 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
-      padding: 20px;
+      padding: 16px;
       box-shadow: var(--shadow-soft);
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
 
     .header-top {
@@ -627,7 +627,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .summary-grid {
-      margin: 14px 0 22px;
+      margin: 10px 0 14px;
     }
 
     .stat-card,
@@ -635,7 +635,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 16px;
+      padding: 12px;
       box-shadow: var(--shadow-soft);
     }
 
@@ -660,7 +660,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .section-title {
       font-size: 17px;
-      margin: 22px 0 12px;
+      margin: 14px 0 8px;
       text-transform: uppercase;
       color: var(--accent);
       font-weight: 800;
@@ -671,15 +671,15 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-soft);
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       page-break-inside: avoid;
     }
 
     .store-head {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 12px;
-      padding: 16px;
+      gap: 10px;
+      padding: 14px;
       border-bottom: 1px solid var(--line);
     }
 
@@ -699,14 +699,14 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .store-subtitle {
-      margin: 6px 0 0;
+      margin: 4px 0 0;
       color: var(--text-soft);
       font-size: 13px;
     }
 
     .store-badge {
       width: fit-content;
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-radius: 999px;
       background: var(--accent-ghost);
       border: 1px solid #d4e0ec;
@@ -717,7 +717,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     .store-stats {
-      padding: 16px;
+      padding: 12px;
       border-bottom: 1px solid var(--line);
       background: var(--surface-subtle);
     }
@@ -725,8 +725,8 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     .content-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 14px;
-      padding: 16px;
+      gap: 10px;
+      padding: 12px;
     }
 
     table {
@@ -736,7 +736,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     }
 
     th, td {
-      padding: 12px;
+      padding: 10px 12px;
       text-align: left;
       border-bottom: 1px solid var(--line);
       vertical-align: top;
@@ -763,8 +763,8 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       background: var(--surface-subtle);
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
     }
 
     .panel h4 {
@@ -780,7 +780,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
-      padding: 8px 0;
+      padding: 6px 0;
       border-bottom: 1px dashed var(--line-strong);
     }
 
@@ -806,11 +806,11 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     .warning { color: var(--warning); }
 
     .footer-summary {
-      margin-top: 22px;
+      margin-top: 12px;
       background: #13263d;
       color: white;
       border-radius: 16px;
-      padding: 16px;
+      padding: 14px;
       page-break-inside: avoid;
     }
 
@@ -818,7 +818,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       display: grid;
       grid-template-columns: 1fr;
       gap: 6px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
 
     .footer-summary h2 {
@@ -843,13 +843,13 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
     }
 
     .totals-table-wrap {
       width: 100%;
       display: block;
-      margin-top: 16px;
+      margin-top: 12px;
       border-radius: 12px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -865,7 +865,7 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
 
     .totals-table th,
     .totals-table td {
-      padding: 13px 14px;
+      padding: 10px 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       color: white;
       white-space: nowrap;
@@ -922,12 +922,82 @@ export function renderDailySummaryReportHtml(document: DailySummaryReportDocumen
     @media print {
       body {
         background: white;
-        font-size: 11px;
+        font-size: 10px;
       }
 
       .page {
         padding: 0;
         max-width: none;
+      }
+
+      .header {
+        padding: 12px;
+        margin-bottom: 8px;
+      }
+
+      .summary-grid {
+        margin: 8px 0 10px;
+        gap: 8px;
+      }
+
+      .stat-card,
+      .mini-stat,
+      .footer-card {
+        padding: 10px;
+      }
+
+      .section-title {
+        margin: 10px 0 6px;
+        font-size: 15px;
+      }
+
+      .store-card {
+        margin-bottom: 8px;
+      }
+
+      .store-head {
+        padding: 10px 12px;
+      }
+
+      .store-stats {
+        padding: 10px 12px;
+        gap: 8px;
+      }
+
+      .content-grid {
+        gap: 8px;
+        padding: 10px 12px 12px;
+      }
+
+      .panel {
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+
+      .kv {
+        padding: 5px 0;
+      }
+
+      th,
+      td {
+        padding: 8px 10px;
+      }
+
+      .footer-summary {
+        margin-top: 8px;
+        padding: 12px;
+      }
+
+      .footer-summary-head {
+        margin-bottom: 8px;
+      }
+
+      .footer-grid {
+        gap: 8px;
+      }
+
+      .totals-table-wrap {
+        margin-top: 10px;
       }
 
       .header,
