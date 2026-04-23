@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Box, Button, Image, Text, VStack } from "@chakra-ui/react";
 import { ApiError, apiGet, apiPost } from "./lib/api";
-import { config } from "./lib/config";
 import { attachGlobalHaptics } from "./lib/haptics";
 import { attachPortraitOrientationLock } from "./lib/orientation";
 import { disconnectRealtimeConnection, ensureRealtimeConnection } from "./lib/realtime";
@@ -35,22 +34,6 @@ const SELLER_STARTUP_CACHE_KEY = "telegram-retail-seller-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 const BLOCKED_ILLUSTRATION_SRC = "/access-blocked.png";
 const LOADING_ILLUSTRATION_SRC = "/access-loading.png";
-
-function canUseBrowserDevAuth() {
-  const webApp = getTelegramWebApp();
-  return !webApp?.initData?.trim();
-}
-
-function resolveBrowserDevTelegramId() {
-  const params = new URLSearchParams(window.location.search);
-  const requestedRole = params.get("browserRole");
-
-  if (requestedRole === "seller") {
-    return config.devSellerTelegramId;
-  }
-
-  return config.devAdminTelegramId;
-}
 
 function isStartupCacheFresh(cachedAt?: number) {
   return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
@@ -208,14 +191,13 @@ export function App() {
     const hasInitData = Boolean(webApp?.initData?.trim());
     const role = getStoredRole();
     const cachedOperator = readCachedOperator(role);
-    const browserDevAuth = !hasInitData;
 
     return {
       role,
       operatorName: cachedOperator ?? "User",
-      loading: browserDevAuth || (hasInitData ? role == null || cachedOperator == null : false),
+      loading: hasInitData ? role == null || cachedOperator == null : false,
       error: null,
-      blocked: false,
+      blocked: !hasInitData,
     };
   });
 
@@ -224,21 +206,31 @@ export function App() {
     const initData = webApp?.initData?.trim() ?? "";
     const cachedRole = getStoredRole();
     const cachedOperator = readCachedOperator(cachedRole);
-    const browserDevAuth = !initData;
+
+    if (!webApp || !initData) {
+      clearStoredSession();
+      setSession({
+        role: null,
+        operatorName: "",
+        loading: false,
+        error: null,
+        blocked: true,
+      });
+      return;
+    }
 
     setSession((current) => ({
       ...current,
       role: current.role ?? cachedRole,
       operatorName: cachedOperator ?? current.operatorName,
-      loading: browserDevAuth || forceRelogin || (!cachedRole && !cachedOperator),
+      loading: forceRelogin || (!cachedRole && !cachedOperator),
       error: null,
       blocked: false,
     }));
 
-    let token =
-      forceRelogin || browserDevAuth ? null : window.localStorage.getItem(TOKEN_KEY);
+    let token = forceRelogin ? null : window.localStorage.getItem(TOKEN_KEY);
 
-    if (!browserDevAuth && token) {
+    if (token) {
       try {
         const me = await apiGet<{
           auth: {
@@ -280,13 +272,9 @@ export function App() {
     }
 
     try {
-      const authSession = browserDevAuth
-        ? await apiPost<AuthSessionResponse>("/auth/dev-login", {
-            telegramId: resolveBrowserDevTelegramId(),
-          })
-        : await apiPost<AuthSessionResponse>("/auth/telegram", {
-            initData,
-          });
+      const authSession = await apiPost<AuthSessionResponse>("/auth/telegram", {
+        initData,
+      });
 
       token = authSession.token;
       window.localStorage.setItem(TOKEN_KEY, token);
@@ -309,16 +297,13 @@ export function App() {
     } catch (error) {
       clearStoredSession();
 
-      if (
-        error instanceof ApiError &&
-        (error.status === 401 || error.status === 403 || error.status === 404)
-      ) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         setSession({
           role: null,
           operatorName: "",
           loading: false,
           error: null,
-          blocked: canUseBrowserDevAuth(),
+          blocked: true,
         });
         return;
       }
