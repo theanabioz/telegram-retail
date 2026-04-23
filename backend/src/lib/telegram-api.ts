@@ -69,6 +69,34 @@ export async function sendTelegramMessage(input: {
   });
 }
 
+export async function sendTelegramDocument(input: {
+  chatId: string | number;
+  filename: string;
+  content: Buffer;
+  caption?: string;
+}) {
+  const form = new FormData();
+  form.set("chat_id", String(input.chatId));
+  form.set("caption", input.caption ?? "");
+  const documentBytes = new Uint8Array(input.content);
+  form.set("document", new Blob([documentBytes], { type: "application/pdf" }), input.filename);
+
+  const response = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, {
+    method: "POST",
+    body: form,
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { ok?: boolean; result?: unknown; description?: string }
+    | null;
+
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.description ?? `Telegram API sendDocument failed with ${response.status}`);
+  }
+
+  return payload.result;
+}
+
 export async function editTelegramMessage(input: {
   chatId: string | number;
   messageId: number;

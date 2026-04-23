@@ -21,7 +21,7 @@ import { AdminNav, type AdminTab } from "../components/AdminNav";
 import { AdminFormScreen } from "../components/AdminFormScreen";
 import { AdminTaskScreen } from "../components/AdminTaskScreen";
 import { ConfirmActionModal, type ConfirmActionModalState } from "../components/ConfirmActionModal";
-import { apiGet } from "../lib/api";
+import { apiGet, apiPost } from "../lib/api";
 import { formatEur } from "../lib/currency";
 import { useScrollToInput } from "../hooks/useScrollToInput";
 import { getLocaleTag, translate, useI18n } from "../lib/i18n";
@@ -71,6 +71,10 @@ const TOKEN_KEY = "telegram-retail-token";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
 
+function getTodayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function isStartupCacheFresh(cachedAt?: number) {
   return cachedAt == null || Date.now() - cachedAt <= STARTUP_CACHE_TTL_MS;
 }
@@ -110,6 +114,8 @@ type TeamStore = AdminStoresResponse["stores"][number];
 type StoreCreateStep = "name" | "address";
 type SellerCreateStep = "name" | "telegramId" | "store" | "status";
 type ProductCreateStep = "name" | "price" | "sku" | "status";
+type AdminReportType = "daily_summary" | "store" | "seller" | "schedule";
+type AdminReportPeriod = "week" | "month";
 
 const adminFormInputStyles = {
   h: "56px",
@@ -518,6 +524,13 @@ export function AdminDashboardScreen({
   const [newStoreAddress, setNewStoreAddress] = useState("");
   const [showNewStoreModal, setShowNewStoreModal] = useState(false);
   const [showNewSellerModal, setShowNewSellerModal] = useState(false);
+  const [reportType, setReportType] = useState<AdminReportType>("daily_summary");
+  const [reportDate, setReportDate] = useState(getTodayInputValue);
+  const [reportStoreId, setReportStoreId] = useState("");
+  const [reportSellerId, setReportSellerId] = useState("");
+  const [reportPeriod, setReportPeriod] = useState<AdminReportPeriod>("week");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [storeCreateStep, setStoreCreateStep] = useState<StoreCreateStep>("name");
   const [newSeller, setNewSeller] = useState({
     fullName: "",
@@ -5305,6 +5318,143 @@ export function AdminDashboardScreen({
     </Box>
   );
 
+  const handleRequestReport = async () => {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setReportStatus("Нет активной Telegram-сессии.");
+      return;
+    }
+
+    const body =
+      reportType === "daily_summary"
+        ? { type: reportType, date: reportDate }
+        : reportType === "store"
+          ? { type: reportType, date: reportDate, storeId: reportStoreId || stores[0]?.id }
+          : reportType === "seller"
+            ? { type: reportType, date: reportDate, sellerId: reportSellerId || staff[0]?.id }
+            : { type: reportType, period: reportPeriod, periodAnchorDate: reportDate };
+
+    if ((reportType === "store" && !body.storeId) || (reportType === "seller" && !body.sellerId)) {
+      setReportStatus("Выберите магазин или продавца для отчета.");
+      return;
+    }
+
+    try {
+      setReportSubmitting(true);
+      setReportStatus(null);
+      await apiPost<{ ok: boolean; message: string }>("/admin/reports", body, token);
+      setReportStatus("PDF отправлен в Telegram.");
+    } catch (error) {
+      setReportStatus(error instanceof Error ? error.message : "Не удалось сформировать отчет.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  const renderReportsSettings = () => {
+    const selectedStoreId = reportStoreId || stores[0]?.id || "";
+    const selectedSellerId = reportSellerId || staff[0]?.id || "";
+
+    return (
+      <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+        <VStack align="stretch" spacing={4}>
+          <VStack align="start" spacing={1}>
+            <Text fontWeight="900" fontSize="lg">
+              Отчеты
+            </Text>
+            <Text color="surface.500" fontSize="sm">
+              Выберите тип отчета, период и получите PDF в Telegram-боте.
+            </Text>
+          </VStack>
+
+          <Select
+            value={reportType}
+            onChange={(event) => setReportType(event.target.value as AdminReportType)}
+            {...adminFormInputStyles}
+          >
+            <option value="daily_summary">Сводный отчет за день</option>
+            <option value="store">Отчет по магазину</option>
+            <option value="seller">Отчет по продавцу</option>
+            <option value="schedule">Рабочий график</option>
+          </Select>
+
+          <Input
+            type="date"
+            value={reportDate}
+            onChange={(event) => setReportDate(event.target.value)}
+            {...adminFormInputStyles}
+          />
+
+          {reportType === "store" ? (
+            <Select
+              value={selectedStoreId}
+              onChange={(event) => setReportStoreId(event.target.value)}
+              {...adminFormInputStyles}
+            >
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+
+          {reportType === "seller" ? (
+            <Select
+              value={selectedSellerId}
+              onChange={(event) => setReportSellerId(event.target.value)}
+              {...adminFormInputStyles}
+            >
+              {staff.map((seller) => (
+                <option key={seller.id} value={seller.id}>
+                  {seller.fullName}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+
+          {reportType === "schedule" ? (
+            <HStack spacing={3}>
+              {(["week", "month"] as AdminReportPeriod[]).map((period) => (
+                <Button
+                  key={period}
+                  flex="1"
+                  borderRadius="16px"
+                  bg={reportPeriod === period ? "brand.500" : "rgba(241,240,236,0.95)"}
+                  color={reportPeriod === period ? "white" : "surface.800"}
+                  _hover={{
+                    bg: reportPeriod === period ? "brand.600" : "rgba(225,223,218,0.95)",
+                  }}
+                  onClick={() => setReportPeriod(period)}
+                >
+                  {period === "week" ? "Неделя" : "Месяц"}
+                </Button>
+              ))}
+            </HStack>
+          ) : null}
+
+          <Button
+            h="56px"
+            borderRadius="20px"
+            bg="surface.900"
+            color="white"
+            isLoading={reportSubmitting}
+            _hover={{ bg: "surface.700" }}
+            onClick={handleRequestReport}
+          >
+            Сформировать PDF
+          </Button>
+
+          {reportStatus ? (
+            <Text color="surface.500" fontSize="sm" fontWeight="700">
+              {reportStatus}
+            </Text>
+          ) : null}
+        </VStack>
+      </Box>
+    );
+  };
+
   const renderTab = () => {
     switch (activeTab) {
       case "sales":
@@ -5320,6 +5470,7 @@ export function AdminDashboardScreen({
               t("settings.admin.title"),
               t("settings.admin.description")
             )}
+            {renderReportsSettings()}
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" spacing={3}>
                 <Text fontWeight="900" fontSize="lg">

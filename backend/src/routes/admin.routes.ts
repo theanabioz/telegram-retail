@@ -10,6 +10,7 @@ import {
   adminProductsQuerySchema,
   adminSellerParamsSchema,
   adminSalesQuerySchema,
+  adminReportRequestBodySchema,
   adminStoreProductParamsSchema,
   adminStoreParamsSchema,
   assignSellerBodySchema,
@@ -40,6 +41,7 @@ import {
   updateProduct,
   updateStoreProductSettings,
 } from "../modules/admin/admin.service.js";
+import { requestAdminReport } from "../modules/admin/admin.reports.js";
 import { emitRealtimeEvent } from "../realtime/server.js";
 import { getBusinessDayRange } from "../lib/business-time.js";
 
@@ -194,6 +196,18 @@ adminRouter.get(
     const query = adminSalesQuerySchema.parse(req.query);
     const result = await getAdminSalesOverview(query);
     res.json(result);
+  })
+);
+
+adminRouter.post(
+  "/reports",
+  asyncHandler(async (req, res) => {
+    const body = adminReportRequestBodySchema.parse(req.body);
+    const result = await requestAdminReport({
+      adminUserId: req.auth!.app_user_id,
+      ...body,
+    });
+    res.status(202).json(result);
   })
 );
 

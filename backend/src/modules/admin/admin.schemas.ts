@@ -107,3 +107,27 @@ export const adminSalesQuerySchema = z.object({
   dateTo: z.string().datetime().optional(),
   limit: z.coerce.number().int().positive().max(100).default(30),
 });
+
+const reportDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const adminReportRequestBodySchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("daily_summary"),
+    date: reportDateSchema,
+  }),
+  z.object({
+    type: z.literal("store"),
+    date: reportDateSchema,
+    storeId: z.string().uuid(),
+  }),
+  z.object({
+    type: z.literal("seller"),
+    date: reportDateSchema,
+    sellerId: z.string().uuid(),
+  }),
+  z.object({
+    type: z.literal("schedule"),
+    period: z.enum(["week", "month"]),
+    periodAnchorDate: reportDateSchema,
+  }),
+]);
