@@ -1,10 +1,17 @@
 import { maybeOne, queryDb } from "./db.js";
+import { env } from "../config.js";
 import { sendTelegramMessage } from "./telegram-api.js";
 
 const LOW_STOCK_THRESHOLD = 10;
 const ALERT_TIME_ZONE = "Europe/Lisbon";
 const QUIET_HOURS_START = 22;
 const QUIET_HOURS_END = 8;
+
+type TelegramAlertTarget = {
+  roles?: Array<"admin" | "seller">;
+  userIds?: string[];
+  telegramIds?: Array<number | string>;
+};
 
 function escapeHtml(value: string) {
   return value
@@ -96,7 +103,7 @@ async function resolveTelegramChatIds(input: {
   }
 
   if (roleClauses.length === 0) {
-    return [] as string[];
+    return Array.from(new Set(normalizedTelegramIds));
   }
 
   const result = await queryDb<{ telegram_id: number }>(
@@ -109,12 +116,32 @@ async function resolveTelegramChatIds(input: {
 
   return Array.from(
     new Set(
-      result.rows
+      [
+        ...normalizedTelegramIds,
+        ...result.rows
         .map((row) => row.telegram_id)
         .filter((telegramId): telegramId is number => Number.isFinite(telegramId))
-        .map((telegramId) => String(telegramId))
+        .map((telegramId) => String(telegramId)),
+      ]
     )
   );
+}
+
+function adminAlertTarget(): TelegramAlertTarget {
+  return {
+    roles: ["admin"],
+    telegramIds: env.TELEGRAM_ALERT_CHAT_IDS,
+  };
+}
+
+function sellerReportTarget(sellerUserId: string): TelegramAlertTarget {
+  return {
+    userIds: [sellerUserId],
+  };
+}
+
+function maskChatId(chatId: string) {
+  return chatId.length > 4 ? `...${chatId.slice(-4)}` : "****";
 }
 
 async function getUserName(userId: string) {
@@ -144,11 +171,7 @@ async function getProductName(productId: string) {
 async function sendTelegramAlert(
   title: string,
   lines: string[],
-  target: {
-    roles?: Array<"admin" | "seller">;
-    userIds?: string[];
-    telegramIds?: Array<number | string>;
-  }
+  target: TelegramAlertTarget
 ) {
   try {
     const chatIds = await resolveTelegramChatIds(target);
@@ -161,7 +184,7 @@ async function sendTelegramAlert(
     const text = buildText(title, lines);
     const disableNotification = shouldSendSilently();
 
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       chatIds.map((chatId) =>
         sendTelegramMessage({
           chatId,
@@ -172,6 +195,13 @@ async function sendTelegramAlert(
         })
       )
     );
+
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        console.warn(`[telegram-alert] failed "${title}" for chat ${maskChatId(chatIds[index])}: ${reason}`);
+      }
+    });
   } catch (error) {
     console.warn(
       `[telegram-alert] failed to send "${title}": ${error instanceof Error ? error.message : String(error)}`
@@ -193,7 +223,7 @@ export async function notifyShiftStarted(input: { sellerUserId: string; storeId:
       "",
       "Смена успешно начата и готова к продажам.",
     ],
-    { roles: ["admin"] }
+    adminAlertTarget()
   );
 }
 
@@ -213,28 +243,26 @@ export async function notifyShiftEnded(input: {
 }) {
   const [sellerName, storeName] = await Promise.all([getUserName(input.sellerUserId), getStoreName(input.storeId)]);
 
-  await sendTelegramAlert(
-    "Отчет по смене",
-    [
-      buildLine("Продавец", sellerName),
-      buildLine("Магазин", storeName),
-      buildLine("Дата", formatDate(input.endedAt)),
-      "",
-      buildLine("Начало", formatTime(input.startedAt)),
-      buildLine("Завершение", formatTime(input.endedAt)),
-      buildLine("Отработано", formatDuration(input.workedSeconds)),
-      buildLine("Пауза", formatDuration(input.pausedSeconds)),
-      "",
-      buildLine("Продаж за смену", String(input.salesCount)),
-      buildLine("Выручка за смену", formatCurrency(input.totalRevenue)),
-      buildLine("Наличные", `${input.cashSalesCount} шт. • ${formatCurrency(input.cashRevenue)}`),
-      buildLine("Карта", `${input.cardSalesCount} шт. • ${formatCurrency(input.cardRevenue)}`),
-    ],
-    {
-      roles: ["admin"],
-      userIds: [input.sellerUserId],
-    }
-  );
+  const reportLines = [
+    buildLine("Продавец", sellerName),
+    buildLine("Магазин", storeName),
+    buildLine("Дата", formatDate(input.endedAt)),
+    "",
+    buildLine("Начало", formatTime(input.startedAt)),
+    buildLine("Завершение", formatTime(input.endedAt)),
+    buildLine("Отработано", formatDuration(input.workedSeconds)),
+    buildLine("Пауза", formatDuration(input.pausedSeconds)),
+    "",
+    buildLine("Продаж за смену", String(input.salesCount)),
+    buildLine("Выручка за смену", formatCurrency(input.totalRevenue)),
+    buildLine("Наличные", `${input.cashSalesCount} шт. • ${formatCurrency(input.cashRevenue)}`),
+    buildLine("Карта", `${input.cardSalesCount} шт. • ${formatCurrency(input.cardRevenue)}`),
+  ];
+
+  await Promise.all([
+    sendTelegramAlert("Закрыта смена", reportLines, adminAlertTarget()),
+    sendTelegramAlert("Смена завершена", reportLines, sellerReportTarget(input.sellerUserId)),
+  ]);
 }
 
 export async function notifyLowStockIfNeeded(input: {
@@ -258,6 +286,6 @@ export async function notifyLowStockIfNeeded(input: {
       "",
       "Остаток опустился до порогового значения. Проверь пополнение.",
     ],
-    { roles: ["admin"] }
+    adminAlertTarget()
   );
 }
