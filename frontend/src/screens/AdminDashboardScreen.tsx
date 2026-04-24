@@ -488,6 +488,10 @@ export function AdminDashboardScreen({
   const { data, error, loading, load, hydrate: hydrateDashboard } = useAdminDashboardStore();
   const cachedAdminStartup = useMemo(() => getCachedAdminStartup(), []);
   const dashboardData = data ?? cachedAdminStartup?.dashboard ?? null;
+  const overviewRevenueHistory = useMemo(
+    () => (dashboardData ? getOverviewRevenueHistory(dashboardData) : []),
+    [dashboardData]
+  );
   const {
     stores,
     staff,
@@ -542,6 +546,7 @@ export function AdminDashboardScreen({
     (activeTab === "team" &&
       ((loadingStores && stores.length === 0) || (loadingStaff && staff.length === 0)));
   const [selectedOverviewHour, setSelectedOverviewHour] = useState<OverviewChartSelection>(null);
+  const [visibleOverviewDate, setVisibleOverviewDate] = useState<string | null>(null);
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
   const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
   const [selectedAdminReturnId, setSelectedAdminReturnId] = useState<string | null>(null);
@@ -644,6 +649,8 @@ export function AdminDashboardScreen({
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const softRefreshInFlightRef = useRef(false);
   const inventorySelectionRefreshStoreIdRef = useRef<string | null>(null);
+  const overviewChartScrollRef = useRef<HTMLDivElement | null>(null);
+  const positionedOverviewChartDateRef = useRef<string | null>(null);
   const pointerHandledSegmentRef = useRef<string | null>(null);
   const activateSegmentOnPointerDown = useCallback(
     (key: string, action: () => void) => (event: PointerEvent<HTMLButtonElement>) => {
@@ -667,6 +674,19 @@ export function AdminDashboardScreen({
     },
     []
   );
+  const handleOverviewChartScroll = useCallback(() => {
+    const scrollElement = overviewChartScrollRef.current;
+
+    if (!scrollElement || overviewRevenueHistory.length === 0 || scrollElement.clientWidth <= 0) {
+      return;
+    }
+
+    const index = Math.min(
+      overviewRevenueHistory.length - 1,
+      Math.max(0, Math.round(scrollElement.scrollLeft / scrollElement.clientWidth))
+    );
+    setVisibleOverviewDate(overviewRevenueHistory[index]?.date ?? null);
+  }, [overviewRevenueHistory]);
   const selectedStaffSeller = selectedStaffSellerId
     ? staff.find((seller) => seller.id === selectedStaffSellerId) ?? null
     : null;
@@ -714,6 +734,10 @@ export function AdminDashboardScreen({
         : reportType === "seller"
           ? "Личные показатели сотрудника"
           : "Смены и часы команды";
+  const visibleOverviewDay =
+    overviewRevenueHistory.find((day) => day.date === visibleOverviewDate) ??
+    overviewRevenueHistory[overviewRevenueHistory.length - 1] ??
+    null;
 
   const resetAdminSection = useCallback((tab: AdminTab) => {
     if (tab === "overview") {
@@ -1097,6 +1121,36 @@ export function AdminDashboardScreen({
       document.removeEventListener("visibilitychange", triggerRefresh);
     };
   }, [activeTab, refreshActiveAdminTab]);
+
+  useEffect(() => {
+    const latestDate = overviewRevenueHistory[overviewRevenueHistory.length - 1]?.date;
+
+    if (activeTab !== "overview" || !latestDate) {
+      return;
+    }
+
+    if (positionedOverviewChartDateRef.current === latestDate) {
+      return;
+    }
+
+    positionedOverviewChartDateRef.current = latestDate;
+    setVisibleOverviewDate(latestDate);
+
+    const frameId = window.requestAnimationFrame(() => {
+      const scrollElement = overviewChartScrollRef.current;
+
+      if (!scrollElement) {
+        return;
+      }
+
+      scrollElement.scrollTo({
+        left: scrollElement.scrollWidth - scrollElement.clientWidth,
+        behavior: "auto",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeTab, overviewRevenueHistory]);
 
   useEffect(() => {
     const loadInitialAdminSnapshot = async () => {
@@ -2075,12 +2129,22 @@ export function AdminDashboardScreen({
                 {t("admin.overview.revenueFlowDescription")}
               </Text>
             </VStack>
+            {visibleOverviewDay ? (
+              <VStack align="end" gap={0} flexShrink={0}>
+                <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="900" color="surface.700" lineHeight="1">
+                  {formatEur(visibleOverviewDay.total)}
+                </Text>
+                <Text color="surface.500" fontSize="xs" fontWeight="800" mt={1}>
+                  {formatOverviewChartDateLabel(visibleOverviewDay.date)}
+                </Text>
+              </VStack>
+            ) : null}
           </HStack>
 
           {dashboardData ? (
             <VStack align="stretch" gap={2}>
               {(() => {
-                const chartDays = getOverviewRevenueHistory(dashboardData);
+                const chartDays = overviewRevenueHistory.length > 0 ? overviewRevenueHistory : getOverviewRevenueHistory(dashboardData);
                 const todayKey = getBusinessDateKey();
                 const currentBusinessHour = getCurrentBusinessHour();
                 const maxHourTotal = Math.max(
@@ -2095,6 +2159,7 @@ export function AdminDashboardScreen({
                 return (
                   <Box mx={-1}>
                     <HStack
+                      ref={overviewChartScrollRef}
                       align="end"
                       gap={2.5}
                       overflowX="auto"
@@ -2102,6 +2167,7 @@ export function AdminDashboardScreen({
                       scrollSnapType="x mandatory"
                       px={1}
                       pb={1}
+                      onScroll={handleOverviewChartScroll}
                     >
                       {chartDays.map((day) => (
                         <VStack
@@ -2115,9 +2181,6 @@ export function AdminDashboardScreen({
                           <HStack justify="space-between" px={1}>
                             <Text fontSize="11px" fontWeight="900" color="surface.700" whiteSpace="nowrap">
                               {formatOverviewChartDateLabel(day.date)}
-                            </Text>
-                            <Text fontSize="11px" fontWeight="900" color="surface.500" whiteSpace="nowrap">
-                              {formatEur(day.total)}
                             </Text>
                           </HStack>
 
