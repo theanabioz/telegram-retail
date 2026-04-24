@@ -12,6 +12,14 @@ export type AdminDashboardResponse = {
     hour: number;
     total: number;
   }>;
+  hourlyRevenueHistory: Array<{
+    date: string;
+    total: number;
+    hours: Array<{
+      hour: number;
+      total: number;
+    }>;
+  }>;
   recentSales: Array<{
     id: string;
     totalAmount: number;

@@ -39,7 +39,7 @@ import { findCurrentAssignment, findUserById } from "../users/users.repository.j
 import { listInventoryHistory } from "../inventory/inventory.repository.js";
 import { runAdminInventoryAdjustment } from "../inventory/inventory.service.js";
 import { findOpenShiftByUserId } from "../shifts/shifts.repository.js";
-import { getBusinessHour, getBusinessPeriodStarts } from "../../lib/business-time.js";
+import { getBusinessDateInput, getBusinessHour, getBusinessPeriodStarts, getRecentBusinessDateInputs } from "../../lib/business-time.js";
 
 function startOfTodayIso() {
   return getBusinessPeriodStarts().todayStartIso;
@@ -172,7 +172,7 @@ export async function getAdminDashboard(input: {
   recentSalesLimit: number;
   lowStockLimit: number;
 }) {
-  const dashboardSalesFetchLimit = Math.max(input.recentSalesLimit, 500);
+  const dashboardSalesFetchLimit = Math.max(input.recentSalesLimit, 4000);
   const [sales, stores, users, assignments, openShifts, inventoryRows, products] =
     await Promise.all([
       listAdminSales(dashboardSalesFetchLimit),
@@ -209,6 +209,31 @@ export async function getAdminDashboard(input: {
     return {
       hour,
       total: Number(total.toFixed(2)),
+    };
+  });
+  const revenueHistoryDates = getRecentBusinessDateInputs(7);
+  const revenueHistoryDateSet = new Set(revenueHistoryDates);
+  const revenueByDateHour = completedSales.reduce<Map<string, number>>((map, sale) => {
+    const date = getBusinessDateInput(new Date(sale.created_at));
+
+    if (!revenueHistoryDateSet.has(date)) {
+      return map;
+    }
+
+    const key = `${date}:${getBusinessHour(sale.created_at)}`;
+    map.set(key, (map.get(key) ?? 0) + sale.total_amount);
+    return map;
+  }, new Map());
+  const hourlyRevenueHistory = revenueHistoryDates.map((date) => {
+    const hours = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      total: Number((revenueByDateHour.get(`${date}:${hour}`) ?? 0).toFixed(2)),
+    }));
+
+    return {
+      date,
+      total: Number(hours.reduce((sum, entry) => sum + entry.total, 0).toFixed(2)),
+      hours,
     };
   });
 
@@ -304,6 +329,7 @@ export async function getAdminDashboard(input: {
       lowStockCount: lowStockItems.length,
     },
     hourlyRevenueToday,
+    hourlyRevenueHistory,
     recentSales,
     activeShifts,
     lowStockItems,

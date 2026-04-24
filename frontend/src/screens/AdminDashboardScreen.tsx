@@ -89,6 +89,11 @@ type AdminDashboardScreenProps = {
   onViewAsSeller: (sellerId: string) => Promise<void>;
 };
 
+type OverviewChartSelection = {
+  date: string;
+  hour: number;
+} | null;
+
 type SalesLedgerMode = "sales" | "returns";
 type SalesPeriod = "today" | "week" | "month" | "custom";
 type SalesLedgerSnapshot = Pick<AdminSalesOverviewResponse, "sales" | "returns">;
@@ -411,9 +416,40 @@ function getCurrentBusinessHour() {
   return Number.isNaN(parsedHour) ? 0 : parsedHour;
 }
 
-function getVisibleOverviewChartSeries(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
-  const currentHour = getCurrentBusinessHour();
-  return hourlyRevenueToday.filter((entry) => entry.hour <= currentHour);
+function getBusinessDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const partMap = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${partMap.year}-${partMap.month}-${partMap.day}`;
+}
+
+function formatOverviewChartDateLabel(value: string) {
+  const date = new Date(`${value}T12:00:00`);
+  const label = new Intl.DateTimeFormat(getLocaleTag(), {
+    day: "2-digit",
+    month: "short",
+  }).format(date);
+
+  return label.replace(".", "");
+}
+
+function getOverviewRevenueHistory(dashboardData: AdminDashboardResponse) {
+  if (dashboardData.hourlyRevenueHistory?.length) {
+    return dashboardData.hourlyRevenueHistory;
+  }
+
+  return [
+    {
+      date: getBusinessDateKey(),
+      total: dashboardData.summary.totalRevenueToday,
+      hours: dashboardData.hourlyRevenueToday,
+    },
+  ];
 }
 
 function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "blue" | "orange" | "gray" }) {
@@ -505,7 +541,7 @@ export function AdminDashboardScreen({
     (loading && !data) ||
     (activeTab === "team" &&
       ((loadingStores && stores.length === 0) || (loadingStaff && staff.length === 0)));
-  const [selectedOverviewHour, setSelectedOverviewHour] = useState<number | null>(null);
+  const [selectedOverviewHour, setSelectedOverviewHour] = useState<OverviewChartSelection>(null);
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
   const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
   const [selectedAdminReturnId, setSelectedAdminReturnId] = useState<string | null>(null);
@@ -1061,19 +1097,6 @@ export function AdminDashboardScreen({
       document.removeEventListener("visibilitychange", triggerRefresh);
     };
   }, [activeTab, refreshActiveAdminTab]);
-
-  const handleOverviewChartPointer = (event: PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-
-    if (rect.width <= 0) {
-      return;
-    }
-
-  const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width - 1);
-  const hour = Math.min(23, Math.max(0, Math.floor((x / rect.width) * 24)));
-  const currentBusinessHour = getCurrentBusinessHour();
-  setSelectedOverviewHour(hour <= currentBusinessHour ? hour : null);
-  };
 
   useEffect(() => {
     const loadInitialAdminSnapshot = async () => {
@@ -2059,102 +2082,169 @@ export function AdminDashboardScreen({
 
           {dashboardData ? (
             <VStack align="stretch" gap={2}>
-              <Box
-                display="grid"
-                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
-                columnGap={1.5}
-                h="164px"
-                px={1}
-                overflow="hidden"
-                cursor="crosshair"
-                style={{ touchAction: "none" }}
-                onPointerDown={handleOverviewChartPointer}
-                onPointerMove={handleOverviewChartPointer}
-                onPointerLeave={() => setSelectedOverviewHour(null)}
-              >
-                {(() => {
-                  const chartSeries = dashboardData.hourlyRevenueToday;
-                  const currentBusinessHour = getCurrentBusinessHour();
-                  const maxHourTotal = Math.max(
-                    ...chartSeries
-                      .filter((entry) => entry.hour <= currentBusinessHour)
-                      .map((entry) => entry.total),
-                    1
-                  );
+              {(() => {
+                const chartDays = getOverviewRevenueHistory(dashboardData);
+                const todayKey = getBusinessDateKey();
+                const currentBusinessHour = getCurrentBusinessHour();
+                const maxHourTotal = Math.max(
+                  ...chartDays.flatMap((day) =>
+                    day.hours
+                      .filter((entry) => day.date !== todayKey || entry.hour <= currentBusinessHour || entry.total > 0)
+                      .map((entry) => entry.total)
+                  ),
+                  1
+                );
 
-                  return chartSeries.map((entry) => {
-                    const isFutureHour = entry.hour > currentBusinessHour;
-                    const height = isFutureHour ? 12 : Math.max(12, (entry.total / maxHourTotal) * 132);
-                    const isActiveHour = !isFutureHour && entry.total > 0;
-                    const isSelected = selectedOverviewHour === entry.hour;
-
-                    return (
-                      <VStack key={entry.hour} minW={0} gap={2} align="center" justify="end" h="full">
-                        <Text
-                          fontSize="10px"
-                          fontWeight="900"
-                          color="surface.700"
-                          opacity={isSelected ? 1 : 0}
-                          lineClamp={1}
-                          h="12px"
-                          lineHeight="12px"
-                        >
-                          {isSelected ? entry.total.toFixed(0) : ""}
-                        </Text>
-                        <Box
-                          w="full"
-                          maxW="12px"
-                          h={`${height}px`}
-                          borderRadius="999px"
-                          cursor={isFutureHour ? "default" : "pointer"}
-                          transition="all 0.18s ease"
-                          bg={
-                            isFutureHour
-                              ? "rgba(226,224,218,0.55)"
-                              : isActiveHour
-                              ? isSelected
-                                ? "linear-gradient(180deg, rgba(53,102,216,1) 0%, rgba(82,129,236,0.88) 100%)"
-                                : "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
-                              : "rgba(226,224,218,0.8)"
-                          }
-                          boxShadow={
-                            isActiveHour
-                              ? isSelected
-                                ? "0 10px 22px rgba(82,129,236,0.28)"
-                                : "0 8px 18px rgba(82,129,236,0.18)"
-                              : "none"
-                          }
-                          transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
-                          _active={{ transform: "scale(0.96)" }}
-                          asChild><button type="button" onClick={() => setSelectedOverviewHour(isFutureHour ? null : entry.hour)} /></Box>
-                      </VStack>
-                    );
-                  });
-                })()}
-              </Box>
-
-              <Box
-                display="grid"
-                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
-                columnGap={1.5}
-                h="12px"
-                px={1}
-              >
-                {[0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => (
-                  <Text
-                    key={hour}
-                    gridColumn={`${hour + 1}`}
-                    fontSize="10px"
-                    color="surface.500"
-                    fontWeight="700"
-                    lineHeight="12px"
-                    textAlign="center"
-                    whiteSpace="nowrap"
+                return (
+                  <Box
+                    position="relative"
+                    mx={-1}
+                    _before={{
+                      content: '""',
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      w: "22px",
+                      pointerEvents: "none",
+                      zIndex: 1,
+                      bg: "linear-gradient(90deg, rgba(255,255,255,0.92), rgba(255,255,255,0))",
+                    }}
+                    _after={{
+                      content: '""',
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      right: 0,
+                      w: "22px",
+                      pointerEvents: "none",
+                      zIndex: 1,
+                      bg: "linear-gradient(270deg, rgba(255,255,255,0.92), rgba(255,255,255,0))",
+                    }}
                   >
-                    {String(hour).padStart(2, "0")}
-                  </Text>
-                ))}
-              </Box>
+                    <HStack
+                      align="end"
+                      gap={2.5}
+                      overflowX="auto"
+                      overscrollBehaviorX="contain"
+                      scrollSnapType="x mandatory"
+                      px={1}
+                      pb={1}
+                    >
+                      {chartDays.map((day) => (
+                        <VStack
+                          key={day.date}
+                          align="stretch"
+                          gap={2}
+                          minW={{ base: "438px", sm: "496px" }}
+                          scrollSnapAlign="start"
+                        >
+                          <HStack justify="space-between" px={1}>
+                            <Text fontSize="11px" fontWeight="900" color="surface.700" whiteSpace="nowrap">
+                              {formatOverviewChartDateLabel(day.date)}
+                            </Text>
+                            <Text fontSize="11px" fontWeight="900" color="surface.500" whiteSpace="nowrap">
+                              {formatEur(day.total)}
+                            </Text>
+                          </HStack>
+
+                          <Box
+                            display="grid"
+                            gridTemplateColumns="repeat(24, minmax(12px, 1fr))"
+                            columnGap={1.5}
+                            h="164px"
+                            px={1}
+                            overflow="hidden"
+                            onPointerLeave={() => setSelectedOverviewHour(null)}
+                          >
+                            {day.hours.map((entry) => {
+                              const isFutureHour =
+                                day.date === todayKey && entry.hour > currentBusinessHour && entry.total <= 0;
+                              const height = isFutureHour ? 12 : Math.max(12, (entry.total / maxHourTotal) * 132);
+                              const isActiveHour = !isFutureHour && entry.total > 0;
+                              const isSelected =
+                                selectedOverviewHour?.date === day.date && selectedOverviewHour.hour === entry.hour;
+
+                              return (
+                                <VStack key={`${day.date}-${entry.hour}`} minW={0} gap={2} align="center" justify="end" h="full">
+                                  <Text
+                                    fontSize="10px"
+                                    fontWeight="900"
+                                    color="surface.700"
+                                    opacity={isSelected ? 1 : 0}
+                                    lineClamp={1}
+                                    h="12px"
+                                    lineHeight="12px"
+                                  >
+                                    {isSelected ? entry.total.toFixed(0) : ""}
+                                  </Text>
+                                  <Box
+                                    w="full"
+                                    maxW="12px"
+                                    h={`${height}px`}
+                                    borderRadius="999px"
+                                    cursor={isFutureHour ? "default" : "pointer"}
+                                    transition="all 0.18s ease"
+                                    bg={
+                                      isFutureHour
+                                        ? "rgba(226,224,218,0.55)"
+                                        : isActiveHour
+                                          ? isSelected
+                                            ? "linear-gradient(180deg, rgba(53,102,216,1) 0%, rgba(82,129,236,0.88) 100%)"
+                                            : "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
+                                          : "rgba(226,224,218,0.8)"
+                                    }
+                                    boxShadow={
+                                      isActiveHour
+                                        ? isSelected
+                                          ? "0 10px 22px rgba(82,129,236,0.28)"
+                                          : "0 8px 18px rgba(82,129,236,0.18)"
+                                        : "none"
+                                    }
+                                    transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
+                                    _active={{ transform: "scale(0.96)" }}
+                                    asChild
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setSelectedOverviewHour(isFutureHour ? null : { date: day.date, hour: entry.hour })
+                                      }
+                                    />
+                                  </Box>
+                                </VStack>
+                              );
+                            })}
+                          </Box>
+
+                          <Box
+                            display="grid"
+                            gridTemplateColumns="repeat(24, minmax(12px, 1fr))"
+                            columnGap={1.5}
+                            h="12px"
+                            px={1}
+                          >
+                            {[0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => (
+                              <Text
+                                key={`${day.date}-${hour}`}
+                                gridColumn={`${hour + 1}`}
+                                fontSize="10px"
+                                color="surface.500"
+                                fontWeight="700"
+                                lineHeight="12px"
+                                textAlign="center"
+                                whiteSpace="nowrap"
+                              >
+                                {String(hour).padStart(2, "0")}
+                              </Text>
+                            ))}
+                          </Box>
+                        </VStack>
+                      ))}
+                    </HStack>
+                  </Box>
+                );
+              })()}
             </VStack>
           ) : null}
         </VStack>
