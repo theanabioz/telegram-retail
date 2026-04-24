@@ -3432,22 +3432,12 @@ export function AdminDashboardScreen({
                         color={isActive ? "white" : type === "writeoff" ? "red.500" : "surface.700"}
                         _hover={{ bg: isActive ? "surface.900" : "rgba(232,231,226,0.96)" }}
                         whiteSpace="normal"
-                        onClick={() => {
-                          if (type === "manual_adjustment") {
-                            setInventoryEdits((current) => ({
-                              ...current,
-                              [selectedItem.storeProductId]: {
-                                ...draft,
-                                adjustQuantity: String(selectedItem.stockQuantity),
-                              },
-                            }));
-                          }
-
+                        onClick={() =>
                           setInventoryMovementTypes((current) => ({
                             ...current,
                             [selectedItem.storeProductId]: type,
-                          }));
-                        }}
+                          }))
+                        }
                       >
                         {label}
                       </Button>
