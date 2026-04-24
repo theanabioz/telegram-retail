@@ -41,6 +41,10 @@ const envSchema = z.object({
             .filter(Boolean)
         : []
     ),
+  TELEGRAM_BOT_POLLING_ENABLED: z
+    .string()
+    .optional()
+    .transform((value) => value === "true"),
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default("7d"),
   APP_TIME_ZONE: z.string().min(1).default("Europe/Lisbon"),

@@ -8,7 +8,7 @@ import { attachRealtimeServer } from "./realtime/server.js";
 const app = createApp();
 const server = createServer(app);
 const realtimeServer = attachRealtimeServer(server);
-const telegramBot = startTelegramBot();
+const telegramBot = env.TELEGRAM_BOT_POLLING_ENABLED ? startTelegramBot() : null;
 let isShuttingDown = false;
 
 async function closeHttpServer() {
@@ -39,7 +39,7 @@ async function shutdown(reason: string, exitCode: number) {
   forceExitTimer.unref();
 
   try {
-    telegramBot.dispose();
+    telegramBot?.dispose();
     realtimeServer.dispose();
     await closeHttpServer();
     await closeDbPool();
@@ -72,4 +72,7 @@ process.on("uncaughtException", (error) => {
 
 server.listen(env.PORT, () => {
   console.log(`Telegram Retail backend listening on port ${env.PORT}`);
+  if (!env.TELEGRAM_BOT_POLLING_ENABLED) {
+    console.log("Telegram bot polling is disabled");
+  }
 });
