@@ -1892,8 +1892,12 @@ export function AdminDashboardScreen({
     const nextStoreId = overrides?.storeId ?? salesStoreFilter;
     const nextSellerId = overrides?.sellerId ?? salesSellerFilter;
     const nextSaleStatus = overrides?.saleStatus ?? salesStatusFilter;
-    const nextDateFrom = overrides?.dateFrom ?? salesDateFrom;
-    const nextDateTo = overrides?.dateTo ?? salesDateTo;
+    const rawDateFrom = overrides?.dateFrom ?? salesDateFrom;
+    const rawDateTo = overrides?.dateTo ?? salesDateTo;
+    const nextDateFrom =
+      rawDateFrom && rawDateTo && rawDateFrom > rawDateTo ? rawDateTo : rawDateFrom;
+    const nextDateTo =
+      rawDateFrom && rawDateTo && rawDateFrom > rawDateTo ? rawDateFrom : rawDateTo;
     const cachedSnapshot = salesCache[
       buildSalesCacheKey({
         period: nextPeriod,
@@ -4021,47 +4025,50 @@ export function AdminDashboardScreen({
               })}
             </HStack>
 
-            <SimpleGrid columns={2} gap={2}>
-              <NativeSelect.Root>
-                <NativeSelect.Field
-                  value={salesStoreFilter}
-                  onChange={(event) => {
-                    const storeId = event.target.value;
-                    setSalesStoreFilter(storeId);
-                    void handleApplySalesFilters({ storeId });
-                  }}
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)">
-                  <option value="">{t("admin.sales.allStores")}</option>
-                  {salesStores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-              <NativeSelect.Root>
-                <NativeSelect.Field
-                  value={salesSellerFilter}
-                  onChange={(event) => {
-                    const sellerId = event.target.value;
-                    setSalesSellerFilter(sellerId);
-                    void handleApplySalesFilters({ sellerId });
-                  }}
-                  borderRadius="18px"
-                  bg="white"
-                  borderColor="rgba(226,224,218,0.95)">
-                  <option value="">{t("admin.sales.allSellers")}</option>
-                  {salesSellers.map((seller) => (
-                    <option key={seller.id} value={seller.id}>
-                      {seller.fullName}
-                    </option>
-                  ))}
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
+            <VStack align="stretch" gap={2}>
+              <SimpleGrid columns={2} gap={2}>
+                <NativeSelect.Root>
+                  <NativeSelect.Field
+                    value={salesStoreFilter}
+                    onChange={(event) => {
+                      const storeId = event.target.value;
+                      setSalesStoreFilter(storeId);
+                      void handleApplySalesFilters({ storeId });
+                    }}
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)">
+                    <option value="">{t("admin.sales.allStores")}</option>
+                    {salesStores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                  <NativeSelect.Indicator />
+                </NativeSelect.Root>
+                <NativeSelect.Root>
+                  <NativeSelect.Field
+                    value={salesSellerFilter}
+                    onChange={(event) => {
+                      const sellerId = event.target.value;
+                      setSalesSellerFilter(sellerId);
+                      void handleApplySalesFilters({ sellerId });
+                    }}
+                    borderRadius="18px"
+                    bg="white"
+                    borderColor="rgba(226,224,218,0.95)">
+                    <option value="">{t("admin.sales.allSellers")}</option>
+                    {salesSellers.map((seller) => (
+                      <option key={seller.id} value={seller.id}>
+                        {seller.fullName}
+                      </option>
+                    ))}
+                  </NativeSelect.Field>
+                  <NativeSelect.Indicator />
+                </NativeSelect.Root>
+              </SimpleGrid>
+
               <NativeSelect.Root>
                 <NativeSelect.Field
                   value={salesStatusFilter}
@@ -4079,23 +4086,17 @@ export function AdminDashboardScreen({
                 </NativeSelect.Field>
                 <NativeSelect.Indicator />
               </NativeSelect.Root>
-              <Button
-                borderRadius="18px"
-                bg={panelMutedSurface}
-                color="surface.700"
-                _hover={{ bg: "rgba(232,231,226,0.96)" }}
-                loading={loadingSales}
-                onClick={() => void handleApplySalesFilters()}
-              >
-                {t("admin.sales.refresh")}
-              </Button>
-            </SimpleGrid>
+            </VStack>
 
             {salesPeriod === "custom" ? (
               <SimpleGrid columns={2} gap={2}>
                 <Input
                   value={salesDateFrom}
-                  onChange={(event) => setSalesDateFrom(event.target.value)}
+                  onChange={(event) => {
+                    const dateFrom = event.target.value;
+                    setSalesDateFrom(dateFrom);
+                    void handleApplySalesFilters({ dateFrom, dateTo: salesDateTo });
+                  }}
                   type="date"
                   borderRadius="18px"
                   bg="white"
@@ -4103,23 +4104,16 @@ export function AdminDashboardScreen({
                 />
                 <Input
                   value={salesDateTo}
-                  onChange={(event) => setSalesDateTo(event.target.value)}
+                  onChange={(event) => {
+                    const dateTo = event.target.value;
+                    setSalesDateTo(dateTo);
+                    void handleApplySalesFilters({ dateFrom: salesDateFrom, dateTo });
+                  }}
                   type="date"
                   borderRadius="18px"
                   bg="white"
                   borderColor="rgba(226,224,218,0.95)"
                 />
-                <Button
-                  gridColumn="1 / -1"
-                  borderRadius="18px"
-                  bg="brand.500"
-                  color="white"
-                  _hover={{ bg: "brand.600" }}
-                  loading={loadingSales}
-                  onClick={() => void handleApplySalesFilters()}
-                >
-                  {t("admin.sales.applyCustomRange")}
-                </Button>
               </SimpleGrid>
             ) : null}
           </VStack>
