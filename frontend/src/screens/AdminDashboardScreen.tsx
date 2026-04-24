@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import {
   Avatar,
   Box,
@@ -475,6 +475,130 @@ function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "b
     >
       {label}
     </Box>
+  );
+}
+
+type DetailBadge = {
+  label: string;
+  tone: "green" | "red" | "blue" | "orange" | "gray";
+};
+
+function AdminDetailHeader({
+  showBack,
+  backLabel,
+  title,
+  subtitle,
+  badges,
+  onBack,
+}: {
+  showBack: boolean;
+  backLabel: string;
+  title: string;
+  subtitle: string;
+  badges: DetailBadge[];
+  onBack: () => void;
+}) {
+  return (
+    <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
+      <VStack align="stretch" gap={4}>
+        {showBack ? (
+          <HStack justify="flex-start">
+            <Button
+              size="sm"
+              borderRadius="14px"
+              variant="outline"
+              borderColor="var(--app-border)"
+              onClick={onBack}
+            >
+              {backLabel}
+            </Button>
+          </HStack>
+        ) : null}
+
+        <HStack justify="space-between" align="center" gap={3}>
+          <VStack align="start" gap={0} minW={0}>
+            <Text fontWeight="900" fontSize="xl" lineClamp={2}>
+              {title}
+            </Text>
+            <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
+              {subtitle}
+            </Text>
+          </VStack>
+          <VStack align="end" gap={1} flexShrink={0}>
+            {badges.map((badge) => (
+              <StatusPill key={`${badge.label}-${badge.tone}`} label={badge.label} tone={badge.tone} />
+            ))}
+          </VStack>
+        </HStack>
+      </VStack>
+    </Box>
+  );
+}
+
+function AdminDetailTabs<TMode extends string>({
+  tabs,
+  activeMode,
+  onChange,
+  eventKeyPrefix,
+  activateOnPointerDown,
+  activateOnClick,
+}: {
+  tabs: Array<{ id: TMode; label: string }>;
+  activeMode: TMode;
+  onChange: (mode: TMode) => void;
+  eventKeyPrefix: string;
+  activateOnPointerDown: (key: string, action: () => void) => (event: PointerEvent<HTMLButtonElement>) => void;
+  activateOnClick: (key: string, action: () => void) => () => void;
+}) {
+  return (
+    <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
+      <HStack gap={2}>
+        {tabs.map((tab) => {
+          const isActive = activeMode === tab.id;
+
+          return (
+            <Button
+              key={tab.id}
+              flex="1"
+              size="sm"
+              borderRadius="999px"
+              bg={isActive ? "surface.900" : "transparent"}
+              color={isActive ? "white" : "surface.500"}
+              _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+              onPointerDown={activateOnPointerDown(`${eventKeyPrefix}-${tab.id}`, () => onChange(tab.id))}
+              onClick={activateOnClick(`${eventKeyPrefix}-${tab.id}`, () => onChange(tab.id))}
+            >
+              {tab.label}
+            </Button>
+          );
+        })}
+      </HStack>
+    </Box>
+  );
+}
+
+function AdminMetricGrid({ cards }: { cards: Array<{ label: string; value: ReactNode }> }) {
+  return (
+    <SimpleGrid columns={2} gap={3}>
+      {cards.map((card) => (
+        <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
+          <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+            {card.label}
+          </Text>
+          <Text fontWeight="900" fontSize="xl" mt={1}>
+            {card.value}
+          </Text>
+        </Box>
+      ))}
+    </SimpleGrid>
+  );
+}
+
+function AdminFieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
+      {children}
+    </Text>
   );
 }
 
@@ -2952,81 +3076,49 @@ export function AdminDashboardScreen({
 
       return (
         <VStack gap={4} align="stretch">
-          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" gap={4}>
-              {!supportsTelegramBackButton ? (
-                <HStack justify="flex-start">
-                  <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="var(--app-border)"
-                    onClick={() => {
-                      setSelectedProductId(null);
-                      setProductDetailMode("overview");
-                    }}
-                  >
-                    {t("admin.inventory.back")}
-                  </Button>
-                </HStack>
-              ) : null}
-
-              <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" gap={0} minW={0}>
-                  <Text fontWeight="900" fontSize="xl" lineClamp={2}>
-                    {selectedProduct.name}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
-                    {selectedProduct.isArchived
-                      ? `${t("admin.inventory.archived")} ${selectedProduct.archivedAt ? formatShortDate(selectedProduct.archivedAt) : ""}`.trim()
-                      : formatInventoryStoresEnabled(selectedProduct.enabledStoreCount)}
-                  </Text>
-                </VStack>
-                <StatusPill
-                  label={
-                    selectedProduct.isArchived
-                      ? t("admin.inventory.archived")
-                      : selectedProduct.isActive
-                        ? t("admin.inventory.active")
-                        : t("admin.inventory.inactive")
-                  }
-                  tone={selectedProduct.isArchived ? "orange" : selectedProduct.isActive ? "green" : "red"}
-                />
-              </HStack>
-            </VStack>
-          </Box>
-          <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-            <HStack gap={2}>
-              {(["overview", "settings", "stores"] as ProductDetailMode[]).map((mode) => {
-                const isActive = productDetailMode === mode;
-
-                return (
-                <Button
-                  key={mode}
-                  flex="1"
-                  size="sm"
-                  borderRadius="999px"
-                  bg={isActive ? "surface.900" : "transparent"}
-                  color={isActive ? "white" : "surface.500"}
-                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onPointerDown={activateSegmentOnPointerDown(`product-detail-${mode}`, () => setProductDetailMode(mode))}
-                  onClick={activateSegmentOnClick(`product-detail-${mode}`, () => setProductDetailMode(mode))}
-                >
-                    {mode === "overview"
-                      ? t("admin.inventory.overviewTab")
-                      : mode === "settings"
-                        ? t("admin.inventory.settingsTab")
-                        : t("admin.inventory.storesTab")}
-                  </Button>
-                );
-              })}
-            </HStack>
-          </Box>
+          <AdminDetailHeader
+            showBack={!supportsTelegramBackButton}
+            backLabel={t("admin.inventory.back")}
+            title={selectedProduct.name}
+            subtitle={
+              selectedProduct.isArchived
+                ? `${t("admin.inventory.archived")} ${
+                    selectedProduct.archivedAt ? formatShortDate(selectedProduct.archivedAt) : ""
+                  }`.trim()
+                : formatInventoryStoresEnabled(selectedProduct.enabledStoreCount)
+            }
+            badges={[
+              {
+                label: selectedProduct.isArchived
+                  ? t("admin.inventory.archived")
+                  : selectedProduct.isActive
+                    ? t("admin.inventory.active")
+                    : t("admin.inventory.inactive"),
+                tone: selectedProduct.isArchived ? "orange" : selectedProduct.isActive ? "green" : "red",
+              },
+            ]}
+            onBack={() => {
+              setSelectedProductId(null);
+              setProductDetailMode("overview");
+            }}
+          />
+          <AdminDetailTabs
+            tabs={[
+              { id: "overview", label: t("admin.inventory.overviewTab") },
+              { id: "settings", label: t("admin.inventory.settingsTab") },
+              { id: "stores", label: t("admin.inventory.storesTab") },
+            ]}
+            activeMode={productDetailMode}
+            onChange={setProductDetailMode}
+            eventKeyPrefix="product-detail"
+            activateOnPointerDown={activateSegmentOnPointerDown}
+            activateOnClick={activateSegmentOnClick}
+          />
           {productDetailMode === "overview" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" gap={3}>
-                <SimpleGrid columns={2} gap={3}>
-                  {[
+                <AdminMetricGrid
+                  cards={[
                     { label: t("admin.inventory.defaultPrice"), value: formatEur(selectedProduct.defaultPrice) },
                     {
                       label: t("admin.inventory.status"),
@@ -3041,17 +3133,8 @@ export function AdminDashboardScreen({
                       label: selectedProduct.isArchived ? t("admin.inventory.archived") : t("admin.inventory.updated"),
                       value: formatShortDate(selectedProduct.isArchived ? selectedProduct.archivedAt ?? selectedProduct.updatedAt : selectedProduct.updatedAt),
                     },
-                  ].map((card) => (
-                    <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                        {card.label}
-                      </Text>
-                      <Text fontWeight="900" fontSize="xl" mt={1}>
-                        {card.value}
-                      </Text>
-                    </Box>
-                  ))}
-                </SimpleGrid>
+                  ]}
+                />
               </VStack>
             </Box>
           ) : null}
@@ -3059,9 +3142,7 @@ export function AdminDashboardScreen({
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" gap={3}>
                 <VStack align="stretch" gap={2}>
-                  <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                    {t("admin.inventory.productName")}
-                  </Text>
+                  <AdminFieldLabel>{t("admin.inventory.productName")}</AdminFieldLabel>
                   <Input
                     value={draft.name}
                     onChange={(event) =>
@@ -3078,9 +3159,7 @@ export function AdminDashboardScreen({
                 </VStack>
 
                 <VStack align="stretch" gap={2}>
-                  <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                    {t("admin.inventory.defaultPrice")}
-                  </Text>
+                  <AdminFieldLabel>{t("admin.inventory.defaultPrice")}</AdminFieldLabel>
                   <Input
                     value={draft.defaultPrice}
                     onChange={(event) =>
@@ -3232,9 +3311,7 @@ export function AdminDashboardScreen({
                         </HStack>
 
                         <VStack align="stretch" gap={2}>
-                          <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                            {t("admin.inventory.storePrice")}
-                          </Text>
+                          <AdminFieldLabel>{t("admin.inventory.storePrice")}</AdminFieldLabel>
                           <Input
                             value={storeDraft.price}
                             onChange={(event) =>
@@ -3335,74 +3412,38 @@ export function AdminDashboardScreen({
 
       return (
         <VStack gap={4} align="stretch">
-          <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
-            <VStack align="stretch" gap={4}>
-              {!supportsTelegramBackButton ? (
-                <HStack justify="flex-start">
-                  <Button
-                    size="sm"
-                    borderRadius="14px"
-                    variant="outline"
-                    borderColor="var(--app-border)"
-                    onClick={() => {
-                      setSelectedInventoryItemId(null);
-                      setInventoryDetailMode("overview");
-                    }}
-                  >
-                    {t("admin.inventory.back")}
-                  </Button>
-                </HStack>
-              ) : null}
-
-              <HStack justify="space-between" align="center" gap={3}>
-                <VStack align="start" gap={0} minW={0}>
-                  <Text fontWeight="900" fontSize="xl" lineClamp={2}>
-                    {selectedItem.productName}
-                  </Text>
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineClamp={1}>
-                    {selectedStore?.name ?? selectedItem.storeName}
-                  </Text>
-                </VStack>
-                <VStack align="end" gap={1} flexShrink={0}>
-                  <StatusPill
-                    label={`${selectedItem.stockQuantity} ${t("admin.inventory.units")}`}
-                    tone={selectedItem.stockQuantity <= 10 ? "orange" : "blue"}
-                  />
-                  <StatusPill
-                    label={isProductAvailable ? t("admin.inventory.active") : t("admin.inventory.inactive")}
-                    tone={isProductAvailable ? "green" : "red"}
-                  />
-                </VStack>
-              </HStack>
-            </VStack>
-          </Box>
-          <Box bg={panelSurface} borderRadius={panelRadius} px={3} py={3} boxShadow={panelShadow}>
-            <HStack gap={2}>
-              {(["overview", "settings", "stock"] as InventoryDetailMode[]).map((mode) => {
-                const isActive = inventoryDetailMode === mode;
-
-                return (
-                <Button
-                  key={mode}
-                  flex="1"
-                  size="sm"
-                  borderRadius="999px"
-                  bg={isActive ? "surface.900" : "transparent"}
-                  color={isActive ? "white" : "surface.500"}
-                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onPointerDown={activateSegmentOnPointerDown(`inventory-detail-${mode}`, () => setInventoryDetailMode(mode))}
-                  onClick={activateSegmentOnClick(`inventory-detail-${mode}`, () => setInventoryDetailMode(mode))}
-                >
-                    {mode === "overview"
-                      ? t("admin.inventory.overviewTab")
-                      : mode === "settings"
-                        ? t("admin.inventory.settingsTab")
-                        : t("admin.inventory.stockTab")}
-                  </Button>
-                );
-              })}
-            </HStack>
-          </Box>
+          <AdminDetailHeader
+            showBack={!supportsTelegramBackButton}
+            backLabel={t("admin.inventory.back")}
+            title={selectedItem.productName}
+            subtitle={selectedStore?.name ?? selectedItem.storeName}
+            badges={[
+              {
+                label: `${selectedItem.stockQuantity} ${t("admin.inventory.units")}`,
+                tone: selectedItem.stockQuantity <= 10 ? "orange" : "blue",
+              },
+              {
+                label: isProductAvailable ? t("admin.inventory.active") : t("admin.inventory.inactive"),
+                tone: isProductAvailable ? "green" : "red",
+              },
+            ]}
+            onBack={() => {
+              setSelectedInventoryItemId(null);
+              setInventoryDetailMode("overview");
+            }}
+          />
+          <AdminDetailTabs
+            tabs={[
+              { id: "overview", label: t("admin.inventory.overviewTab") },
+              { id: "settings", label: t("admin.inventory.settingsTab") },
+              { id: "stock", label: t("admin.inventory.stockTab") },
+            ]}
+            activeMode={inventoryDetailMode}
+            onChange={setInventoryDetailMode}
+            eventKeyPrefix="inventory-detail"
+            activateOnPointerDown={activateSegmentOnPointerDown}
+            activateOnClick={activateSegmentOnClick}
+          />
           {inventoryDetailMode === "overview" ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={4} boxShadow={panelShadow}>
               <VStack align="stretch" gap={3}>
@@ -3415,23 +3456,14 @@ export function AdminDashboardScreen({
                   </Text>
                 </HStack>
 
-                <SimpleGrid columns={2} gap={3}>
-                  {[
+                <AdminMetricGrid
+                  cards={[
                     { label: t("admin.inventory.storePrice"), value: formatEur(selectedItem.storePrice) },
                     { label: t("admin.inventory.defaultPrice"), value: formatEur(selectedItem.defaultPrice) },
                     { label: t("admin.inventory.currentStock"), value: `${selectedItem.stockQuantity}` },
                     { label: t("admin.inventory.status"), value: isProductAvailable ? t("admin.inventory.active") : t("admin.inventory.inactive") },
-                  ].map((card) => (
-                    <Box key={card.label} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
-                      <Text fontSize="xs" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                        {card.label}
-                      </Text>
-                      <Text fontWeight="900" fontSize="xl" mt={1}>
-                        {card.value}
-                      </Text>
-                    </Box>
-                  ))}
-                </SimpleGrid>
+                  ]}
+                />
 
                 <VStack align="stretch" gap={0}>
                   <HStack justify="space-between" pb={2}>
@@ -3507,9 +3539,7 @@ export function AdminDashboardScreen({
                 </VStack>
 
                 <VStack align="stretch" gap={2}>
-                  <Text fontSize="10px" color="surface.500" textTransform="uppercase" letterSpacing="0.08em" fontWeight="800">
-                    {t("admin.inventory.storePrice")}
-                  </Text>
+                  <AdminFieldLabel>{t("admin.inventory.storePrice")}</AdminFieldLabel>
                   <Input
                     value={draft.price}
                     onChange={(event) =>
