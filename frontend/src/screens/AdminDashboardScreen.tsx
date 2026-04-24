@@ -2075,9 +2075,6 @@ export function AdminDashboardScreen({
                 {t("admin.overview.revenueFlowDescription")}
               </Text>
             </VStack>
-            <Text color="surface.500" fontWeight="800" fontSize="sm">
-              {dashboardData ? formatEur(dashboardData.summary.totalRevenueToday) : formatEur(0)}
-            </Text>
           </HStack>
 
           {dashboardData ? (
