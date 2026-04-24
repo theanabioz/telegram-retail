@@ -53,7 +53,7 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
       bg="rgba(255, 255, 255, 0.82)"
       backdropFilter="blur(20px) saturate(180%)"
       borderTop="1px solid rgba(255, 255, 255, 0.5)"
-      px={4}
+      px={{ base: 2, sm: 4 }}
       pt={topAccessory ? 10 : 3}
       pb="max(12px, env(safe-area-inset-bottom, 12px))"
       boxShadow="0 -10px 40px rgba(0, 0, 0, 0.06)"
@@ -63,7 +63,7 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
           {topAccessory}
         </Box>
       ) : null}
-      <HStack justify="space-between" align="center" gap={1}>
+      <HStack justify="space-between" align="center" gap={{ base: 0, sm: 1 }}>
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -74,6 +74,7 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
               aria-label={`Open ${label} tab`}
               aria-current={isActive ? "page" : undefined}
               flex="1"
+              minW={0}
               gap={1}
               color={isActive ? "brand.500" : "surface.400"}
               cursor="pointer"
@@ -126,10 +127,12 @@ export function BottomNav({ activeTab, onChange, onReselect, topAccessory }: Bot
                     <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                   </Box>
                   <Text
-                    fontSize="10px"
-                    letterSpacing="0.01em"
+                    fontSize={{ base: "9px", sm: "10px" }}
+                    letterSpacing="0"
                     lineHeight="1.2"
                     fontWeight={isActive ? "800" : "600"}
+                    lineClamp={1}
+                    maxW="100%"
                     transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
                     transform={isActive ? "translateY(-0.5px)" : "translateY(0)"}
                   >

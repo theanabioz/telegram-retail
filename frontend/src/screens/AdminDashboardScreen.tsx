@@ -6102,40 +6102,42 @@ export function AdminDashboardScreen({
   const adminMotionKey = `${activeTab}:${adminPageTitle}:${adminPageSubtitle ?? ""}`;
 
   return (
-    <Box minH="100vh" px={3} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
+    <Box minH="100vh" px={{ base: 2.5, sm: 3 }} pt="var(--app-screen-pt)" pb={bottomNavReservedSpace}>
       <Container maxW="container.sm" px={0}>
         <VStack key={adminMotionKey} gap={5} align="stretch" className="soft-screen-transition">
           <VStack align="stretch" gap={showFullscreenHeaderContext ? 3 : 0} px={1} pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
             {showFullscreenHeaderContext ? (
-              <HStack justify="space-between" align="center">
+              <HStack justify="space-between" align="center" gap={3}>
                 <Text
                   fontSize="xs"
                   fontWeight="800"
                   letterSpacing="0.08em"
                   textTransform="uppercase"
                   color="surface.400"
+                  lineClamp={2}
                 >
                   {headerContextLabel}
                 </Text>
-                <Text fontSize="xs" color="surface.400" fontWeight="700">
+                <Text fontSize="xs" color="surface.400" fontWeight="700" flexShrink={0}>
                   {t("common.today")} · {formatHeaderDate(new Date())}
                 </Text>
               </HStack>
             ) : null}
 
-            <HStack justify="space-between" align="center">
-              <VStack align="start" gap={adminPageSubtitle ? 1 : 0}>
+            <HStack justify="space-between" align="center" gap={3}>
+              <VStack align="start" gap={adminPageSubtitle ? 1 : 0} minW={0}>
                 <Text
-                  fontSize="3xl"
+                  fontSize={{ base: "2xl", sm: "3xl" }}
                   fontWeight="900"
-                  letterSpacing="-0.04em"
+                  letterSpacing="0"
                   color="surface.900"
-                  lineHeight="1"
+                  lineHeight="1.08"
+                  lineClamp={2}
                 >
                   {adminPageTitle}
                 </Text>
                 {adminPageSubtitle ? (
-                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineHeight="1.2">
+                  <Text fontSize="sm" color="surface.500" fontWeight="700" lineHeight="1.2" lineClamp={2}>
                     {adminPageSubtitle}
                   </Text>
                 ) : null}
@@ -6148,10 +6150,12 @@ export function AdminDashboardScreen({
                 px={3}
                 py={2}
                 boxShadow="0 12px 30px rgba(17, 17, 17, 0.06)"
+                flexShrink={0}
+                maxW="48%"
               >
                 <Avatar.Root size="sm" bg="surface.200" color="surface.800"><Avatar.Fallback name={operatorName} /></Avatar.Root>
-                <VStack align="start" gap={0}>
-                  <Text fontWeight="800" lineHeight="1">
+                <VStack align="start" gap={0} minW={0}>
+                  <Text fontWeight="800" lineHeight="1" lineClamp={1}>
                     {operatorName}
                   </Text>
                   <Text fontSize="xs" color="surface.500" fontWeight="700" lineHeight="1.1">

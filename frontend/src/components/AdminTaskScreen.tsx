@@ -59,7 +59,7 @@ export function AdminTaskScreen({
                     {topLabel}
                   </Text>
                 ) : null}
-                <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.04em" lineHeight="1">
+                <Text fontWeight="900" fontSize={{ base: "xl", sm: "2xl" }} letterSpacing="0" lineHeight="1.08" lineClamp={2}>
                   {title}
                 </Text>
                 <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.4">

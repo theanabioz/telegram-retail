@@ -61,7 +61,7 @@ export function ConfirmActionModal({ action, cancelLabel, onClose }: ConfirmActi
                   >
                     <Box boxSize={5} strokeWidth={2.4} asChild><Icon /></Box>
                   </Box>
-                  <Text fontSize="xl" fontWeight="900" letterSpacing="-0.03em">
+                  <Text fontSize={{ base: "lg", sm: "xl" }} fontWeight="900" letterSpacing="0" lineHeight="1.15" lineClamp={2}>
                     {action?.title}
                   </Text>
                   <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.45">
@@ -69,12 +69,13 @@ export function ConfirmActionModal({ action, cancelLabel, onClose }: ConfirmActi
                   </Text>
                 </VStack>
 
-                <HStack gap={3}>
-                  <Button h="50px" flex="1" borderRadius="18px" bg="surface.100" color="surface.700" fontWeight="900" onClick={onClose}>
+                <HStack gap={3} align="stretch">
+                  <Button h="50px" minW={0} flex="1" borderRadius="18px" bg="surface.100" color="surface.700" fontWeight="900" onClick={onClose}>
                     {cancelLabel}
                   </Button>
                   <Button
                     h="50px"
+                    minW={0}
                     flex="1"
                     borderRadius="18px"
                     bg={isDanger ? "red.500" : "brand.500"}

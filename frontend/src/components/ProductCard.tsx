@@ -28,11 +28,11 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
       transition="all 0.2s ease"
       _active={{ transform: "scale(0.985)", bg: "rgba(255, 255, 255, 0.9)" }}
     >
-      <VStack align="start" gap={0.5} flex="1">
-        <Text fontSize="md" fontWeight="850" lineHeight="1.2" color="surface.900">
+      <VStack align="start" gap={0.5} flex="1" minW={0}>
+        <Text fontSize="md" fontWeight="850" lineHeight="1.2" color="surface.900" lineClamp={2}>
           {item.name}
         </Text>
-        <HStack gap={2}>
+        <HStack gap={2} flexWrap="wrap" rowGap={0}>
           <Text color="brand.500" fontSize="sm" fontWeight="800">
             {formatEur(item.price)}
           </Text>
@@ -55,6 +55,7 @@ export function ProductCard({ item, onAdd, disabled }: ProductCardProps) {
         boxShadow="0 8px 20px rgba(74, 132, 244, 0.3)"
         disabled={disabled}
         onClick={() => onAdd?.(item.id)}
+        flexShrink={0}
       >
         <LuPlus size={24} strokeWidth={3} />
       </Button>

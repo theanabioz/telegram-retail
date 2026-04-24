@@ -2451,7 +2451,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   return (
     <Box
       minH="100vh"
-      px={3}
+      px={{ base: 2.5, sm: 3 }}
       pt="var(--app-screen-pt)"
       pb={activeTab === "checkout" && draft?.items.length && !isDraftCartOpen
         ? bottomDockWithCartReservedSpace
@@ -2462,30 +2462,32 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           <VStack gap={6} align="stretch" pt={showFullscreenHeaderContext ? 4 : 2} mb={2}>
             <VStack align="stretch" gap={showFullscreenHeaderContext ? 3 : 0} px={1}>
               {showFullscreenHeaderContext ? (
-                <HStack justify="space-between" align="center">
+                <HStack justify="space-between" align="center" gap={3}>
                   <Text
                     fontSize="xs"
                     fontWeight="800"
                     letterSpacing="0.08em"
                     textTransform="uppercase"
                     color="surface.400"
+                    lineClamp={2}
                   >
                     {storeName || t("common.currentStore")} · {shiftContextLabel}
                   </Text>
-                  <Text fontSize="xs" color="surface.400" fontWeight="700">
+                  <Text fontSize="xs" color="surface.400" fontWeight="700" flexShrink={0}>
                     {t("common.today")} · {formatHeaderDate(new Date())}
                   </Text>
                 </HStack>
               ) : null}
 
-              <HStack justify="space-between" align="center">
-                <VStack align="start" gap={0}>
+              <HStack justify="space-between" align="center" gap={3}>
+                <VStack align="start" gap={0} minW={0}>
                   <Text
-                    fontSize="3xl"
+                    fontSize={{ base: "2xl", sm: "3xl" }}
                     fontWeight="900"
-                    letterSpacing="-0.04em"
+                    letterSpacing="0"
                     color="surface.900"
-                    lineHeight="1"
+                    lineHeight="1.08"
+                    lineClamp={2}
                   >
                     {isSellerProfileOpen ? t("sellerProfile.title") : activeTabTitle[activeTab]}
                   </Text>
@@ -2510,9 +2512,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   }}
                   onClick={openSellerProfile}
                   _active={{ transform: "scale(0.98)" }}
+                  flexShrink={0}
+                  maxW="45%"
                 >
                   <Avatar.Root size="xs" bg="brand.500" color="white" fontWeight="800" fontSize="10px"><Avatar.Fallback name={operatorName} /></Avatar.Root>
-                  <Text fontWeight="800" fontSize="sm" color="surface.700" letterSpacing="-0.01em">
+                  <Text fontWeight="800" fontSize="sm" color="surface.700" letterSpacing="0" lineClamp={1}>
                     {operatorName.split(" ")[0]}
                   </Text>
                 </HStack>

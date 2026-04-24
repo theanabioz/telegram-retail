@@ -51,12 +51,12 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
       bg="rgba(255, 255, 255, 0.98)"
       borderTop="1px solid rgba(232, 229, 223, 0.96)"
       borderTopRadius="0"
-      px={3}
+      px={{ base: 2, sm: 3 }}
       pt={2.5}
       pb="max(8px, env(safe-area-inset-bottom, 0px))"
       boxShadow="0 -8px 30px rgba(20, 20, 20, 0.08)"
     >
-      <HStack justify="space-between" align="stretch">
+      <HStack justify="space-between" align="stretch" gap={0}>
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -67,6 +67,7 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
               aria-label={`Open ${label} tab`}
               aria-current={isActive ? "page" : undefined}
               flex="1"
+              minW={0}
               gap={0.5}
               color={isActive ? "surface.900" : "surface.500"}
               fontWeight={isActive ? "900" : "750"}
@@ -121,9 +122,10 @@ export function AdminNav({ activeTab, onChange, onReselect }: AdminNavProps) {
                     </Box>
                     <Text
                       fontSize="9px"
-                      letterSpacing="-0.02em"
+                      letterSpacing="0"
                       lineHeight="1"
                       lineClamp={1}
+                      maxW="100%"
                       color={isActive ? "brand.500" : "surface.500"}
                       fontWeight={isActive ? "800" : "700"}
                       transition="color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"

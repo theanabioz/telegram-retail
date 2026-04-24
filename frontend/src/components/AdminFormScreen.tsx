@@ -72,7 +72,7 @@ export function AdminFormScreen({
                     {topLabel}
                   </Text>
                 ) : null}
-                <Text fontWeight="900" fontSize="2xl" letterSpacing="-0.04em" lineHeight="1">
+                <Text fontWeight="900" fontSize={{ base: "xl", sm: "2xl" }} letterSpacing="0" lineHeight="1.08" lineClamp={2}>
                   {title}
                 </Text>
                 <Text color="surface.500" fontSize="sm" fontWeight="700" lineHeight="1.45">
@@ -144,16 +144,17 @@ export function AdminFormScreen({
             backdropFilter="blur(18px)"
             boxShadow="0 -16px 34px rgba(21,28,38,0.08)"
           >
-            <HStack gap={3}>
+            <HStack gap={3} align="stretch">
               {secondaryActionLabel && onSecondaryAction ? (
                 <Button
-                  flex={secondaryActionLabel ? "0 0 120px" : undefined}
+                  flex={secondaryActionLabel ? "0 1 120px" : undefined}
+                  minW="88px"
                   h="56px"
                   borderRadius="22px"
                   bg="rgba(234,236,240,0.98)"
                   color="surface.800"
                   fontWeight="900"
-                  fontSize="md"
+                  fontSize={{ base: "sm", sm: "md" }}
                   _hover={{ bg: "rgba(224,227,232,1)" }}
                   disabled={secondaryActionDisabled}
                   onClick={onSecondaryAction}
@@ -163,12 +164,13 @@ export function AdminFormScreen({
               ) : null}
               <Button
                 flex="1"
+                minW={0}
                 h="56px"
                 borderRadius="22px"
                 bg="surface.900"
                 color="white"
                 fontWeight="900"
-                fontSize="lg"
+                fontSize={{ base: "md", sm: "lg" }}
                 _hover={{ bg: "surface.700" }}
                 disabled={primaryActionDisabled}
                 loading={primaryActionLoading}
