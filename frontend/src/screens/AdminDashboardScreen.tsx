@@ -2178,12 +2178,6 @@ export function AdminDashboardScreen({
                           minW={0}
                           scrollSnapAlign="start"
                         >
-                          <HStack justify="space-between" px={1}>
-                            <Text fontSize="11px" fontWeight="900" color="surface.700" whiteSpace="nowrap">
-                              {formatOverviewChartDateLabel(day.date)}
-                            </Text>
-                          </HStack>
-
                           <Box
                             display="grid"
                             gridTemplateColumns="repeat(24, minmax(0, 1fr))"
