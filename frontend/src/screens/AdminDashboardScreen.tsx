@@ -438,9 +438,13 @@ function formatOverviewChartDateLabel(value: string) {
   return label.replace(".", "");
 }
 
+function sortOverviewRevenueHistory(history: AdminDashboardResponse["hourlyRevenueHistory"]) {
+  return [...history].sort((left, right) => left.date.localeCompare(right.date));
+}
+
 function getOverviewRevenueHistory(dashboardData: AdminDashboardResponse) {
   if (dashboardData.hourlyRevenueHistory?.length) {
-    return dashboardData.hourlyRevenueHistory;
+    return sortOverviewRevenueHistory(dashboardData.hourlyRevenueHistory);
   }
 
   return [
@@ -450,6 +454,15 @@ function getOverviewRevenueHistory(dashboardData: AdminDashboardResponse) {
       hours: dashboardData.hourlyRevenueToday,
     },
   ];
+}
+
+function getInitialOverviewChartDate(history: AdminDashboardResponse["hourlyRevenueHistory"]) {
+  if (history.length === 0) {
+    return null;
+  }
+
+  const todayKey = getBusinessDateKey();
+  return history.find((day) => day.date === todayKey)?.date ?? history[history.length - 1]?.date ?? null;
 }
 
 function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "blue" | "orange" | "gray" }) {
@@ -1261,44 +1274,53 @@ export function AdminDashboardScreen({
   }, [activeTab, refreshActiveAdminTab]);
 
   useEffect(() => {
-    const latestDate = overviewRevenueHistory[overviewRevenueHistory.length - 1]?.date;
+    const initialDate = getInitialOverviewChartDate(overviewRevenueHistory);
 
-    if (activeTab !== "overview" || !latestDate) {
+    if (activeTab !== "overview" || !initialDate) {
       return;
     }
 
-    if (positionedOverviewChartDateRef.current === latestDate) {
+    if (positionedOverviewChartDateRef.current === initialDate) {
       return;
     }
 
-    positionedOverviewChartDateRef.current = latestDate;
     overviewChartScrollReadyRef.current = false;
-    setVisibleOverviewDate(latestDate);
+    setVisibleOverviewDate(initialDate);
 
+    let firstFrameId = 0;
     let secondFrameId = 0;
-    const frameId = window.requestAnimationFrame(() => {
+    let thirdFrameId = 0;
+
+    const positionChart = () => {
       const scrollElement = overviewChartScrollRef.current;
 
-      if (!scrollElement) {
+      if (!scrollElement || scrollElement.clientWidth <= 0) {
         return;
       }
 
+      const targetIndex = overviewRevenueHistory.findIndex((day) => day.date === initialDate);
+      const targetElement = targetIndex >= 0 ? (scrollElement.children[targetIndex] as HTMLElement | undefined) : null;
+
+      scrollElement.scrollTo({
+        left: targetElement ? targetElement.offsetLeft : Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth),
+        behavior: "auto",
+      });
+      positionedOverviewChartDateRef.current = initialDate;
+      overviewChartScrollReadyRef.current = true;
+      setVisibleOverviewDate(initialDate);
+    };
+
+    firstFrameId = window.requestAnimationFrame(() => {
       secondFrameId = window.requestAnimationFrame(() => {
-        const latestScrollElement = overviewChartScrollRef.current;
-
-        if (!latestScrollElement) {
-          return;
-        }
-
-        latestScrollElement.scrollLeft = Math.max(0, latestScrollElement.scrollWidth - latestScrollElement.clientWidth);
-        overviewChartScrollReadyRef.current = true;
-        setVisibleOverviewDate(latestDate);
+        positionChart();
+        thirdFrameId = window.requestAnimationFrame(positionChart);
       });
     });
 
     return () => {
-      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(firstFrameId);
       window.cancelAnimationFrame(secondFrameId);
+      window.cancelAnimationFrame(thirdFrameId);
     };
   }, [activeTab, overviewRevenueHistory]);
 
