@@ -650,6 +650,7 @@ export function AdminDashboardScreen({
   const softRefreshInFlightRef = useRef(false);
   const inventorySelectionRefreshStoreIdRef = useRef<string | null>(null);
   const overviewChartScrollRef = useRef<HTMLDivElement | null>(null);
+  const overviewChartScrollReadyRef = useRef(false);
   const positionedOverviewChartDateRef = useRef<string | null>(null);
   const pointerHandledSegmentRef = useRef<string | null>(null);
   const activateSegmentOnPointerDown = useCallback(
@@ -677,14 +678,27 @@ export function AdminDashboardScreen({
   const handleOverviewChartScroll = useCallback(() => {
     const scrollElement = overviewChartScrollRef.current;
 
-    if (!scrollElement || overviewRevenueHistory.length === 0 || scrollElement.clientWidth <= 0) {
+    if (
+      !overviewChartScrollReadyRef.current ||
+      !scrollElement ||
+      overviewRevenueHistory.length === 0 ||
+      scrollElement.clientWidth <= 0
+    ) {
       return;
     }
 
-    const index = Math.min(
-      overviewRevenueHistory.length - 1,
-      Math.max(0, Math.round(scrollElement.scrollLeft / scrollElement.clientWidth))
-    );
+    const children = Array.from(scrollElement.children) as HTMLElement[];
+    const viewportCenter = scrollElement.scrollLeft + scrollElement.clientWidth / 2;
+    const index = children.reduce((closestIndex, child, childIndex) => {
+      const closestChild = children[closestIndex];
+      const childCenter = child.offsetLeft + child.offsetWidth / 2;
+      const closestCenter = closestChild.offsetLeft + closestChild.offsetWidth / 2;
+
+      return Math.abs(childCenter - viewportCenter) < Math.abs(closestCenter - viewportCenter)
+        ? childIndex
+        : closestIndex;
+    }, 0);
+
     setVisibleOverviewDate(overviewRevenueHistory[index]?.date ?? null);
   }, [overviewRevenueHistory]);
   const selectedStaffSeller = selectedStaffSellerId
@@ -1134,8 +1148,10 @@ export function AdminDashboardScreen({
     }
 
     positionedOverviewChartDateRef.current = latestDate;
+    overviewChartScrollReadyRef.current = false;
     setVisibleOverviewDate(latestDate);
 
+    let secondFrameId = 0;
     const frameId = window.requestAnimationFrame(() => {
       const scrollElement = overviewChartScrollRef.current;
 
@@ -1143,13 +1159,23 @@ export function AdminDashboardScreen({
         return;
       }
 
-      scrollElement.scrollTo({
-        left: scrollElement.scrollWidth - scrollElement.clientWidth,
-        behavior: "auto",
+      secondFrameId = window.requestAnimationFrame(() => {
+        const latestScrollElement = overviewChartScrollRef.current;
+
+        if (!latestScrollElement) {
+          return;
+        }
+
+        latestScrollElement.scrollLeft = Math.max(0, latestScrollElement.scrollWidth - latestScrollElement.clientWidth);
+        overviewChartScrollReadyRef.current = true;
+        setVisibleOverviewDate(latestDate);
       });
     });
 
-    return () => window.cancelAnimationFrame(frameId);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(secondFrameId);
+    };
   }, [activeTab, overviewRevenueHistory]);
 
   useEffect(() => {
