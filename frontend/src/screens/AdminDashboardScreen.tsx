@@ -604,6 +604,29 @@ export function AdminDashboardScreen({
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const softRefreshInFlightRef = useRef(false);
   const inventorySelectionRefreshStoreIdRef = useRef<string | null>(null);
+  const pointerHandledSegmentRef = useRef<string | null>(null);
+  const activateSegmentOnPointerDown = useCallback(
+    (key: string, action: () => void) => (event: PointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
+      pointerHandledSegmentRef.current = key;
+      action();
+    },
+    []
+  );
+  const activateSegmentOnClick = useCallback(
+    (key: string, action: () => void) => () => {
+      if (pointerHandledSegmentRef.current === key) {
+        pointerHandledSegmentRef.current = null;
+        return;
+      }
+
+      action();
+    },
+    []
+  );
   const selectedStaffSeller = selectedStaffSellerId
     ? staff.find((seller) => seller.id === selectedStaffSellerId) ?? null
     : null;
@@ -2337,7 +2360,8 @@ export function AdminDashboardScreen({
                   bg={isActive ? "surface.900" : "transparent"}
                   color={isActive ? "white" : "surface.500"}
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setStoreDetailMode(mode)}
+                  onPointerDown={activateSegmentOnPointerDown(`store-detail-${mode}`, () => setStoreDetailMode(mode))}
+                  onClick={activateSegmentOnClick(`store-detail-${mode}`, () => setStoreDetailMode(mode))}
                 >
                   {mode === "overview"
                     ? t("admin.team.overviewTab")
@@ -2800,15 +2824,16 @@ export function AdminDashboardScreen({
                 const isActive = productDetailMode === mode;
 
                 return (
-                  <Button
-                    key={mode}
-                    flex="1"
-                    size="sm"
-                    borderRadius="999px"
-                    bg={isActive ? "surface.900" : "transparent"}
-                    color={isActive ? "white" : "surface.500"}
-                    _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setProductDetailMode(mode)}
+                <Button
+                  key={mode}
+                  flex="1"
+                  size="sm"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onPointerDown={activateSegmentOnPointerDown(`product-detail-${mode}`, () => setProductDetailMode(mode))}
+                  onClick={activateSegmentOnClick(`product-detail-${mode}`, () => setProductDetailMode(mode))}
                 >
                     {mode === "overview"
                       ? t("admin.inventory.overviewTab")
@@ -3180,15 +3205,16 @@ export function AdminDashboardScreen({
                 const isActive = inventoryDetailMode === mode;
 
                 return (
-                  <Button
-                    key={mode}
-                    flex="1"
-                    size="sm"
-                    borderRadius="999px"
-                    bg={isActive ? "surface.900" : "transparent"}
-                    color={isActive ? "white" : "surface.500"}
-                    _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setInventoryDetailMode(mode)}
+                <Button
+                  key={mode}
+                  flex="1"
+                  size="sm"
+                  borderRadius="999px"
+                  bg={isActive ? "surface.900" : "transparent"}
+                  color={isActive ? "white" : "surface.500"}
+                  _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
+                  onPointerDown={activateSegmentOnPointerDown(`inventory-detail-${mode}`, () => setInventoryDetailMode(mode))}
+                  onClick={activateSegmentOnClick(`inventory-detail-${mode}`, () => setInventoryDetailMode(mode))}
                 >
                     {mode === "overview"
                       ? t("admin.inventory.overviewTab")
@@ -3529,7 +3555,8 @@ export function AdminDashboardScreen({
                   bg={isActive ? "surface.900" : "transparent"}
                   color={isActive ? "white" : "surface.500"}
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setInventoryMode(mode)}
+                  onPointerDown={activateSegmentOnPointerDown(`inventory-mode-${mode}`, () => setInventoryMode(mode))}
+                  onClick={activateSegmentOnClick(`inventory-mode-${mode}`, () => setInventoryMode(mode))}
                 >
                   {mode === "stock" ? t("admin.inventory.stockTab") : t("admin.inventory.productsTab")}
                 </Button>
@@ -4017,7 +4044,12 @@ export function AdminDashboardScreen({
                     bg={isActive ? "brand.500" : panelMutedSurface}
                     color={isActive ? "white" : "surface.700"}
                     _hover={{ bg: isActive ? "brand.600" : "rgba(232,231,226,0.96)" }}
-                    onClick={() => void handleSelectSalesPeriod(period)}
+                    onPointerDown={activateSegmentOnPointerDown(`sales-period-${period}`, () => {
+                      void handleSelectSalesPeriod(period);
+                    })}
+                    onClick={activateSegmentOnClick(`sales-period-${period}`, () => {
+                      void handleSelectSalesPeriod(period);
+                    })}
                   >
                     {period === "today" ? t("admin.sales.today") : period === "week" ? t("admin.sales.week") : period === "month" ? t("admin.sales.month") : t("admin.sales.custom")}
                   </Button>
@@ -4132,7 +4164,8 @@ export function AdminDashboardScreen({
                   bg={isActive ? "surface.900" : "transparent"}
                   color={isActive ? "white" : "surface.500"}
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setSalesLedgerMode(mode)}
+                  onPointerDown={activateSegmentOnPointerDown(`sales-ledger-${mode}`, () => setSalesLedgerMode(mode))}
+                  onClick={activateSegmentOnClick(`sales-ledger-${mode}`, () => setSalesLedgerMode(mode))}
                 >
                   {mode === "sales" ? `${t("admin.sales.salesTab")} · ${ledgerSalesCount}` : `${t("admin.sales.returnsTab")} · ${ledgerReturnsCount}`}
                 </Button>
@@ -4449,7 +4482,8 @@ export function AdminDashboardScreen({
                   bg={isActive ? "surface.900" : "transparent"}
                   color={isActive ? "white" : "surface.500"}
                   _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                  onClick={() => setStaffDetailMode(mode)}
+                  onPointerDown={activateSegmentOnPointerDown(`staff-detail-${mode}`, () => setStaffDetailMode(mode))}
+                  onClick={activateSegmentOnClick(`staff-detail-${mode}`, () => setStaffDetailMode(mode))}
                 >
                   {mode === "overview"
                     ? t("admin.team.overviewTab")
@@ -5345,7 +5379,8 @@ export function AdminDashboardScreen({
                     bg={isActive ? "surface.900" : "transparent"}
                     color={isActive ? "white" : "surface.500"}
                     _hover={{ bg: isActive ? "surface.900" : panelMutedSurface }}
-                    onClick={() => setTeamMode(mode)}
+                    onPointerDown={activateSegmentOnPointerDown(`team-mode-${mode}`, () => setTeamMode(mode))}
+                    onClick={activateSegmentOnClick(`team-mode-${mode}`, () => setTeamMode(mode))}
                   >
                     {mode === "staff"
                       ? `${t("admin.team.staffTab")} · ${staff.length}`
