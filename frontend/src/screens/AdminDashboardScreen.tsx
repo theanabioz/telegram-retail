@@ -1069,10 +1069,10 @@ export function AdminDashboardScreen({
       return;
     }
 
-    const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width - 1);
-    const hour = Math.min(23, Math.max(0, Math.floor((x / rect.width) * 24)));
-
-    setSelectedOverviewHour(hour);
+  const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width - 1);
+  const hour = Math.min(23, Math.max(0, Math.floor((x / rect.width) * 24)));
+  const currentBusinessHour = getCurrentBusinessHour();
+  setSelectedOverviewHour(hour <= currentBusinessHour ? hour : null);
   };
 
   useEffect(() => {
@@ -2061,7 +2061,7 @@ export function AdminDashboardScreen({
             <VStack align="stretch" gap={2}>
               <Box
                 display="grid"
-                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
+                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
                 columnGap={1.5}
                 h="164px"
                 px={1}
@@ -2073,12 +2073,19 @@ export function AdminDashboardScreen({
                 onPointerLeave={() => setSelectedOverviewHour(null)}
               >
                 {(() => {
-                  const chartSeries = getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday);
-                  const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
+                  const chartSeries = dashboardData.hourlyRevenueToday;
+                  const currentBusinessHour = getCurrentBusinessHour();
+                  const maxHourTotal = Math.max(
+                    ...chartSeries
+                      .filter((entry) => entry.hour <= currentBusinessHour)
+                      .map((entry) => entry.total),
+                    1
+                  );
 
                   return chartSeries.map((entry) => {
-                    const height = Math.max(12, (entry.total / maxHourTotal) * 132);
-                    const isActiveHour = entry.total > 0;
+                    const isFutureHour = entry.hour > currentBusinessHour;
+                    const height = isFutureHour ? 12 : Math.max(12, (entry.total / maxHourTotal) * 132);
+                    const isActiveHour = !isFutureHour && entry.total > 0;
                     const isSelected = selectedOverviewHour === entry.hour;
 
                     return (
@@ -2099,10 +2106,12 @@ export function AdminDashboardScreen({
                           maxW="12px"
                           h={`${height}px`}
                           borderRadius="999px"
-                          cursor="pointer"
+                          cursor={isFutureHour ? "default" : "pointer"}
                           transition="all 0.18s ease"
                           bg={
-                            isActiveHour
+                            isFutureHour
+                              ? "rgba(226,224,218,0.55)"
+                              : isActiveHour
                               ? isSelected
                                 ? "linear-gradient(180deg, rgba(53,102,216,1) 0%, rgba(82,129,236,0.88) 100%)"
                                 : "linear-gradient(180deg, rgba(82,129,236,0.98) 0%, rgba(82,129,236,0.72) 100%)"
@@ -2117,7 +2126,7 @@ export function AdminDashboardScreen({
                           }
                           transform={isSelected ? "scaleX(1.12)" : "scaleX(1)"}
                           _active={{ transform: "scale(0.96)" }}
-                          asChild><button type="button" onClick={() => setSelectedOverviewHour(entry.hour)} /></Box>
+                          asChild><button type="button" onClick={() => setSelectedOverviewHour(isFutureHour ? null : entry.hour)} /></Box>
                       </VStack>
                     );
                   });
@@ -2126,34 +2135,25 @@ export function AdminDashboardScreen({
 
               <Box
                 display="grid"
-                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
+                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
                 columnGap={1.5}
                 h="12px"
                 px={1}
               >
-                {(() => {
-                  const chartSeries = getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday);
-                  const labelHours = chartSeries.filter((entry) => entry.hour % 3 === 0);
-
-                  return labelHours.map((entry) => {
-                    const visibleIndex = chartSeries.findIndex((item) => item.hour === entry.hour);
-
-                    return (
-                      <Text
-                        key={entry.hour}
-                        gridColumn={`${visibleIndex + 1}`}
-                        fontSize="10px"
-                        color="surface.500"
-                        fontWeight="700"
-                        lineHeight="12px"
-                        textAlign="center"
-                        whiteSpace="nowrap"
-                      >
-                        {String(entry.hour).padStart(2, "0")}
-                      </Text>
-                    );
-                  });
-                })()}
+                {[0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => (
+                  <Text
+                    key={hour}
+                    gridColumn={`${hour + 1}`}
+                    fontSize="10px"
+                    color="surface.500"
+                    fontWeight="700"
+                    lineHeight="12px"
+                    textAlign="center"
+                    whiteSpace="nowrap"
+                  >
+                    {hour === 23 ? "00" : String(hour).padStart(2, "0")}
+                  </Text>
+                ))}
               </Box>
             </VStack>
           ) : null}
