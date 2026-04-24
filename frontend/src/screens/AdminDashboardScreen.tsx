@@ -2096,32 +2096,7 @@ export function AdminDashboardScreen({
                 );
 
                 return (
-                  <Box
-                    position="relative"
-                    mx={-1}
-                    _before={{
-                      content: '""',
-                      position: "absolute",
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      w: "22px",
-                      pointerEvents: "none",
-                      zIndex: 1,
-                      bg: "linear-gradient(90deg, rgba(255,255,255,0.92), rgba(255,255,255,0))",
-                    }}
-                    _after={{
-                      content: '""',
-                      position: "absolute",
-                      top: 0,
-                      bottom: 0,
-                      right: 0,
-                      w: "22px",
-                      pointerEvents: "none",
-                      zIndex: 1,
-                      bg: "linear-gradient(270deg, rgba(255,255,255,0.92), rgba(255,255,255,0))",
-                    }}
-                  >
+                  <Box mx={-1}>
                     <HStack
                       align="end"
                       gap={2.5}
@@ -2136,7 +2111,8 @@ export function AdminDashboardScreen({
                           key={day.date}
                           align="stretch"
                           gap={2}
-                          minW={{ base: "438px", sm: "496px" }}
+                          flex="0 0 100%"
+                          minW={0}
                           scrollSnapAlign="start"
                         >
                           <HStack justify="space-between" px={1}>
@@ -2150,8 +2126,8 @@ export function AdminDashboardScreen({
 
                           <Box
                             display="grid"
-                            gridTemplateColumns="repeat(24, minmax(12px, 1fr))"
-                            columnGap={1.5}
+                            gridTemplateColumns="repeat(24, minmax(0, 1fr))"
+                            columnGap={{ base: 1, sm: 1.5 }}
                             h="164px"
                             px={1}
                             overflow="hidden"
@@ -2180,7 +2156,7 @@ export function AdminDashboardScreen({
                                   </Text>
                                   <Box
                                     w="full"
-                                    maxW="12px"
+                                    maxW={{ base: "9px", sm: "12px" }}
                                     h={`${height}px`}
                                     borderRadius="999px"
                                     cursor={isFutureHour ? "default" : "pointer"}
@@ -2219,8 +2195,8 @@ export function AdminDashboardScreen({
 
                           <Box
                             display="grid"
-                            gridTemplateColumns="repeat(24, minmax(12px, 1fr))"
-                            columnGap={1.5}
+                            gridTemplateColumns="repeat(24, minmax(0, 1fr))"
+                            columnGap={{ base: 1, sm: 1.5 }}
                             h="12px"
                             px={1}
                           >
