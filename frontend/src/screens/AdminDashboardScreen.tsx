@@ -60,28 +60,7 @@ const panelShadow = "0 18px 36px rgba(18, 18, 18, 0.06)";
 const panelRadius = "24px";
 const bottomNavReservedSpace = "calc(96px + env(safe-area-inset-bottom, 0px))";
 const ADMIN_SOFT_POLLING_INTERVAL_MS = 30000;
-const ADMIN_OVERVIEW_CHART_MOCK_LAYER = true;
-const ADMIN_OVERVIEW_CHART_MOCK_TOTALS: Record<number, number> = {
-  0: 18,
-  1: 26,
-  2: 14,
-  8: 32,
-  9: 48,
-  10: 44,
-  11: 57,
-  12: 63,
-  13: 52,
-  14: 68,
-  15: 74,
-  16: 59,
-  17: 82,
-  18: 91,
-  19: 76,
-  20: 88,
-  21: 72,
-  22: 54,
-  23: 37,
-};
+const APP_TIME_ZONE = "Europe/Lisbon";
 const TOKEN_KEY = "telegram-retail-token";
 const ADMIN_STARTUP_CACHE_KEY = "telegram-retail-admin-startup";
 const STARTUP_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -407,15 +386,22 @@ function formatAdminPaymentMethod(method: "cash" | "card") {
   return translate("payment.cardBadge");
 }
 
-function withOverviewChartMockLayer(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
-  if (!ADMIN_OVERVIEW_CHART_MOCK_LAYER) {
-    return hourlyRevenueToday;
-  }
+function getCurrentBusinessHour() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
 
-  return hourlyRevenueToday.map((entry) => ({
-    ...entry,
-    total: entry.total > 0 ? entry.total : (ADMIN_OVERVIEW_CHART_MOCK_TOTALS[entry.hour] ?? 0),
-  }));
+  const hourPart = parts.find((part) => part.type === "hour")?.value ?? "0";
+  const parsedHour = Number(hourPart);
+
+  return Number.isNaN(parsedHour) ? 0 : parsedHour;
+}
+
+function getVisibleOverviewChartSeries(hourlyRevenueToday: AdminDashboardResponse["hourlyRevenueToday"]) {
+  const currentHour = getCurrentBusinessHour();
+  return hourlyRevenueToday.filter((entry) => entry.hour <= currentHour);
 }
 
 function StatusPill({ label, tone }: { label: string; tone: "green" | "red" | "blue" | "orange" | "gray" }) {
@@ -2043,7 +2029,7 @@ export function AdminDashboardScreen({
             <VStack align="stretch" gap={2}>
               <Box
                 display="grid"
-                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
+                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(data.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
                 columnGap={1.5}
                 h="164px"
                 px={1}
@@ -2055,7 +2041,7 @@ export function AdminDashboardScreen({
                 onPointerLeave={() => setSelectedOverviewHour(null)}
               >
                 {(() => {
-                  const chartSeries = withOverviewChartMockLayer(data.hourlyRevenueToday);
+                  const chartSeries = getVisibleOverviewChartSeries(data.hourlyRevenueToday);
                   const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
 
                   return chartSeries.map((entry) => {
@@ -2108,25 +2094,37 @@ export function AdminDashboardScreen({
 
               <Box
                 display="grid"
-                gridTemplateColumns="repeat(24, minmax(0, 1fr))"
+                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(data.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
                 columnGap={1.5}
                 h="12px"
                 px={1}
               >
-                {[0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => (
-                  <Text
-                    key={hour}
-                    gridColumn={`${hour + 1}`}
-                    fontSize="10px"
-                    color="surface.500"
-                    fontWeight="700"
-                    lineHeight="12px"
-                    textAlign="center"
-                    whiteSpace="nowrap"
-                  >
-                    {hour === 23 ? "00" : String(hour).padStart(2, "0")}
-                  </Text>
-                ))}
+                {(() => {
+                  const chartSeries = getVisibleOverviewChartSeries(data.hourlyRevenueToday);
+                  const lastHour = chartSeries[chartSeries.length - 1]?.hour ?? 0;
+                  const labelHours = chartSeries.filter(
+                    (entry) => entry.hour % 3 === 0 || entry.hour === lastHour
+                  );
+
+                  return labelHours.map((entry) => {
+                    const visibleIndex = chartSeries.findIndex((item) => item.hour === entry.hour);
+
+                    return (
+                      <Text
+                        key={entry.hour}
+                        gridColumn={`${visibleIndex + 1}`}
+                        fontSize="10px"
+                        color="surface.500"
+                        fontWeight="700"
+                        lineHeight="12px"
+                        textAlign="center"
+                        whiteSpace="nowrap"
+                      >
+                        {String(entry.hour).padStart(2, "0")}
+                      </Text>
+                    );
+                  });
+                })()}
               </Box>
             </VStack>
           ) : null}
