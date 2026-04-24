@@ -2151,7 +2151,7 @@ export function AdminDashboardScreen({
                     textAlign="center"
                     whiteSpace="nowrap"
                   >
-                    {hour === 23 ? "00" : String(hour).padStart(2, "0")}
+                    {String(hour).padStart(2, "0")}
                   </Text>
                 ))}
               </Box>
