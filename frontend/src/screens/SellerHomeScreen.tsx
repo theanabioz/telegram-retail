@@ -303,6 +303,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const isShiftPending = pendingShiftMutationId !== null;
+  const draftItemUnitCount = useMemo(
+    () => draft?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0,
+    [draft?.items]
+  );
 
   const resetSellerSection = useCallback(
     (tab: SellerTab) => {
@@ -1250,7 +1254,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                   {t("draftCart.title")}
                 </Text>
                 <Text color="surface.500" fontWeight="700" fontSize="sm">
-                  {formatCartAddedSummary(draft.summary.itemsCount)}
+                  {formatCartAddedSummary(draftItemUnitCount)}
                 </Text>
               </VStack>
               <IconButton
@@ -1301,7 +1305,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
             </Box>
             <VStack align="start" gap={0}>
               <Text fontWeight="800" fontSize="sm" lineHeight="1.1">
-                {formatCartItemsCount(draft.summary.itemsCount)}
+                {formatCartItemsCount(draftItemUnitCount)}
               </Text>
               <Text fontSize="11px" color="rgba(255,255,255,0.8)" fontWeight="700" letterSpacing="0.01em">
                 {t("checkout.viewCartDetails")}

@@ -98,12 +98,13 @@ function isUuid(value: string) {
 function summarizeDraftItems(items: DraftResponse["items"]) {
   const subtotalAmount = Number(items.reduce((sum, item) => sum + item.base_price * item.quantity, 0).toFixed(2));
   const totalAmount = Number(items.reduce((sum, item) => sum + item.line_total, 0).toFixed(2));
+  const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return {
     subtotalAmount,
     discountAmount: Number((subtotalAmount - totalAmount).toFixed(2)),
     totalAmount,
-    itemsCount: items.length,
+    itemsCount,
   };
 }
 

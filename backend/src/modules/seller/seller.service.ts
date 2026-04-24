@@ -53,12 +53,13 @@ function computeDraftSummary(items: DraftSaleItemRecord[]): DraftSummary {
   );
   const totalAmount = Number(items.reduce((sum, item) => sum + item.line_total, 0).toFixed(2));
   const discountAmount = Number((subtotalAmount - totalAmount).toFixed(2));
+  const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return {
     subtotalAmount,
     discountAmount,
     totalAmount,
-    itemsCount: items.length,
+    itemsCount,
   };
 }
 
