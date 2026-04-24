@@ -224,8 +224,8 @@ type AdminManagementState = {
   salesSummary: AdminSalesOverviewResponse["summary"] | null;
   salesOverview: AdminSalesOverviewResponse["sales"];
   returnsOverview: AdminSalesOverviewResponse["returns"];
-  loadStores: () => Promise<void>;
-  loadStaff: () => Promise<void>;
+  loadStores: (options?: { silent?: boolean }) => Promise<void>;
+  loadStaff: (options?: { silent?: boolean }) => Promise<void>;
   loadInventory: (storeId?: string, options?: { silent?: boolean }) => Promise<void>;
   loadProducts: (options?: { archived?: boolean }) => Promise<void>;
   loadSalesOverview: (filters?: {
@@ -341,7 +341,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     });
   },
 
-  loadStores: async () => {
+  loadStores: async (options) => {
     const token = getStoredToken();
 
     if (!token) {
@@ -349,7 +349,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       return;
     }
 
-    set({ loadingStores: true, error: null });
+    if (!options?.silent) {
+      set({ loadingStores: true, error: null });
+    } else {
+      set({ error: null });
+    }
 
     try {
       const data = await apiGet<AdminStoresResponse>("/admin/stores", token);
@@ -362,7 +366,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
     }
   },
 
-  loadStaff: async () => {
+  loadStaff: async (options) => {
     const token = getStoredToken();
 
     if (!token) {
@@ -370,7 +374,11 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
       return;
     }
 
-    set({ loadingStaff: true, error: null });
+    if (!options?.silent) {
+      set({ loadingStaff: true, error: null });
+    } else {
+      set({ error: null });
+    }
 
     try {
       const data = await apiGet<AdminStaffResponse>("/admin/staff", token);
@@ -657,7 +665,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         staff: get().staff.map((seller) => (seller.id === optimisticId ? response.seller : seller)),
       });
 
-      void get().loadStores();
+      void get().loadStores({ silent: true });
     } catch (error) {
       triggerNotification("error");
       patchDashboardFromAdminState({
@@ -854,7 +862,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
             : entry
         ),
       });
-      void get().loadStores();
+      void get().loadStores({ silent: true });
     } catch (error) {
       triggerNotification("error");
       patchDashboardFromAdminState({
@@ -1110,7 +1118,7 @@ export const useAdminManagementStore = create<AdminManagementState>((set, get) =
         ),
       }));
       void get().loadInventory(input.storeId, { silent: true });
-      void get().loadStores();
+      void get().loadStores({ silent: true });
     } catch (error) {
       triggerNotification("error");
       patchDashboardFromAdminState({

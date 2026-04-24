@@ -501,6 +501,10 @@ export function AdminDashboardScreen({
     Object.keys(pendingStoreProductIds).length > 0 ||
     Object.keys(pendingProductIds).length > 0;
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const showAdminLoadingBanner =
+    (loading && !data) ||
+    (activeTab === "team" &&
+      ((loadingStores && stores.length === 0) || (loadingStaff && staff.length === 0)));
   const [selectedOverviewHour, setSelectedOverviewHour] = useState<number | null>(null);
   const [salesLedgerMode, setSalesLedgerMode] = useState<SalesLedgerMode>("sales");
   const [selectedAdminSaleId, setSelectedAdminSaleId] = useState<string | null>(null);
@@ -1006,7 +1010,7 @@ export function AdminDashboardScreen({
             event.type === "sales.updated" ||
             event.type === "inventory.updated")
         ) {
-          void Promise.allSettled([loadStores(), loadStaff()]);
+          void Promise.allSettled([loadStores({ silent: true }), loadStaff({ silent: true })]);
         }
       }, 180);
     };
@@ -3409,22 +3413,25 @@ export function AdminDashboardScreen({
                   </Text>
                 </VStack>
 
-                <SimpleGrid columns={3} gap={2}>
+                <SimpleGrid columns={2} gap={2}>
                   {([
                     ["restock", t("admin.inventory.restock")],
                     ["writeoff", t("admin.inventory.writeoff")],
                     ["manual_adjustment", t("admin.inventory.adjust")],
-                  ] as Array<[InventoryMovementType, string]>).map(([type, label]) => {
+                  ] as Array<[InventoryMovementType, string]>).map(([type, label], index) => {
                     const isActive = movementType === type;
 
                     return (
                       <Button
                         key={type}
+                        gridColumn={index === 2 ? "1 / -1" : undefined}
                         size="sm"
+                        minH="44px"
                         borderRadius="14px"
                         bg={isActive ? "surface.900" : panelMutedSurface}
                         color={isActive ? "white" : type === "writeoff" ? "red.500" : "surface.700"}
                         _hover={{ bg: isActive ? "surface.900" : "rgba(232,231,226,0.96)" }}
+                        whiteSpace="normal"
                         onClick={() => {
                           if (type === "manual_adjustment") {
                             setInventoryEdits((current) => ({
@@ -6138,7 +6145,7 @@ export function AdminDashboardScreen({
             </HStack>
           </VStack>
 
-          {loading || loadingStores || loadingStaff ? (
+          {showAdminLoadingBanner ? (
             <Box bg={panelSurface} borderRadius={panelRadius} px={4} py={5} boxShadow={panelShadow}>
               <Text fontWeight="800">
                 {activeTab === "team" ? t("admin.loadingTeamData") : t("admin.loadingAdminData")}

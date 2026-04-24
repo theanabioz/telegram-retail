@@ -16,18 +16,15 @@ import {
 import {
   HiOutlineAdjustmentsHorizontal,
   HiOutlineArchiveBox,
-  HiOutlineChartBar,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineMagnifyingGlass,
-  HiOutlineReceiptPercent,
   HiOutlinePause,
   HiOutlinePlay,
   HiOutlinePower,
-  HiOutlineShoppingBag,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { LuClock3, LuShoppingCart } from "react-icons/lu";
+import { LuShoppingCart } from "react-icons/lu";
 import { BottomNav, type SellerTab } from "../components/BottomNav";
 import { ProductCard } from "../components/ProductCard";
 import { formatDiscountValue, formatEur } from "../lib/currency";
@@ -1469,23 +1466,16 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           {
             label: t("sellerProfile.todayRevenue"),
             value: formatEur(todayRevenue),
-            icon: HiOutlineChartBar,
           },
           {
             label: t("sellerProfile.todaySales"),
             value: String(todaySalesCount),
-            icon: HiOutlineShoppingBag,
           },
         ].map((item) => (
           <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-            <HStack justify="space-between" align="start">
-              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                {item.label}
-              </Text>
-              <Box color="brand.500">
-                <Box boxSize={4.5} asChild><item.icon /></Box>
-              </Box>
-            </HStack>
+            <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+              {item.label}
+            </Text>
             <Text
               mt={2}
               fontWeight="900"
@@ -1678,23 +1668,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
         }}>
         <HStack justify="space-between" align="center">
           <HStack gap={4}>
-            <Box
-              w="44px"
-              h="44px"
-              borderRadius="14px"
-              bg="surface.50"
-              display="grid"
-              placeItems="center"
-              color="surface.400"
-            >
-              <Box boxSize={6} asChild><LuClock3 /></Box>
-            </Box>
             <VStack align="start" gap={0}>
               <Text fontWeight="850" fontSize="sm" color="surface.900">
-                {new Date(entry.shift.started_at).toLocaleDateString(getLocaleTag(), {
-                  day: "numeric",
-                  month: "short",
-                })}
+                {formatDateLabel(entry.shift.started_at)}
               </Text>
               <Text fontSize="xs" color="surface.500" fontWeight="600">
                 {formatShiftDateRange(entry.shift.started_at, entry.shift.ended_at)}
@@ -2260,33 +2236,24 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           {
             label: t("sellerProfile.todaySales"),
             value: String(todaySalesCount),
-            icon: HiOutlineShoppingBag,
           },
           {
             label: t("sellerProfile.monthSales"),
             value: String(monthSalesCount),
-            icon: HiOutlineChartBar,
           },
           {
             label: t("sellerProfile.todayCommission"),
             value: formatEur(todayCommissionAmount),
-            icon: HiOutlineReceiptPercent,
           },
           {
             label: t("sellerProfile.monthCommission"),
             value: formatEur(monthCommissionAmount),
-            icon: HiOutlineArchiveBox,
           },
         ].map((item) => (
           <Box key={item.label} bg={panelSurface} borderRadius="22px" px={4} py={4} boxShadow={panelShadow}>
-            <HStack justify="space-between" align="start">
-              <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
-                {item.label}
-              </Text>
-              <Box color="brand.500">
-                <Box boxSize={4.5} asChild><item.icon /></Box>
-              </Box>
-            </HStack>
+            <Text fontSize="10px" color="surface.500" fontWeight="900" textTransform="uppercase" letterSpacing="0.08em">
+              {item.label}
+            </Text>
             <Text
               mt={2}
               fontWeight="900"
