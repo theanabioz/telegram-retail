@@ -890,6 +890,22 @@ export function AdminDashboardScreen({
     overviewRevenueHistory[overviewRevenueHistory.length - 1] ??
     null;
 
+  const loadCurrentSalesLedger = useCallback(
+    (options?: { silent?: boolean }) =>
+      loadSalesOverview(
+        {
+          storeId: salesStoreFilter || undefined,
+          sellerId: salesSellerFilter || undefined,
+          saleStatus: salesStatusFilter,
+          dateFrom: new Date(`${salesDateFrom}T00:00:00`).toISOString(),
+          dateTo: new Date(`${salesDateTo}T23:59:59`).toISOString(),
+          limit: 20,
+        },
+        options
+      ),
+    [loadSalesOverview, salesDateFrom, salesDateTo, salesSellerFilter, salesStatusFilter, salesStoreFilter]
+  );
+
   const resetAdminSection = useCallback((tab: AdminTab) => {
     if (tab === "overview") {
       setSelectedOverviewHour(null);
@@ -898,6 +914,7 @@ export function AdminDashboardScreen({
     if (tab === "sales") {
       setSelectedAdminSaleId(null);
       setSelectedAdminReturnId(null);
+      void loadCurrentSalesLedger({ silent: true });
     }
 
     if (tab === "inventory") {
@@ -918,15 +935,18 @@ export function AdminDashboardScreen({
     }
 
     scrollToSectionTop();
-  }, []);
+  }, [loadCurrentSalesLedger]);
 
   const handleAdminTabChange = useCallback((tab: AdminTab) => {
     setActiveTab(tab);
     if (tab !== "settings") {
       setSettingsView("root");
     }
+    if (tab === "sales") {
+      void loadCurrentSalesLedger({ silent: true });
+    }
     scrollToSectionTop();
-  }, []);
+  }, [loadCurrentSalesLedger]);
 
   const adminPageTitle =
     activeTab === "inventory" && selectedInventoryItemId
@@ -1122,17 +1142,7 @@ export function AdminDashboardScreen({
       }
 
       if (activeTab === "sales") {
-        await loadSalesOverview(
-          {
-            storeId: salesStoreFilter || undefined,
-            sellerId: salesSellerFilter || undefined,
-            saleStatus: salesStatusFilter,
-            dateFrom: new Date(`${salesDateFrom}T00:00:00`).toISOString(),
-            dateTo: new Date(`${salesDateTo}T23:59:59`).toISOString(),
-            limit: 20,
-          },
-          { silent: true }
-        );
+        await loadCurrentSalesLedger({ silent: true });
         return;
       }
 
@@ -1147,14 +1157,9 @@ export function AdminDashboardScreen({
   }, [
     activeTab,
     load,
+    loadCurrentSalesLedger,
     loadInventory,
-    loadSalesOverview,
     hasPendingAdminInventoryMutation,
-    salesDateFrom,
-    salesDateTo,
-    salesSellerFilter,
-    salesStatusFilter,
-    salesStoreFilter,
     selectedInventoryStoreId,
   ]);
 

@@ -66,6 +66,7 @@ type SellerHomeState = {
   ) => Promise<void>;
   removeDraftItem: (itemId: string) => Promise<void>;
   checkout: (paymentMethod: "cash" | "card") => Promise<void>;
+  loadRecentSales: (limit?: number, options?: { silent?: boolean }) => Promise<void>;
   deleteSale: (saleId: string, reason: string) => Promise<void>;
   returnSaleItem: (saleId: string, saleItemId: string, reason: string) => Promise<void>;
   restockProduct: (productId: string, quantity: number, reason: string) => Promise<void>;
@@ -1078,6 +1079,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     try {
       const checkoutResult = await apiPost<CheckoutResponse>("/seller/checkout", { paymentMethod }, token);
+      const freshSales = await apiGet<SellerSalesResponse>("/seller/sales?limit=12", token).catch(() => null);
 
       if (mutationVersion === draftMutationVersion) {
         const sale = {
@@ -1088,17 +1090,21 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         patchSellerStartupCache(token, (startup) => ({
           ...startup,
           draft: buildDraftState(previousDraft, [], get().storeId),
-          sales: startup.sales
-            ? {
-                ...startup.sales,
-                sales: [sale, ...startup.sales.sales],
-              }
-            : startup.sales,
+          sales: freshSales ?? (
+            startup.sales
+              ? {
+                  ...startup.sales,
+                  sales: [sale, ...startup.sales.sales.filter((item) => item.id !== sale.id)],
+                }
+              : startup.sales
+          ),
         }));
         triggerNotification("success");
         set({
           draft: buildDraftState(previousDraft, [], get().storeId),
-          sales: [sale, ...get().sales.filter((item) => item.id !== optimisticSale.id)],
+          sales: freshSales
+            ? freshSales.sales
+            : [sale, ...get().sales.filter((item) => item.id !== optimisticSale.id && item.id !== sale.id)],
           checkoutPending: false,
           error: null,
         });
@@ -1114,6 +1120,29 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           checkoutPending: false,
           error: error instanceof Error ? error.message : "Checkout failed",
         });
+      }
+    }
+  },
+
+  loadRecentSales: async (limit = 12, options) => {
+    const token = resolveCurrentToken(get().token);
+    if (!token) {
+      if (!options?.silent) {
+        set({ error: "Missing auth token" });
+      }
+      return;
+    }
+
+    try {
+      const response = await apiGet<SellerSalesResponse>(`/seller/sales?limit=${limit}`, token);
+      patchSellerStartupCache(token, (startup) => ({
+        ...startup,
+        sales: response,
+      }));
+      set({ sales: response.sales, error: null });
+    } catch (error) {
+      if (!options?.silent) {
+        set({ error: error instanceof Error ? error.message : "Failed to load sales" });
       }
     }
   },

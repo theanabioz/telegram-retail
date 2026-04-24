@@ -253,6 +253,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     draft,
     error,
     inventoryHistory,
+    loadRecentSales,
     loadShiftHistory,
     loading,
     localIpLabel,
@@ -332,8 +333,11 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const handleSellerTabChange = useCallback((tab: SellerTab) => {
     setIsSellerProfileOpen(false);
     setActiveTab(tab);
+    if (tab === "orders") {
+      void loadRecentSales(12, { silent: true });
+    }
     scrollToSectionTop();
-  }, []);
+  }, [loadRecentSales]);
 
   const handleSellerTabReselect = useCallback((tab: SellerTab) => {
     if (isSellerProfileOpen) {
@@ -344,7 +348,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     }
 
     resetSellerSection(tab);
-  }, [isSellerProfileOpen, resetSellerSection]);
+    if (tab === "orders") {
+      void loadRecentSales(12, { silent: true });
+    }
+  }, [isSellerProfileOpen, loadRecentSales, resetSellerSection]);
 
   const openSellerProfile = useCallback(() => {
     suppressGlobalHaptics(700);
