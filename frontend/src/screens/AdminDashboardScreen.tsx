@@ -378,6 +378,18 @@ function formatOverviewSalesCount(count: number, locale: "en" | "ru" | "pt") {
   return `${count} ${count === 1 ? "sale" : "sales"}`;
 }
 
+function renderAdminSkeletonLine(width: string, height = "14px", borderRadius = "999px") {
+  return (
+    <Box
+      width={width}
+      height={height}
+      borderRadius={borderRadius}
+      bg="rgba(226,224,218,0.92)"
+      animation="appSkeletonPulse 1.1s ease-in-out infinite"
+    />
+  );
+}
+
 function formatAdminPaymentMethod(method: "cash" | "card") {
   if (method === "cash") {
     return translate("payment.cash");
@@ -438,6 +450,8 @@ export function AdminDashboardScreen({
 }: AdminDashboardScreenProps) {
   const { locale, localeOptions, setLocale, t } = useI18n();
   const { data, error, loading, load, hydrate: hydrateDashboard } = useAdminDashboardStore();
+  const cachedAdminStartup = useMemo(() => getCachedAdminStartup(), []);
+  const dashboardData = data ?? cachedAdminStartup?.dashboard ?? null;
   const {
     stores,
     staff,
@@ -1985,10 +1999,22 @@ export function AdminDashboardScreen({
     <VStack gap={4} align="stretch">
       <SimpleGrid columns={2} gap={3}>
         {[
-          { label: t("admin.overview.todayRevenue"), value: data ? formatEur(data.summary.totalRevenueToday) : "..." },
-          { label: t("admin.overview.salesToday"), value: data ? String(data.summary.completedSalesToday) : "..." },
-          { label: t("admin.overview.lowStock"), value: data ? String(data.summary.lowStockCount) : "..." },
-          { label: t("admin.overview.activeSellers"), value: data ? String(data.summary.activeShifts) : "..." },
+          {
+            label: t("admin.overview.todayRevenue"),
+            value: dashboardData ? formatEur(dashboardData.summary.totalRevenueToday) : null,
+          },
+          {
+            label: t("admin.overview.salesToday"),
+            value: dashboardData ? String(dashboardData.summary.completedSalesToday) : null,
+          },
+          {
+            label: t("admin.overview.lowStock"),
+            value: dashboardData ? String(dashboardData.summary.lowStockCount) : null,
+          },
+          {
+            label: t("admin.overview.activeSellers"),
+            value: dashboardData ? String(dashboardData.summary.activeShifts) : null,
+          },
         ].map((card) => (
           <Box
             key={card.label}
@@ -1997,14 +2023,20 @@ export function AdminDashboardScreen({
             px={4}
             py={4}
             boxShadow={panelShadow}
-            {...getLowStockCardProps(card.label === t("admin.overview.lowStock") && Boolean(data && data.summary.lowStockCount > 0))}
+            {...getLowStockCardProps(
+              card.label === t("admin.overview.lowStock") && Boolean(dashboardData && dashboardData.summary.lowStockCount > 0)
+            )}
           >
             <Text fontSize="xs" textTransform="uppercase" color="surface.500" letterSpacing="0.08em">
               {card.label}
             </Text>
-            <Text fontSize="2xl" fontWeight="900" mt={2}>
-              {card.value}
-            </Text>
+            {card.value ? (
+              <Text fontSize="2xl" fontWeight="900" mt={2}>
+                {card.value}
+              </Text>
+            ) : (
+              <Box mt={3}>{renderAdminSkeletonLine("72px", "32px", "14px")}</Box>
+            )}
           </Box>
         ))}
       </SimpleGrid>
@@ -2021,15 +2053,15 @@ export function AdminDashboardScreen({
               </Text>
             </VStack>
             <Text color="surface.500" fontWeight="800" fontSize="sm">
-              {data ? formatEur(data.summary.totalRevenueToday) : formatEur(0)}
+              {dashboardData ? formatEur(dashboardData.summary.totalRevenueToday) : formatEur(0)}
             </Text>
           </HStack>
 
-          {data ? (
+          {dashboardData ? (
             <VStack align="stretch" gap={2}>
               <Box
                 display="grid"
-                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(data.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
+                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
                 columnGap={1.5}
                 h="164px"
                 px={1}
@@ -2041,7 +2073,7 @@ export function AdminDashboardScreen({
                 onPointerLeave={() => setSelectedOverviewHour(null)}
               >
                 {(() => {
-                  const chartSeries = getVisibleOverviewChartSeries(data.hourlyRevenueToday);
+                  const chartSeries = getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday);
                   const maxHourTotal = Math.max(...chartSeries.map((entry) => entry.total), 1);
 
                   return chartSeries.map((entry) => {
@@ -2094,17 +2126,14 @@ export function AdminDashboardScreen({
 
               <Box
                 display="grid"
-                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(data.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
+                gridTemplateColumns={`repeat(${Math.max(getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday).length, 1)}, minmax(0, 1fr))`}
                 columnGap={1.5}
                 h="12px"
                 px={1}
               >
                 {(() => {
-                  const chartSeries = getVisibleOverviewChartSeries(data.hourlyRevenueToday);
-                  const lastHour = chartSeries[chartSeries.length - 1]?.hour ?? 0;
-                  const labelHours = chartSeries.filter(
-                    (entry) => entry.hour % 3 === 0 || entry.hour === lastHour
-                  );
+                  const chartSeries = getVisibleOverviewChartSeries(dashboardData.hourlyRevenueToday);
+                  const labelHours = chartSeries.filter((entry) => entry.hour % 3 === 0);
 
                   return labelHours.map((entry) => {
                     const visibleIndex = chartSeries.findIndex((item) => item.hour === entry.hour);
@@ -2138,10 +2167,10 @@ export function AdminDashboardScreen({
               {t("admin.overview.recentSales")}
             </Text>
             <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {(data?.recentSales ?? []).slice(0, 5).length} {t("admin.overview.latest")}
+              {(dashboardData?.recentSales ?? []).slice(0, 5).length} {t("admin.overview.latest")}
             </Text>
           </HStack>
-          {(data?.recentSales ?? []).slice(0, 5).map((sale) => (
+          {(dashboardData?.recentSales ?? []).slice(0, 5).map((sale) => (
             <HStack key={sale.id} justify="space-between" align="start">
               <VStack align="start" gap={0}>
                 <Text fontWeight="800">{sale.store?.name ?? t("admin.sales.unknownStore")}</Text>
@@ -2165,10 +2194,10 @@ export function AdminDashboardScreen({
               {t("admin.overview.storePerformance")}
             </Text>
             <Text color="surface.500" fontWeight="700" fontSize="sm">
-              {formatOverviewStoreCount(data?.storePerformance.length ?? 0, locale)}
+              {formatOverviewStoreCount(dashboardData?.storePerformance.length ?? 0, locale)}
             </Text>
           </HStack>
-          {(data?.storePerformance ?? []).map((store) => (
+          {(dashboardData?.storePerformance ?? []).map((store) => (
             <Box key={store.id} bg={panelMutedSurface} borderRadius="18px" px={3} py={3}>
               <HStack justify="space-between" align="start">
                 <VStack align="start" gap={0}>
