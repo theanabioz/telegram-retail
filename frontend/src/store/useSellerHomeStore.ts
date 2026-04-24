@@ -60,7 +60,6 @@ type SellerHomeState = {
       quantity?: number;
       discountType?: "amount" | "percent" | null;
       discountValue?: number | null;
-      discountScope?: "line" | "single_unit";
     }
   ) => Promise<void>;
   removeDraftItem: (itemId: string) => Promise<void>;
@@ -109,36 +108,6 @@ function summarizeDraftItems(items: DraftResponse["items"]) {
   };
 }
 
-function createDraftItemSignature(item: DraftResponse["items"][number]) {
-  return JSON.stringify([
-    item.product_id,
-    item.quantity,
-    item.discount_type ?? null,
-    item.discount_value ?? null,
-    item.final_price,
-  ]);
-}
-
-function sortDraftItemSignatures(items: DraftResponse["items"]) {
-  return items.map(createDraftItemSignature).sort();
-}
-
-function findMergeableDraftItem(
-  items: DraftResponse["items"],
-  productId: string,
-  params: { discountType?: "amount" | "percent" | null; discountValue?: number | null; finalPrice: number }
-) {
-  return (
-    items.find(
-      (item) =>
-        item.product_id === productId &&
-        item.discount_type === (params.discountType ?? null) &&
-        (item.discount_value ?? null) === (params.discountValue ?? null) &&
-        item.final_price === params.finalPrice
-    ) ?? null
-  );
-}
-
 function buildDraftState(
   previousDraft: DraftResponse | null,
   items: DraftResponse["items"],
@@ -168,10 +137,20 @@ function draftItemsMatchLocalState(
     return false;
   }
 
-  const serverSignatures = sortDraftItemSignatures(serverDraft.items);
-  const localSignatures = sortDraftItemSignatures(localDraft.items);
+  return serverDraft.items.every((serverItem) => {
+    const localItem = localDraft.items.find((item) => item.product_id === serverItem.product_id);
 
-  return serverSignatures.every((signature, index) => signature === localSignatures[index]);
+    if (!localItem) {
+      return false;
+    }
+
+    return (
+      localItem.quantity === serverItem.quantity &&
+      localItem.discount_type === serverItem.discount_type &&
+      (localItem.discount_value ?? null) === (serverItem.discount_value ?? null) &&
+      localItem.final_price === serverItem.final_price
+    );
+  });
 }
 
 function patchSellerDraftCache(token: string, draft: DraftResponse | null) {
@@ -184,13 +163,42 @@ function patchSellerDraftCache(token: string, draft: DraftResponse | null) {
 async function reconcileDraftWithLocalState(
   serverDraft: DraftResponse,
   localDraft: DraftResponse | null,
-  _token: string
+  token: string
 ) {
   if (!localDraft || draftItemsMatchLocalState(serverDraft, localDraft)) {
     return serverDraft;
   }
 
-  return serverDraft;
+  for (const serverItem of serverDraft.items) {
+    const localItem = localDraft.items.find((item) => item.product_id === serverItem.product_id);
+
+    if (!localItem) {
+      await apiDelete(`/seller/draft/items/${serverItem.id}`, token).catch(() => null);
+      continue;
+    }
+
+    const hasMismatch =
+      localItem.quantity !== serverItem.quantity ||
+      localItem.discount_type !== serverItem.discount_type ||
+      (localItem.discount_value ?? null) !== (serverItem.discount_value ?? null) ||
+      localItem.final_price !== serverItem.final_price;
+
+    if (!hasMismatch) {
+      continue;
+    }
+
+    await apiPatch(
+      `/seller/draft/items/${serverItem.id}`,
+      {
+        quantity: localItem.quantity,
+        discountType: localItem.discount_type,
+        discountValue: localItem.discount_value,
+      },
+      token
+    ).catch(() => null);
+  }
+
+  return apiGet<DraftResponse>("/seller/draft", token).catch(() => serverDraft);
 }
 
 function resolveDraftFinalPrice(
@@ -746,16 +754,10 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     const product = get().products.find((item) => item.id === productId);
 
     if (product) {
-      const existing = previousDraft
-        ? findMergeableDraftItem(previousDraft.items, productId, {
-            discountType: null,
-            discountValue: null,
-            finalPrice: product.price,
-          })
-        : null;
+      const existing = previousDraft?.items.find((item) => item.product_id === productId);
       const nextItems = existing
         ? previousDraft!.items.map((item) =>
-            item.id === existing.id
+            item.product_id === productId
               ? {
                   ...item,
                   quantity: item.quantity + 1,
@@ -805,15 +807,21 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         triggerSelection();
         set({ draft: reconciledDraft, mode: "live", error: null });
       } else {
-        void apiGet<DraftResponse>("/seller/draft", token)
-          .then((latestDraft) => {
-            patchSellerDraftCache(token, latestDraft);
-            if (draftMutationVersion !== mutationVersion) {
-              return;
-            }
-            set({ draft: latestDraft, mode: "live", error: null });
+        const currentDraft = get().draft;
+        const outOfSyncItems = draft.items.filter((serverItem) => {
+          const localItem = currentDraft?.items.find((item) => item.product_id === serverItem.product_id);
+          return !localItem || localItem.quantity < serverItem.quantity;
+        });
+
+        void Promise.all(
+          outOfSyncItems.map((serverItem) => {
+            const localItem = currentDraft?.items.find((item) => item.product_id === serverItem.product_id);
+
+            return localItem
+              ? apiPatch(`/seller/draft/items/${serverItem.id}`, { quantity: localItem.quantity }, token).catch(() => null)
+              : apiDelete(`/seller/draft/items/${serverItem.id}`, token).catch(() => null);
           })
-          .catch(() => null);
+        );
       }
     } catch (error) {
       if (mutationVersion === draftMutationVersion) {
@@ -838,64 +846,25 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
     const currentItem = previousDraft?.items.find((item) => item.id === itemId);
 
     if (previousDraft && currentItem) {
-      const shouldSplitSingleUnit =
-        updates.discountScope === "single_unit" &&
-        (updates.discountType !== undefined || updates.discountValue !== undefined) &&
-        (updates.discountType ?? currentItem.discount_type) != null &&
-        (updates.discountValue ?? currentItem.discount_value) != null &&
-        currentItem.quantity > 1;
+      const nextItems = previousDraft.items.map((item) => {
+        if (item.id !== itemId) {
+          return item;
+        }
 
-      const nextItems = shouldSplitSingleUnit
-        ? previousDraft.items.flatMap((item) => {
-            if (item.id !== itemId) {
-              return [item];
-            }
+        const nextQuantity = updates.quantity ?? item.quantity;
+        const nextFinalPrice = resolveDraftFinalPrice(item, updates);
+        const nextDiscountType = updates.discountType === undefined ? item.discount_type : updates.discountType;
+        const nextDiscountValue = updates.discountValue === undefined ? item.discount_value : updates.discountValue;
 
-            const discountedQuantity = 1;
-            const discountedFinalPrice = resolveDraftFinalPrice(item, updates);
-            const discountedType = updates.discountType === undefined ? item.discount_type : updates.discountType;
-            const discountedValue = updates.discountValue === undefined ? item.discount_value : updates.discountValue;
-            const remainingQuantity = item.quantity - discountedQuantity;
-
-            return [
-              {
-                ...item,
-                quantity: remainingQuantity,
-                final_price: item.base_price,
-                discount_type: null,
-                discount_value: null,
-                line_total: Number((remainingQuantity * item.base_price).toFixed(2)),
-              },
-              {
-                ...item,
-                id: `optimistic-discount-${item.id}-${Date.now()}`,
-                quantity: discountedQuantity,
-                final_price: discountedFinalPrice,
-                discount_type: discountedType,
-                discount_value: discountedValue,
-                line_total: Number((discountedQuantity * discountedFinalPrice).toFixed(2)),
-              },
-            ];
-          })
-        : previousDraft.items.map((item) => {
-            if (item.id !== itemId) {
-              return item;
-            }
-
-            const nextQuantity = updates.quantity ?? item.quantity;
-            const nextFinalPrice = resolveDraftFinalPrice(item, updates);
-            const nextDiscountType = updates.discountType === undefined ? item.discount_type : updates.discountType;
-            const nextDiscountValue = updates.discountValue === undefined ? item.discount_value : updates.discountValue;
-
-            return {
-              ...item,
-              quantity: nextQuantity,
-              final_price: nextFinalPrice,
-              discount_type: nextDiscountType,
-              discount_value: nextDiscountValue,
-              line_total: Number((nextQuantity * nextFinalPrice).toFixed(2)),
-            };
-          });
+        return {
+          ...item,
+          quantity: nextQuantity,
+          final_price: nextFinalPrice,
+          discount_type: nextDiscountType,
+          discount_value: nextDiscountValue,
+          line_total: Number((nextQuantity * nextFinalPrice).toFixed(2)),
+        };
+      });
 
       const nextDraft = buildDraftState(previousDraft, nextItems, get().storeId);
       set({ error: null, draft: nextDraft });

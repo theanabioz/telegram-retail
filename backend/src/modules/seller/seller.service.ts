@@ -14,6 +14,7 @@ import {
   deleteDraftItem,
   deleteDraftSale,
   findDraftItemById,
+  findDraftItemByProductId,
   findDraftSaleForSeller,
   findSaleById,
   getSellerCatalog,
@@ -44,31 +45,6 @@ function computeLineTotal(quantity: number, finalPrice: number) {
 
 function computeReturnLineTotal(quantity: number, returnedPrice: number) {
   return Number((quantity * returnedPrice).toFixed(2));
-}
-
-function draftDiscountMatches(
-  item: Pick<DraftSaleItemRecord, "discount_type" | "discount_value" | "final_price">,
-  params: { discountType?: "amount" | "percent" | null; discountValue?: number | null; finalPrice: number }
-) {
-  return (
-    item.discount_type === (params.discountType ?? null) &&
-    (item.discount_value ?? null) === (params.discountValue ?? null) &&
-    item.final_price === params.finalPrice
-  );
-}
-
-async function findMergeableDraftItem(
-  draftSaleId: string,
-  productId: string,
-  params: { discountType?: "amount" | "percent" | null; discountValue?: number | null; finalPrice: number }
-) {
-  const items = await listDraftSaleItems(draftSaleId);
-
-  return (
-    items.find(
-      (item) => item.product_id === productId && draftDiscountMatches(item, params)
-    ) ?? null
-  );
 }
 
 function computeDraftSummary(items: DraftSaleItemRecord[]): DraftSummary {
@@ -210,11 +186,7 @@ export async function addItemToDraft(
     discountValue: input.discountValue ?? null,
   });
 
-  const existing = await findMergeableDraftItem(draft.id, input.productId, {
-    discountType: input.discountType ?? null,
-    discountValue: input.discountValue ?? null,
-    finalPrice,
-  });
+  const existing = await findDraftItemByProductId(draft.id, input.productId);
 
   if (existing) {
     await updateDraftItem(existing.id, {
@@ -250,7 +222,6 @@ export async function updateDraftSaleItem(
     finalPrice?: number;
     discountType?: "amount" | "percent" | null;
     discountValue?: number | null;
-    discountScope?: "line" | "single_unit";
   }
 ) {
   const draftState = await getSellerDraft(userId);
@@ -270,40 +241,6 @@ export async function updateDraftSaleItem(
     discountType: nextDiscountType,
     discountValue: nextDiscountValue,
   });
-
-  const shouldSplitSingleUnit =
-    input.discountScope === "single_unit" &&
-    isDiscountUpdate &&
-    nextDiscountType != null &&
-    nextDiscountValue != null &&
-    item.quantity > 1;
-
-  if (shouldSplitSingleUnit) {
-    const remainingQuantity = Number((item.quantity - 1).toFixed(3));
-
-    await updateDraftItem(item.id, {
-      quantity: remainingQuantity,
-      final_price: item.base_price,
-      discount_type: null,
-      discount_value: null,
-      line_total: computeLineTotal(remainingQuantity, item.base_price),
-    });
-
-    await insertDraftItem({
-      draft_sale_id: draftState.draft.id,
-      product_id: item.product_id,
-      product_name_snapshot: item.product_name_snapshot,
-      sku_snapshot: item.sku_snapshot,
-      base_price: item.base_price,
-      final_price: nextFinalPrice,
-      discount_type: nextDiscountType,
-      discount_value: nextDiscountValue,
-      quantity: 1,
-      line_total: computeLineTotal(1, nextFinalPrice),
-    });
-
-    return getSellerDraft(userId);
-  }
 
   await updateDraftItem(item.id, {
     quantity: nextQuantity,
