@@ -44,6 +44,8 @@ type SellerHomeState = {
   shiftDetailsById: Record<string, ShiftDetailsResponse>;
   pendingSaleIds: Record<string, true>;
   pendingStockProductIds: Record<string, true>;
+  draftPendingCount: number;
+  checkoutPending: boolean;
   pendingShiftMutationId: number | null;
   expectedShiftStatus: "active" | "paused" | "inactive" | null;
   shiftBootstrapAttempts: number;
@@ -84,6 +86,7 @@ function isStartupCacheFresh(cachedAt?: number) {
 let draftMutationVersion = 0;
 let shiftMutationVersion = 0;
 let shiftBootstrapRetryTimer: number | null = null;
+let draftMutationQueue: Promise<void> = Promise.resolve();
 
 type SellerStartupCache = {
   token: string;
@@ -198,7 +201,40 @@ async function reconcileDraftWithLocalState(
     ).catch(() => null);
   }
 
+  for (const localItem of localDraft.items) {
+    const serverItem = serverDraft.items.find((item) => item.product_id === localItem.product_id);
+
+    if (serverItem) {
+      continue;
+    }
+
+    await apiPost(
+      "/seller/draft/items",
+      {
+        productId: localItem.product_id,
+        quantity: localItem.quantity,
+        discountType: localItem.discount_type ?? undefined,
+        discountValue: localItem.discount_value ?? undefined,
+      },
+      token
+    ).catch(() => null);
+  }
+
   return apiGet<DraftResponse>("/seller/draft", token).catch(() => serverDraft);
+}
+
+function enqueueDraftNetworkMutation(task: () => Promise<void>, set: (partial: Partial<SellerHomeState> | ((state: SellerHomeState) => Partial<SellerHomeState>)) => void) {
+  set((state) => ({ draftPendingCount: state.draftPendingCount + 1 }));
+
+  const queuedTask = draftMutationQueue
+    .catch(() => undefined)
+    .then(task)
+    .finally(() => {
+      set((state) => ({ draftPendingCount: Math.max(0, state.draftPendingCount - 1) }));
+    });
+
+  draftMutationQueue = queuedTask.catch(() => undefined);
+  return queuedTask;
 }
 
 function resolveDraftFinalPrice(
@@ -384,6 +420,8 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
   shiftDetailsById: {},
   pendingSaleIds: {},
   pendingStockProductIds: {},
+  draftPendingCount: 0,
+  checkoutPending: false,
   pendingShiftMutationId: null,
   expectedShiftStatus: null,
   shiftBootstrapAttempts: 0,
@@ -749,6 +787,9 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       set({ error: "Missing auth token" });
       return;
     }
+    if (get().checkoutPending) {
+      return;
+    }
 
     const previousDraft = get().draft;
     const product = get().products.find((item) => item.id === productId);
@@ -791,7 +832,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     const mutationVersion = ++draftMutationVersion;
 
-    try {
+    await enqueueDraftNetworkMutation(async () => {
       const draft = await apiPost<DraftResponse>(
         "/seller/draft/items",
         {
@@ -823,7 +864,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           })
         );
       }
-    } catch (error) {
+    }, set).catch((error) => {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
         patchSellerDraftCache(token, previousDraft);
@@ -832,13 +873,16 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           error: error instanceof Error ? error.message : "Failed to add item to cart",
         });
       }
-    }
+    });
   },
 
   updateDraftItem: async (itemId, updates) => {
     const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
+      return;
+    }
+    if (get().checkoutPending) {
       return;
     }
 
@@ -871,6 +915,27 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       patchSellerDraftCache(token, nextDraft);
 
       if (!isUuid(itemId)) {
+        const mutationVersion = ++draftMutationVersion;
+
+        await enqueueDraftNetworkMutation(async () => {
+          const serverDraft = await apiGet<DraftResponse>("/seller/draft", token);
+          const reconciledDraft = await reconcileDraftWithLocalState(serverDraft, get().draft, token);
+
+          if (mutationVersion === draftMutationVersion) {
+            patchSellerDraftCache(token, reconciledDraft);
+            triggerImpact("soft");
+            set({ draft: reconciledDraft });
+          }
+        }, set).catch((error) => {
+          if (mutationVersion === draftMutationVersion) {
+            triggerNotification("error");
+            patchSellerDraftCache(token, previousDraft);
+            set({
+              draft: previousDraft,
+              error: error instanceof Error ? error.message : "Failed to update cart item",
+            });
+          }
+        });
         return;
       }
     } else {
@@ -879,7 +944,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     const mutationVersion = ++draftMutationVersion;
 
-    try {
+    await enqueueDraftNetworkMutation(async () => {
       const draft = await apiPatch<DraftResponse>(`/seller/draft/items/${itemId}`, updates, token);
       if (mutationVersion === draftMutationVersion) {
         patchSellerDraftCache(token, draft);
@@ -890,7 +955,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         }
         set({ draft });
       }
-    } catch (error) {
+    }, set).catch((error) => {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
         patchSellerDraftCache(token, previousDraft);
@@ -899,13 +964,16 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           error: error instanceof Error ? error.message : "Failed to update cart item",
         });
       }
-    }
+    });
   },
 
   removeDraftItem: async (itemId: string) => {
     const token = resolveCurrentToken(get().token);
     if (!token) {
       set({ error: "Missing auth token" });
+      return;
+    }
+    if (get().checkoutPending) {
       return;
     }
 
@@ -925,7 +993,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
 
     const mutationVersion = ++draftMutationVersion;
 
-    try {
+    await enqueueDraftNetworkMutation(async () => {
       if (isUuid(itemId)) {
         const draft = await apiDelete<DraftResponse>(`/seller/draft/items/${itemId}`, token);
         if (mutationVersion === draftMutationVersion) {
@@ -934,7 +1002,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           set({ draft });
         }
       }
-    } catch (error) {
+    }, set).catch((error) => {
       if (mutationVersion === draftMutationVersion) {
         triggerNotification("error");
         patchSellerDraftCache(token, previousDraft);
@@ -943,7 +1011,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           error: error instanceof Error ? error.message : "Failed to remove cart item",
         });
       }
-    }
+    });
   },
 
   checkout: async (paymentMethod: "cash" | "card") => {
@@ -954,12 +1022,22 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
       return;
     }
 
-    const previousDraft = get().draft;
+    set({ checkoutPending: true, error: null });
+
+    await draftMutationQueue.catch(() => undefined);
+
+    const syncedDraft = await apiGet<DraftResponse>("/seller/draft", token).catch(() => get().draft);
+    if (syncedDraft) {
+      patchSellerDraftCache(token, syncedDraft);
+      set({ draft: syncedDraft });
+    }
+
+    const previousDraft = syncedDraft ?? get().draft;
     const previousSales = get().sales;
     const previousProducts = get().products;
 
     if (!previousDraft || previousDraft.items.length === 0) {
-      set({ error: "Draft cart is empty" });
+      set({ checkoutPending: false, error: "Draft cart is empty" });
       return;
     }
 
@@ -1021,6 +1099,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
         set({
           draft: buildDraftState(previousDraft, [], get().storeId),
           sales: [sale, ...get().sales.filter((item) => item.id !== optimisticSale.id)],
+          checkoutPending: false,
           error: null,
         });
       }
@@ -1032,6 +1111,7 @@ export const useSellerHomeStore = create<SellerHomeState>((set, get) => ({
           draft: previousDraft,
           sales: previousSales,
           products: previousProducts,
+          checkoutPending: false,
           error: error instanceof Error ? error.message : "Checkout failed",
         });
       }

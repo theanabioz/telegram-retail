@@ -777,6 +777,38 @@ async function main() {
     "draft cart is empty"
   );
 
+  await Promise.all([
+    apiRequest("/seller/draft/items", {
+      method: "POST",
+      token: state.tempSellerToken,
+      expectedStatus: 201,
+      body: { productId: liveProductA.product.id, quantity: 1 },
+    }),
+    apiRequest("/seller/draft/items", {
+      method: "POST",
+      token: state.tempSellerToken,
+      expectedStatus: 201,
+      body: {
+        productId: liveProductB.product.id,
+        quantity: 1,
+        discountType: "percent",
+        discountValue: 10,
+      },
+    }),
+  ]);
+  const concurrentDraft = await apiRequest("/seller/draft", { token: state.tempSellerToken });
+  assert.equal(concurrentDraft.items.length, 2, "Concurrent draft adds should land in one cart");
+  await Promise.all(
+    concurrentDraft.items.map((item) =>
+      apiRequest(`/seller/draft/items/${item.id}`, {
+        method: "DELETE",
+        token: state.tempSellerToken,
+      })
+    )
+  );
+  const clearedConcurrentDraft = await apiRequest("/seller/draft", { token: state.tempSellerToken });
+  assert.equal(clearedConcurrentDraft.items.length, 0, "Concurrent draft setup should be clearable");
+
   const firstDraft = await apiRequest("/seller/draft/items", {
     method: "POST",
     token: state.tempSellerToken,

@@ -1,5 +1,5 @@
 import { HttpError } from "../../lib/http-error.js";
-import { withTransaction } from "../../lib/db.js";
+import { withTransaction, type DbLike } from "../../lib/db.js";
 import {
   applyInventoryMovement,
   applyInventoryMovementInTransaction,
@@ -26,6 +26,7 @@ import {
   listSaleItems,
   listSaleItemsBySaleIds,
   listDraftSaleItems,
+  lockSellerDraft,
   softDeleteSale,
   updateDraftItem,
   type DraftSaleItemRecord,
@@ -88,22 +89,22 @@ async function getSellerContext(userId: string) {
   };
 }
 
-async function ensureDraftSale(userId: string, storeId: string, shiftId: string) {
-  const existing = await findDraftSaleForSeller(userId);
+async function ensureDraftSale(userId: string, storeId: string, shiftId: string, db?: DbLike) {
+  const existing = await findDraftSaleForSeller(userId, db);
 
   if (existing && existing.store_id === storeId && existing.shift_id === shiftId) {
     return existing;
   }
 
   if (existing) {
-    await deleteDraftSale(existing.id);
+    await deleteDraftSale(existing.id, db);
   }
 
   return createDraftSale({
     sellerId: userId,
     storeId,
     shiftId,
-  });
+  }, db);
 }
 
 function resolveFinalPrice(input: {
@@ -149,14 +150,18 @@ export async function getSellerHomeCatalog(userId: string) {
 
 export async function getSellerDraft(userId: string) {
   const { assignment, shift } = await getSellerContext(userId);
-  const draft = await ensureDraftSale(userId, assignment.store_id, shift.id);
-  const items = await listDraftSaleItems(draft.id);
 
-  return {
-    draft,
-    items,
-    summary: computeDraftSummary(items),
-  };
+  return withTransaction(async (client) => {
+    await lockSellerDraft(userId, client);
+    const draft = await ensureDraftSale(userId, assignment.store_id, shift.id, client);
+    const items = await listDraftSaleItems(draft.id, client);
+
+    return {
+      draft,
+      items,
+      summary: computeDraftSummary(items),
+    };
+  });
 }
 
 export async function addItemToDraft(
@@ -170,7 +175,6 @@ export async function addItemToDraft(
   }
 ) {
   const { assignment, shift } = await getSellerContext(userId);
-  const draft = await ensureDraftSale(userId, assignment.store_id, shift.id);
   const catalog = await getSellerCatalog(assignment.store_id);
   const catalogItem = catalog.find((item) => item.product_id === input.productId);
 
@@ -186,32 +190,41 @@ export async function addItemToDraft(
     discountValue: input.discountValue ?? null,
   });
 
-  const existing = await findDraftItemByProductId(draft.id, input.productId);
+  return withTransaction(async (client) => {
+    await lockSellerDraft(userId, client);
+    const draft = await ensureDraftSale(userId, assignment.store_id, shift.id, client);
+    const existing = await findDraftItemByProductId(draft.id, input.productId, client);
 
-  if (existing) {
-    await updateDraftItem(existing.id, {
-      quantity: Number((existing.quantity + input.quantity).toFixed(3)),
-      final_price: finalPrice,
-      discount_type: input.discountType ?? null,
-      discount_value: input.discountValue ?? null,
-      line_total: computeLineTotal(existing.quantity + input.quantity, finalPrice),
-    });
-  } else {
-    await insertDraftItem({
-      draft_sale_id: draft.id,
-      product_id: input.productId,
-      product_name_snapshot: catalogItem.product.name,
-      sku_snapshot: catalogItem.product.sku,
-      base_price: basePrice,
-      final_price: finalPrice,
-      discount_type: input.discountType ?? null,
-      discount_value: input.discountValue ?? null,
-      quantity: input.quantity,
-      line_total: computeLineTotal(input.quantity, finalPrice),
-    });
-  }
+    if (existing) {
+      await updateDraftItem(existing.id, {
+        quantity: Number((existing.quantity + input.quantity).toFixed(3)),
+        final_price: finalPrice,
+        discount_type: input.discountType ?? null,
+        discount_value: input.discountValue ?? null,
+        line_total: computeLineTotal(existing.quantity + input.quantity, finalPrice),
+      }, client);
+    } else {
+      await insertDraftItem({
+        draft_sale_id: draft.id,
+        product_id: input.productId,
+        product_name_snapshot: catalogItem.product.name,
+        sku_snapshot: catalogItem.product.sku,
+        base_price: basePrice,
+        final_price: finalPrice,
+        discount_type: input.discountType ?? null,
+        discount_value: input.discountValue ?? null,
+        quantity: input.quantity,
+        line_total: computeLineTotal(input.quantity, finalPrice),
+      }, client);
+    }
 
-  return getSellerDraft(userId);
+    const items = await listDraftSaleItems(draft.id, client);
+    return {
+      draft,
+      items,
+      summary: computeDraftSummary(items),
+    };
+  });
 }
 
 export async function updateDraftSaleItem(
@@ -224,72 +237,94 @@ export async function updateDraftSaleItem(
     discountValue?: number | null;
   }
 ) {
-  const draftState = await getSellerDraft(userId);
-  const item = await findDraftItemById(draftState.draft.id, itemId);
+  return withTransaction(async (client) => {
+    await lockSellerDraft(userId, client);
+    const { assignment, shift } = await getSellerContext(userId);
+    const draft = await ensureDraftSale(userId, assignment.store_id, shift.id, client);
+    const item = await findDraftItemById(draft.id, itemId, client);
 
-  if (!item) {
-    throw new HttpError(404, "Draft item not found");
-  }
+    if (!item) {
+      throw new HttpError(404, "Draft item not found");
+    }
 
-  const nextQuantity = input.quantity ?? item.quantity;
-  const isDiscountUpdate = input.discountType !== undefined || input.discountValue !== undefined;
-  const nextDiscountType = input.discountType === undefined ? item.discount_type : input.discountType;
-  const nextDiscountValue = input.discountValue === undefined ? item.discount_value : input.discountValue;
-  const nextFinalPrice = resolveFinalPrice({
-    basePrice: item.base_price,
-    finalPrice: input.finalPrice !== undefined ? input.finalPrice : isDiscountUpdate ? undefined : item.final_price,
-    discountType: nextDiscountType,
-    discountValue: nextDiscountValue,
+    const nextQuantity = input.quantity ?? item.quantity;
+    const isDiscountUpdate = input.discountType !== undefined || input.discountValue !== undefined;
+    const nextDiscountType = input.discountType === undefined ? item.discount_type : input.discountType;
+    const nextDiscountValue = input.discountValue === undefined ? item.discount_value : input.discountValue;
+    const nextFinalPrice = resolveFinalPrice({
+      basePrice: item.base_price,
+      finalPrice: input.finalPrice !== undefined ? input.finalPrice : isDiscountUpdate ? undefined : item.final_price,
+      discountType: nextDiscountType,
+      discountValue: nextDiscountValue,
+    });
+
+    await updateDraftItem(item.id, {
+      quantity: nextQuantity,
+      final_price: nextFinalPrice,
+      discount_type: nextDiscountType,
+      discount_value: nextDiscountValue,
+      line_total: computeLineTotal(nextQuantity, nextFinalPrice),
+    }, client);
+
+    const items = await listDraftSaleItems(draft.id, client);
+    return {
+      draft,
+      items,
+      summary: computeDraftSummary(items),
+    };
   });
-
-  await updateDraftItem(item.id, {
-    quantity: nextQuantity,
-    final_price: nextFinalPrice,
-    discount_type: nextDiscountType,
-    discount_value: nextDiscountValue,
-    line_total: computeLineTotal(nextQuantity, nextFinalPrice),
-  });
-
-  return getSellerDraft(userId);
 }
 
 export async function removeDraftSaleItem(userId: string, itemId: string) {
-  const draftState = await getSellerDraft(userId);
-  const item = await findDraftItemById(draftState.draft.id, itemId);
+  return withTransaction(async (client) => {
+    await lockSellerDraft(userId, client);
+    const { assignment, shift } = await getSellerContext(userId);
+    const draft = await ensureDraftSale(userId, assignment.store_id, shift.id, client);
+    const item = await findDraftItemById(draft.id, itemId, client);
 
-  if (!item) {
-    throw new HttpError(404, "Draft item not found");
-  }
+    if (!item) {
+      throw new HttpError(404, "Draft item not found");
+    }
 
-  await deleteDraftItem(item.id);
-  return getSellerDraft(userId);
+    await deleteDraftItem(item.id, client);
+    const items = await listDraftSaleItems(draft.id, client);
+    return {
+      draft,
+      items,
+      summary: computeDraftSummary(items),
+    };
+  });
 }
 
 export async function checkoutDraft(userId: string, paymentMethod: "cash" | "card") {
   const { assignment, shift } = await getSellerContext(userId);
-  const draftState = await getSellerDraft(userId);
-
-  if (draftState.items.length === 0) {
-    throw new HttpError(409, "Draft cart is empty");
-  }
 
   const result = await withTransaction(async (client) => {
+    await lockSellerDraft(userId, client);
+    const draft = await ensureDraftSale(userId, assignment.store_id, shift.id, client);
+    const items = await listDraftSaleItems(draft.id, client);
+    const summary = computeDraftSummary(items);
+
+    if (items.length === 0) {
+      throw new HttpError(409, "Draft cart is empty");
+    }
+
     const sale = await createSale(
       {
         sellerId: userId,
         storeId: assignment.store_id,
         shiftId: shift.id,
         paymentMethod,
-        subtotalAmount: draftState.summary.subtotalAmount,
-        discountAmount: draftState.summary.discountAmount,
-        totalAmount: draftState.summary.totalAmount,
+        subtotalAmount: summary.subtotalAmount,
+        discountAmount: summary.discountAmount,
+        totalAmount: summary.totalAmount,
       },
       client
     );
 
     await insertSaleItems(
       sale.id,
-      draftState.items.map((item) => ({
+      items.map((item) => ({
         productId: item.product_id,
         productNameSnapshot: item.product_name_snapshot,
         skuSnapshot: item.sku_snapshot,
@@ -304,7 +339,7 @@ export async function checkoutDraft(userId: string, paymentMethod: "cash" | "car
     );
 
     const movements = [];
-    for (const item of draftState.items) {
+    for (const item of items) {
       const movementInput = {
         storeId: assignment.store_id,
         productId: item.product_id,
@@ -319,9 +354,9 @@ export async function checkoutDraft(userId: string, paymentMethod: "cash" | "car
       movements.push({ input: movementInput, movement });
     }
 
-    await deleteDraftSale(draftState.draft.id, client);
+    await deleteDraftSale(draft.id, client);
 
-    return { sale, movements };
+    return { sale, movements, items, summary };
   });
 
   for (const movement of result.movements) {
@@ -330,8 +365,8 @@ export async function checkoutDraft(userId: string, paymentMethod: "cash" | "car
 
   return {
     sale: result.sale,
-    items: draftState.items,
-    summary: draftState.summary,
+    items: result.items,
+    summary: result.summary,
   };
 }
 

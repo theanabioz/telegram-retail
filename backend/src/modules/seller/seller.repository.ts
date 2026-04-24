@@ -151,7 +151,11 @@ export async function getSellerCatalog(storeId: string) {
   }
 }
 
-export async function findDraftSaleForSeller(sellerId: string) {
+export async function lockSellerDraft(sellerId: string, db: DbLike) {
+  await queryDb(`select pg_advisory_xact_lock(hashtext($1))`, [sellerId], db);
+}
+
+export async function findDraftSaleForSeller(sellerId: string, db?: DbLike) {
   try {
     return await maybeOne<DraftSaleRecord>(
       `select id, seller_id, store_id, shift_id, created_at, updated_at
@@ -159,27 +163,29 @@ export async function findDraftSaleForSeller(sellerId: string) {
        where seller_id = $1
        order by updated_at desc
        limit 1`,
-      [sellerId]
+      [sellerId],
+      db
     );
   } catch (error) {
     throw new HttpError(500, `Failed to load draft sale: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export async function createDraftSale(input: { sellerId: string; storeId: string; shiftId: string }) {
+export async function createDraftSale(input: { sellerId: string; storeId: string; shiftId: string }, db?: DbLike) {
   try {
     return await one<DraftSaleRecord>(
       `insert into public.draft_sales (seller_id, store_id, shift_id)
        values ($1, $2, $3)
        returning id, seller_id, store_id, shift_id, created_at, updated_at`,
-      [input.sellerId, input.storeId, input.shiftId]
+      [input.sellerId, input.storeId, input.shiftId],
+      db
     );
   } catch (error) {
     throw new HttpError(500, `Failed to create draft sale: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-export async function listDraftSaleItems(draftSaleId: string) {
+export async function listDraftSaleItems(draftSaleId: string, db?: DbLike) {
   try {
     const result = await queryDb<DraftSaleItemRecord>(
       `select id, draft_sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price,
@@ -187,7 +193,8 @@ export async function listDraftSaleItems(draftSaleId: string) {
        from public.draft_sale_items
        where draft_sale_id = $1
        order by created_at asc`,
-      [draftSaleId]
+      [draftSaleId],
+      db
     );
 
     return result.rows.map((row) =>
@@ -198,7 +205,7 @@ export async function listDraftSaleItems(draftSaleId: string) {
   }
 }
 
-export async function findDraftItemByProductId(draftSaleId: string, productId: string) {
+export async function findDraftItemByProductId(draftSaleId: string, productId: string, db?: DbLike) {
   try {
     const row = await maybeOne<DraftSaleItemRecord>(
       `select id, draft_sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price,
@@ -206,7 +213,8 @@ export async function findDraftItemByProductId(draftSaleId: string, productId: s
        from public.draft_sale_items
        where draft_sale_id = $1
          and product_id = $2`,
-      [draftSaleId, productId]
+      [draftSaleId, productId],
+      db
     );
 
     return row ? toNumber(row, ["base_price", "final_price", "discount_value", "quantity", "line_total"]) : null;
@@ -215,7 +223,7 @@ export async function findDraftItemByProductId(draftSaleId: string, productId: s
   }
 }
 
-export async function findDraftItemById(draftSaleId: string, itemId: string) {
+export async function findDraftItemById(draftSaleId: string, itemId: string, db?: DbLike) {
   try {
     const row = await maybeOne<DraftSaleItemRecord>(
       `select id, draft_sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price,
@@ -223,7 +231,8 @@ export async function findDraftItemById(draftSaleId: string, itemId: string) {
        from public.draft_sale_items
        where draft_sale_id = $1
          and id = $2`,
-      [draftSaleId, itemId]
+      [draftSaleId, itemId],
+      db
     );
 
     return row ? toNumber(row, ["base_price", "final_price", "discount_value", "quantity", "line_total"]) : null;
@@ -232,7 +241,7 @@ export async function findDraftItemById(draftSaleId: string, itemId: string) {
   }
 }
 
-export async function insertDraftItem(input: Omit<DraftSaleItemRecord, "id" | "created_at" | "updated_at">) {
+export async function insertDraftItem(input: Omit<DraftSaleItemRecord, "id" | "created_at" | "updated_at">, db?: DbLike) {
   try {
     const row = await one<DraftSaleItemRecord>(
       `insert into public.draft_sale_items (
@@ -253,7 +262,8 @@ export async function insertDraftItem(input: Omit<DraftSaleItemRecord, "id" | "c
         input.discount_value,
         input.quantity,
         input.line_total,
-      ]
+      ],
+      db
     );
 
     return toNumber(row, ["base_price", "final_price", "discount_value", "quantity", "line_total"]);
@@ -264,7 +274,8 @@ export async function insertDraftItem(input: Omit<DraftSaleItemRecord, "id" | "c
 
 export async function updateDraftItem(
   itemId: string,
-  updates: Partial<Omit<DraftSaleItemRecord, "id" | "draft_sale_id" | "created_at" | "updated_at">>
+  updates: Partial<Omit<DraftSaleItemRecord, "id" | "draft_sale_id" | "created_at" | "updated_at">>,
+  db?: DbLike
 ) {
   try {
     const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
@@ -274,7 +285,8 @@ export async function updateDraftItem(
                 discount_type, discount_value, quantity, line_total, created_at, updated_at
          from public.draft_sale_items
          where id = $1`,
-        [itemId]
+        [itemId],
+        db
       );
       if (!row) {
         throw new HttpError(404, "Draft item not found");
@@ -290,7 +302,8 @@ export async function updateDraftItem(
        where id = $1
        returning id, draft_sale_id, product_id, product_name_snapshot, sku_snapshot, base_price, final_price,
                  discount_type, discount_value, quantity, line_total, created_at, updated_at`,
-      [itemId, ...values]
+      [itemId, ...values],
+      db
     );
 
     return toNumber(row, ["base_price", "final_price", "discount_value", "quantity", "line_total"]);
@@ -302,9 +315,9 @@ export async function updateDraftItem(
   }
 }
 
-export async function deleteDraftItem(itemId: string) {
+export async function deleteDraftItem(itemId: string, db?: DbLike) {
   try {
-    await queryDb(`delete from public.draft_sale_items where id = $1`, [itemId]);
+    await queryDb(`delete from public.draft_sale_items where id = $1`, [itemId], db);
   } catch (error) {
     throw new HttpError(500, `Failed to delete draft item: ${error instanceof Error ? error.message : String(error)}`);
   }

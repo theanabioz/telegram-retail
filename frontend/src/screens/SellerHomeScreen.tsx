@@ -259,6 +259,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     mode,
     operatorName,
     pauseShift,
+    draftPendingCount,
+    checkoutPending,
     pendingStockProductIds,
     pendingShiftMutationId,
     products,
@@ -300,6 +302,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [showFullscreenHeaderContext, setShowFullscreenHeaderContext] = useState(() => isTelegramFullscreenLike());
   const supportsTelegramBackButton = canUseTelegramBackButton();
   const isShiftPending = pendingShiftMutationId !== null;
+  const isCartSyncing = draftPendingCount > 0 || checkoutPending;
   const draftItemUnitCount = useMemo(
     () => draft?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0,
     [draft?.items]
@@ -1184,6 +1187,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _hover={{ bg: "surface.50" }}
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("cash")}
+                loading={checkoutPending}
+                disabled={isCartSyncing}
                 fontSize="sm"
                 fontWeight="800"
               >
@@ -1198,6 +1203,8 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                 _hover={{ bg: "brand.600" }}
                 _active={{ transform: "scale(0.96)" }}
                 onClick={() => void checkout("card")}
+                loading={checkoutPending}
+                disabled={isCartSyncing}
                 fontSize="sm"
                 fontWeight="800"
                 boxShadow="0 10px 22px rgba(74, 132, 244, 0.24)"
@@ -1366,7 +1373,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
           key={item.id}
           item={item}
           onAdd={(productId) => void addToDraft(productId)}
-          disabled={!shiftActive}
+          disabled={!shiftActive || checkoutPending}
         />
       ))}
     </VStack>
