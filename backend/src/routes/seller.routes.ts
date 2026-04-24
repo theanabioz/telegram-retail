@@ -219,6 +219,7 @@ sellerRouter.patch(
       finalPrice: body.finalPrice,
       discountType: body.discountType,
       discountValue: body.discountValue,
+      discountScope: body.discountScope,
     });
     res.json(result);
   })

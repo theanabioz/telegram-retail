@@ -292,7 +292,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
   const [activeTab, setActiveTab] = useState<SellerTab>("checkout");
   const [searchQuery, setSearchQuery] = useState("");
   const [stockEdits, setStockEdits] = useState<Record<string, { quantity: string; reason: string }>>({});
-  const [discountEdits, setDiscountEdits] = useState<Record<string, { type: "amount" | "percent"; value: string }>>({});
+  const [discountEdits, setDiscountEdits] = useState<
+    Record<string, { type: "amount" | "percent"; value: string; scope: "line" | "single_unit" }>
+  >({});
   const [discountModalItemId, setDiscountModalItemId] = useState<string | null>(null);
   const [isDraftCartOpen, setIsDraftCartOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
@@ -715,16 +717,18 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
     discountEdits[item.id] ?? {
       type: item.discount_type ?? "amount",
       value: item.discount_value == null ? "" : String(item.discount_value),
+      scope: "line" as const,
     };
 
   const updateDiscountDraft = (
     itemId: string,
-    updates: Partial<{ type: "amount" | "percent"; value: string }>
+    updates: Partial<{ type: "amount" | "percent"; value: string; scope: "line" | "single_unit" }>
   ) => {
     const item = draft?.items.find((draftItem) => draftItem.id === itemId);
     const base = {
       type: item?.discount_type ?? "amount",
       value: item?.discount_value == null ? "" : String(item.discount_value),
+      scope: "line" as const,
     };
 
     setDiscountEdits((current) => ({
@@ -739,6 +743,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       [item.id]: current[item.id] ?? {
         type: item.discount_type ?? "amount",
         value: item.discount_value == null ? "" : String(item.discount_value),
+        scope: "line",
       },
     }));
     setDiscountModalItemId(item.id);
@@ -803,6 +808,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       quantity: item.quantity,
       discountType: discountDraft.type,
       discountValue: value,
+      discountScope: discountDraft.scope,
     });
     setDiscountModalItemId(null);
   };
@@ -813,6 +819,7 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       [item.id]: {
         type: item.discount_type ?? "amount",
         value: "",
+        scope: "line",
       },
     }));
 
@@ -836,6 +843,10 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
       discountDraft.type === "percent"
         ? Math.max(0, discountModalItem.base_price * (1 - previewValue / 100))
         : Math.max(0, discountModalItem.base_price - previewValue);
+    const appliesToSingleUnit = discountDraft.scope === "single_unit" && discountModalItem.quantity > 1;
+    const scopeLabel = appliesToSingleUnit
+      ? t("discount.scopeSingleUnit", { count: discountModalItem.quantity })
+      : t("discount.scopeLine", { count: discountModalItem.quantity });
 
     return (
       <Dialog.Root
@@ -903,6 +914,32 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                     })}
                   </HStack>
 
+                  {discountModalItem.quantity > 1 ? (
+                    <HStack gap={2} bg="surface.50" borderRadius="20px" p={1.5}>
+                      {(["line", "single_unit"] as const).map((scope) => {
+                        const isSelected = discountDraft.scope === scope;
+
+                        return (
+                          <Button
+                            key={scope}
+                            flex="1"
+                            h="44px"
+                            borderRadius="16px"
+                            bg={isSelected ? "white" : "transparent"}
+                            color={isSelected ? "brand.500" : "surface.500"}
+                            boxShadow={isSelected ? "0 4px 12px rgba(0,0,0,0.06)" : "none"}
+                            _hover={{ bg: isSelected ? "white" : "rgba(255,255,255,0.4)" }}
+                            onClick={() => updateDiscountDraft(discountModalItem.id, { scope })}
+                            fontSize="sm"
+                            fontWeight="800"
+                          >
+                            {scope === "line" ? t("discount.scopeLineShort") : t("discount.scopeSingleUnitShort")}
+                          </Button>
+                        );
+                      })}
+                    </HStack>
+                  ) : null}
+
                   <Box
                     bg="rgba(246,244,239,0.96)"
                     borderRadius="24px"
@@ -946,6 +983,9 @@ export function SellerHomeScreen({ currentPanel, onSwitchPanel }: SellerHomeScre
                         </Text>
                       </Box>
                     </SimpleGrid>
+                    <Text mt={3} fontSize="sm" color="surface.500" fontWeight="700">
+                      {scopeLabel}
+                    </Text>
                   </Box>
 
                   <SimpleGrid columns={3} gap={3}>

@@ -4,6 +4,7 @@ const quantitySchema = z.number().positive().max(999);
 const moneySchema = z.number().nonnegative().max(100_000);
 const discountTypeSchema = z.enum(["amount", "percent"]);
 const discountValueSchema = z.number().nonnegative().max(100_000);
+const discountScopeSchema = z.enum(["line", "single_unit"]);
 
 function validateDiscountValue(value: { discountType?: "amount" | "percent" | null; discountValue?: number | null }, ctx: z.RefinementCtx) {
   if (value.discountType === "percent" && value.discountValue != null && value.discountValue > 100) {
@@ -31,6 +32,7 @@ export const updateDraftItemBodySchema = z
     finalPrice: moneySchema.optional(),
     discountType: discountTypeSchema.nullable().optional(),
     discountValue: discountValueSchema.nullable().optional(),
+    discountScope: discountScopeSchema.optional(),
   })
   .superRefine(validateDiscountValue);
 
